@@ -1,0 +1,94 @@
+{
+	"ackMessage": [
+		"All right, I'll go grab the tape measure.",
+		"Ok, but this is going to be embarassing.",
+		"Fine, but only as long as Bryan's not at the top.",
+		"Why? You're all a bunch of scrubs, anyhow.",
+		"This should be good for a laugh.",
+		"Spoiler: ||You all suck.||",
+		"I bEt YoU gUyS hAvE gReAt iRaTiNgS.",
+		"i GeT sO jEaLoUs WhEn I sEe YoUr iRaTiNgs.",
+		"Need to validate your self worth again already?",
+		"u wud",
+		"I miss Jeremy.",
+		"Hey guys, I hope you don't mind, but I sent an invite to Chuck just now.",
+		"<:KEKLEO:875757285329240114>",
+		"I ||would|| like ||to slap you|| you all very much. I have ||many opinions but not|| a lot of respect for you.",
+		"Generating list of garbage..."
+	],
+	"opening_1_good": [
+		"Yo, check this shit out.",
+		"Prepare yourselves for a tale of heroicism that you don't give two shits about.",
+		"Oh great,",
+		"I know absolutely none of you care, but",
+		"And now for something completely different.",
+		"Oh blessed day! "
+	],
+	"opening_2_good": [
+		"now we'll never hear the end of it.",
+		"now they're going to think they're hot shit.",
+		"I'm sure Helmut Marko will be calling any second now.",
+		"it's just what we need, something to further inflate their ego.",
+		"now they're going to be absolutely insufferable.",
+		"so prepare for unsolicited racing tips."
+	],
+	"opening_1_bad": [
+		"Well this should be good for a laugh.",
+		"Has there been a lot of bitching in chat recently? ",
+		"Everybody point and laugh.",
+		"Well, this is embarassing.",
+		"This will come as no surprise, but",
+		"Everyone, stop what you're doing."
+	],
+	"opening_2_bad": [
+		"look at this trash.",
+		"I bet they're sweating about that pleb line.",
+		"I have no idea how they can even show their face around here.",
+		"just look at these shameful results.",
+		"look at how shitty they did.",
+		"I just threw up in my mouth a little."
+	],
+	"closing": [
+		"Be sure to let them how little respect you have for them.",
+		"What a total bitch.",
+		"Fucking pleb.",
+		"They should probably just let their iRacing subscription lapse.",
+		"Go back to Praxis.",
+		"I hear Mason Pepper is giving driving lessons."
+	],
+	"invalid": [
+		"Thanks, that incomprehensible command gave me a fucking brain aneurysm.",
+		"Guys, look at this moron. Can't even enter a simple command.",
+		"<:KEKLEO:903047379996016670>"
+	],
+	"helpSignoff": [
+		"You're a wonderful human being.",
+		"I'm sure your parents are proud of you.",
+		"You inspire me each and every day.",
+		"Everyone needs a hero, and you're my hero",
+		"I don't know how I would go on without you.",
+		"I have a lot of respect for you.",
+		"Your dignity and class are unparalleled.",
+		"You will achieve great things in life."
+	],
+	"champIntro": [
+		"Let's see who's at the top of this list, a totally unimpressive feat.",
+		"This list also happens to match your body odor rankings.",
+		"One sec. I need a drink first.",
+		"Spoiler: ||I touch myself at night.||"
+	],
+	"clickbait": [
+		"You won't believe what happened on lap 4",
+		"Improve times with this one weird trick",
+		"Stewards hate this trick to guarantee wins",
+		"iRacer shares 12 tips for better laptimes",
+		"The last race report you'll ever need",
+		"Before you renew your iRacing sub, read this",
+		"Are load cells a mistake? This racer says yes",
+		"You won't believe what happened in qualifying",
+		"Gain SR with this one weird trick.",
+		"9 iRacers who've lost iR. You won't believe #6",
+		"8 reasons why you should race in socks",
+		"14 time saving drills. You won't believe #9"
+	]
+}

@@ -1,0 +1,563 @@
+import os
+import discord
+import global_vars
+import cache_races
+import environment_variables as env
+import helpers
+import roles
+import image_generators as image_gen
+from pyracing import constants as pyracingConstants
+import asyncio
+import random
+from discord.errors import NotFound
+
+from datetime import datetime
+
+
+async def get_race_results():
+    global_vars.members_locks += 1
+    for member in global_vars.members:
+        if "iracingCustID" not in global_vars.members[member]:
+            continue
+
+        iracing_id = global_vars.members[member]["iracingCustID"]
+        if str(iracing_id) not in global_vars.race_cache:
+            # This person has never had their races cached. Cache them now.
+            await cache_races(global_vars.ir, iracing_id)
+        else:
+            # Grab all series races since their previous cached race
+            start_high = int(datetime.timestamp(datetime.now()) * 1000)
+            start_low = global_vars.members[member]['last_race_check']
+            if start_high - start_low > 90 * 24 * 60 * 60 * 1000:
+                start_high = start_low + 90 * 24 * 60 * 60 * 1000 + 1000
+            races_list = await global_vars.ir.search_results(iracing_id, start_low=start_low, start_high=start_high)
+
+            # Grab all hosted races in the last week
+            now = int(datetime.now().timestamp()) * 1000
+            start_time = now - 7 * 24 * 60 * 60 * 1000
+            hosted_races_list = await global_vars.ir.private_results(iracing_id, start_time, now, sort=pyracingConstants.Sort.start_time.value, order=pyracingConstants.Sort.descending.value)
+
+            if len(hosted_races_list) > 0:
+                for race in hosted_races_list:
+                    races_list.append(race)
+
+            for race in races_list:
+                race_found = False
+                # If an official series, check if this race is in the cache
+                if not hasattr(race, 'host_cust_id'):
+                    global_vars.race_cache_locks += 1
+                    for year in global_vars.race_cache[str(iracing_id)]:
+                        for quarter in global_vars.race_cache[str(iracing_id)][str(year)]:
+                            for series in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)]:
+                                for cached_race in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series)]:
+                                    if int(cached_race) == race.subsession_id:
+                                        race_found = True
+                    global_vars.race_cache_locks -= 1
+                else:
+                    if str(iracing_id) in global_vars.hosted_cache:
+                        if str(race.subsession_id) in global_vars.hosted_cache[str(iracing_id)]:
+                            race_found = True
+
+                if race_found is False:
+                    multi_report = False
+                    role_change_reason = ""
+                    message_text = ""
+                    results_dict = await get_results_summary(iracing_id, race.subsession_id, race=race)
+
+                    if results_dict is not None and results_dict != {}:
+
+                        if 'respo_drivers' in results_dict:
+                            if len(results_dict['respo_drivers']) > 1:
+                                multi_report = True
+                                message_text = "Well lookie here. "
+
+                            drivers_listed = 0
+
+                            # Add the race for every member that took part.
+                            for inner_member in global_vars.members:
+                                if str(global_vars.members[inner_member]['iracingCustID']) in results_dict['respo_drivers']:
+                                    # update the message text with the participants' names
+                                    if drivers_listed < len(results_dict['respo_drivers']) - 1:
+                                        message_text += global_vars.members[inner_member]['leaderboardName'] + ", "
+                                    else:
+                                        message_text += "and " + global_vars.members[inner_member]['leaderboardName'] + " "
+
+                                    drivers_listed += 1
+
+                                    # Find where to save it
+                                    driver_id = global_vars.members[inner_member]['iracingCustID']
+                                    if not hasattr(race, 'host_cust_id'):
+                                        while global_vars.race_cache_locks > 0:
+                                            asyncio.sleep(1)
+
+                                        if str(race.season_year) not in global_vars.race_cache[str(driver_id)]:
+                                            global_vars.race_cache[str(driver_id)][str(race.season_year)] = {}
+                                        if str(race.season_quarter) not in global_vars.race_cache[str(driver_id)][str(race.season_year)]:
+                                            global_vars.race_cache[str(driver_id)][str(race.season_year)][str(race.season_quarter)] = {}
+                                        if str(race.series_id) not in global_vars.race_cache[str(driver_id)][str(race.season_year)][str(race.season_quarter)]:
+                                            global_vars.race_cache[str(driver_id)][str(race.season_year)][str(race.season_quarter)][str(race.series_id)] = {}
+
+                                        global_vars.race_cache[str(driver_id)][str(race.season_year)][str(race.season_quarter)][str(race.series_id)][str(race.subsession_id)] = {}
+                                        new_race_dict = global_vars.race_cache[str(driver_id)][str(race.season_year)][str(race.season_quarter)][str(race.series_id)][str(race.subsession_id)]
+                                    else:
+                                        if str(driver_id) not in global_vars.hosted_cache:
+                                            global_vars.hosted_cache[str(driver_id)] = {}
+
+                                        global_vars.hosted_cache[str(driver_id)][str(race.subsession_id)] = {}
+                                        new_race_dict = global_vars.hosted_cache[str(driver_id)][str(race.subsession_id)]
+
+                                    new_race_dict['official'] = results_dict['official']
+                                    new_race_dict['time_start_raw'] = results_dict['time_start_raw']
+                                    new_race_dict['category'] = results_dict['category']
+                                    new_race_dict['points_champ'] = results_dict['points_champ']
+                                    new_race_dict['race_week'] = results_dict['race_week']
+                                    new_race_dict['car_class_id'] = results_dict['car_class_id']
+                                    new_race_dict['pos_start_class'] = results_dict['pos_start_class']
+                                    new_race_dict['pos_finish_class'] = results_dict['pos_finish_class']
+                                    # new_race_dict['incidents'] = results_dict['incidents']
+                                    new_race_dict['incidents'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['incidents']
+                                    # new_race_dict['laps'] = results_dict['laps']
+                                    new_race_dict['laps'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['laps']
+                                    # new_race_dict['laps_led'] = results_dict['laps_led']
+                                    new_race_dict['laps_led'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['laps_led']
+                                    # new_race_dict['irating_old'] = results_dict['irating_old']
+                                    # new_race_dict['irating_new'] = results_dict['irating_new']
+                                    new_race_dict['irating_old'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_old']
+                                    new_race_dict['irating_new'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_new']
+                                    new_race_dict['drivers_in_class'] = results_dict['drivers_in_class']
+                                    new_race_dict['team_drivers_max'] = results_dict['team_drivers_max']
+
+                                    if hasattr(race, 'official_session') and race.official_session and race.category_id == pyracingConstants.Category.road.value and "discordID" in global_vars.members[inner_member]:
+                                        if results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_old'] < 2000 and global_vars.results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_new'] >= 2000:
+                                            await roles.promote_driver(global_vars.members[inner_member]["discordID"])
+                                            role_change_reason = helpers.spongify(global_vars.members[inner_member]['leaderboardName'] + " has proven themself worthy of the title God Among Men.")
+                                        elif results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_old'] >= 2000 and results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_new'] < 2000:
+                                            await roles.demote_driver(global_vars.members[inner_member]["discordID"])
+                                            role_change_reason = helpers.spongify(global_vars.members[inner_member]['leaderboardName'] + " has been banished from Mount Olypmus and must carry out the rest of their days among the peasants.")
+
+                                    if hasattr(race, 'category_id') and race.category_id == pyracingConstants.Category.road.value:
+                                        if 'last_race_check' not in global_vars.members[inner_member]:
+                                            global_vars.members[inner_member]['last_race_check'] = race.time_start_raw
+                                        else:
+                                            if race.time_start_raw > global_vars.members[inner_member]['last_race_check']:
+                                                global_vars.members[inner_member]['last_race_check'] = race.time_start_raw
+                                                if results_dict['official'] == 1:
+                                                    global_vars.members[inner_member]['last_known_ir'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_new']
+
+                            if env.SUPPRESS_RACE_RESULTS == "False":
+                                quote_text = ""
+
+                                if multi_report is True:
+                                    message_text += "all just finished playing with eachother for hours on end. Let's see how they made out."
+                                elif hasattr(race, 'host_cust_id'):
+                                    message_text = "What a chicken shit." + " **" + global_vars.members[member]['leaderboardName'] + "** just finished a hosted race because clearly they're afraid of losing iRating.\n"
+                                else:
+                                    keys = list(results_dict['respo_drivers'].keys())
+                                    irating_change = results_dict['respo_drivers'][keys[0]]['irating_new'] - results_dict['respo_drivers'][keys[0]]['irating_old']
+                                    if irating_change == 0:
+                                        message_text = "How's this for a complete waste of time?" + " **" + global_vars.members[member]['leaderboardName'] + "** just finished a race and their iRating is the same as when they started.\n"
+                                    elif irating_change < 0:
+                                        message_text = random.choice(global_vars.sass_talk['opening_1_bad']) + " **" + global_vars.members[member]['leaderboardName'] + "** just finished a race and " + random.choice(global_vars.sass_talk['opening_2_bad']) + "\n"
+                                    else:
+                                        message_text = random.choice(global_vars.sass_talk['opening_1_good']) + " **" + global_vars.members[member]['leaderboardName'] + "** just finished a race and " + random.choice(global_vars.sass_talk['opening_2_good']) + "\n"
+
+                                quote_found = False
+
+                                if multi_report is True:
+                                    quote_text = "Better luck next time, losers."
+                                elif role_change_reason:
+                                    quote_text = role_change_reason + "\n\n"
+                                else:
+                                    if "discordID" in global_vars.members[member]:
+                                        # This person IS a Respo member.
+                                        id_to_quote = global_vars.members[member]['discordID']
+                                        if str(id_to_quote) in global_vars.quotes:
+                                            # And they have been quoted.
+                                            key = random.choice(list(global_vars.quotes[str(id_to_quote)]))
+
+                                            for guild in global_vars.client.guilds:
+                                                if guild.id == env.GUILD:
+                                                    for channel in guild.channels:
+                                                        if channel.id == env.CHANNEL:
+                                                            try:
+                                                                discord_member = await guild.fetch_member(id_to_quote)
+                                                                quote_found = True
+
+                                                                quoted_name = ""
+                                                                replied_to_name = ""
+
+                                                                if discord_member is None:
+                                                                    quoted_name = global_vars.quotes[str(id_to_quote)][key]['name']
+                                                                else:
+                                                                    quoted_name = discord_member.display_name
+
+                                                                if 'replied_to_quote' in global_vars.quotes[str(id_to_quote)][key] and 'replied_to_name' in global_vars.quotes[str(id_to_quote)][key]:
+                                                                    try:
+                                                                        replied_to_discord_member = await guild.fetch_member(global_vars.quotes[str(id_to_quote)][key]["replied_to_id"])
+                                                                    except NotFound:
+                                                                        replied_to_discord_member = None
+                                                                    if replied_to_discord_member is None:
+                                                                        replied_to_name = global_vars.quotes[str(id_to_quote)][key]['replied_to_name']
+                                                                    else:
+                                                                        replied_to_name = replied_to_discord_member.display_name
+
+                                                                if "replied_to_quote" in global_vars.quotes[str(id_to_quote)][key]:
+                                                                    quote_text += "> " + replied_to_name + ": " + global_vars.quotes[str(id_to_quote)][key]["replied_to_quote"] + "\n> "
+                                                                    quote_text += quoted_name + ": " + global_vars.quotes[str(id_to_quote)][key]["quote"]
+                                                                else:
+                                                                    quote_text += "> " + global_vars.quotes[str(id_to_quote)][key]["quote"] + "\n> - " + quoted_name
+
+                                                            except NotFound:
+                                                                quote_found = False
+
+                                if quote_found is False and not role_change_reason and multi_report is False:
+                                    quote_text += random.choice(global_vars.sass_talk['closing'])
+
+                                for guild in global_vars.client.guilds:
+                                    if guild.id == env.GUILD:
+                                        for channel in guild.channels:
+                                            if channel.id == env.CHANNEL:
+                                                # message = await channel.send(message_text)
+                                                # thread = await message.create_thread(name="Race Result", auto_archive_duration=1440)
+                                                # await send_results_embed(thread, results_dict, members[member])
+                                                if multi_report is False:
+                                                    message = await send_results_embed_compact(channel, results_dict, global_vars.members[member])
+                                                    thread = await message.create_thread(name="Race Result", auto_archive_duration=1440)
+                                                    await send_results_embed(thread, results_dict, global_vars.members[member])
+                                                    await thread.send(quote_text)
+                                                    await thread.send(global_vars.sass_talk['clickbait'][random.randint(0, len(global_vars.sass_talk['clickbait']) - 1)])
+                                                else:
+                                                    await send_results_embed(channel, results_dict, global_vars.members[member])
+                                                # await channel.send(quote_text)
+
+    global_vars.members_locks -= 1
+    global_vars.dump_json()
+
+
+async def get_results_summary(iracing_id, subsession_id, **kwargs):
+    subsession = await global_vars.ir.subsession_data(subsession_id)
+
+    if not subsession:
+        return {}
+    if subsession.team_drivers_max > 1:
+        team_event = True
+    else:
+        team_event = False
+
+    class_count = 0
+    car_number = 1
+    respo_driver = None
+    team_number = -1
+
+    new_race_dict = {}
+
+    new_race_dict['respo_drivers'] = {}
+
+    # Prelim scan drivers to get class and which car this member ran in
+    for driver in subsession.drivers:
+        if driver.sim_ses_type_name == 'Race':
+            if driver.cust_id == iracing_id:
+                respo_driver = driver
+                team_number = driver.car_num
+
+    # Make sure this member actually drove in the race.
+    if respo_driver is None:
+        return None
+
+    # Second scan to get class count and all respo members on this team
+    for driver in subsession.drivers:
+        if driver.car_class_id == respo_driver.car_class_id and driver.sim_ses_type_name == 'Race':
+            if team_event is True:
+                if driver.cust_id < 0:  # Teams have a negative customer ID, so count the teams
+                    class_count += 1
+            else:
+                class_count += 1  # If not a team event, count every driver in the race
+
+        if driver.car_num == team_number:
+            for member in global_vars.members:
+                if driver.cust_id == global_vars.members[member]['iracingCustID']:
+                    new_race_dict['respo_drivers'][str(driver.cust_id)] = {}
+                    new_race_dict['respo_drivers'][str(driver.cust_id)]['irating_old'] = driver.irating_old
+                    new_race_dict['respo_drivers'][str(driver.cust_id)]['irating_new'] = driver.irating_new
+                    new_race_dict['respo_drivers'][str(driver.cust_id)]['sub_level_old'] = driver.sub_level_old
+                    new_race_dict['respo_drivers'][str(driver.cust_id)]['sub_level_new'] = driver.sub_level_new
+                    new_race_dict['respo_drivers'][str(driver.cust_id)]['incidents'] = driver.incidents
+                    new_race_dict['respo_drivers'][str(driver.cust_id)]['license_level_new'] = driver.license_level_new
+                    new_race_dict['respo_drivers'][str(driver.cust_id)]['leaderboard_name'] = global_vars.members[member]['leaderboardName']
+                    new_race_dict['respo_drivers'][str(driver.cust_id)]['laps'] = driver.laps_comp
+                    new_race_dict['respo_drivers'][str(driver.cust_id)]['laps_led'] = driver.laps_led
+
+    # Scan drivers a third time to get the car number for non-team events
+    if team_event is False:
+        for driver in subsession.drivers:
+            if driver.car_class_id == respo_driver.car_class_id and driver.sim_ses_type_name == 'Race' and isinstance(driver.irating_old, int) and driver.irating_old > respo_driver.irating_old:
+                car_number += 1
+
+    new_race_dict['hosted'] = False
+    if "race" in kwargs and hasattr(kwargs['race'], 'time_start_raw'):
+        new_race_dict["pos_start_class"] = kwargs['race'].pos_start_class
+        new_race_dict['time_start_raw'] = kwargs["race"].time_start_raw
+    else:
+        if "race" in kwargs and hasattr(kwargs['race'], 'host_cust_id'):
+            new_race_dict['hosted'] = True
+            new_race_dict['hosted_name'] = kwargs["race"].session_name
+
+        new_race_dict['time_start_raw'] = respo_driver.time_session_start
+        new_race_dict["pos_start_class"] = 1
+        for driver in subsession.drivers:
+            if driver.car_class_id == respo_driver.car_class_id and driver.sim_ses_type_name == 'Race' and driver.pos_start < respo_driver.pos_start:
+                new_race_dict["pos_start_class"] += 1
+    new_race_dict["official"] = respo_driver.official
+    new_race_dict["category"] = subsession.cat_id
+    new_race_dict["points_champ"] = respo_driver.points_champ
+    new_race_dict["race_week"] = subsession.race_week
+    new_race_dict["car_id"] = respo_driver.car_id
+    new_race_dict["car_class_id"] = respo_driver.car_class_id
+    new_race_dict["car_class_name"] = respo_driver.car_class_name
+    new_race_dict["pos_finish_class"] = respo_driver.pos_finish_class + 1
+    new_race_dict['drivers_in_class'] = class_count
+    new_race_dict['team_drivers_max'] = subsession.team_drivers_max
+    new_race_dict['track_name'] = subsession.track
+    new_race_dict['track_config_name'] = subsession.track_config
+    new_race_dict['series_id'] = subsession.series_id
+    new_race_dict['series_name'] = subsession.series_name
+    new_race_dict['subsession_id'] = subsession.subsession_id
+    new_race_dict['cust_id'] = respo_driver.cust_id
+    new_race_dict['strength_of_field'] = subsession.strength_of_field
+    new_race_dict['team_event'] = team_event
+    new_race_dict['cars_in_class'] = class_count
+    new_race_dict['car_number'] = car_number
+
+    return new_race_dict
+
+
+async def send_results_embed(channel, results_dict, member_dict):
+# async def send_results_embed(thread, results_dict, member_dict):
+    track = ""
+    irating_change = 0
+    safety_rating = ""
+    safety_rating_change = ""
+    multi_report = False
+
+    if 'respo_drivers' in results_dict:
+        if len(results_dict['respo_drivers']) > 1:
+            multi_report = True
+
+    track = results_dict['track_name']
+    if(results_dict['track_config_name'] and results_dict['track_config_name'] != "N/A" and results_dict['track_config_name'] != ""):
+        track += " (" + results_dict['track_config_name'] + ")"
+
+    if multi_report is False:
+        filepath = await image_gen.generate_avatar_image(channel.guild, member_dict['discordID'], 128)
+    else:
+        filepath = env.BOT_DIRECTORY + "media/respo_logo.png"
+
+    with open(filepath, "rb") as f_avatar:
+        picture = discord.File(f_avatar, filename="user_avatar.png")
+
+        title = ""
+        url = "https://members.iracing.com/membersite/member/EventResult.do?&subsessionid=" + str(results_dict['subsession_id'])
+
+        if 'hosted_name' not in results_dict:
+            title = "Race result for "
+        else:
+            title = "Hosted result for "
+
+        if multi_report is False:
+            url += "&custid=" + str(results_dict['cust_id'])
+            title += member_dict['leaderboardName']
+        else:
+            title += "Respo Racing"
+
+        embedVar = discord.Embed(title=title, description="", color=0xff0000, url=url)
+
+        embedVar.set_thumbnail(url="attachment://user_avatar.png")
+
+        if 'hosted_name' not in results_dict:
+            embedVar.add_field(name="Series", value=results_dict['series_name'], inline=False)
+        else:
+            embedVar.add_field(name="Session", value=results_dict['hosted_name'], inline=False)
+
+        if 'hosted_name' not in results_dict:
+            if 'classes' in global_vars.series_info[str(results_dict['series_id'])] and len(global_vars.series_info[str(results_dict['series_id'])]['classes']) > 1:
+                embedVar.add_field(name="Class", value=results_dict['car_class_name'], inline=True)
+
+        embedVar.add_field(name="Track", value=track, inline=False)
+        embedVar.add_field(name="SOF", value=str(results_dict['strength_of_field']), inline=False)
+        if results_dict['team_event'] is True:
+            embedVar.add_field(name="Teams in Class", value=str(results_dict['cars_in_class']))
+        else:
+            embedVar.add_field(name="Car #", value=str(results_dict['car_number']), inline=True)
+            embedVar.add_field(name="Drivers", value=str(results_dict['cars_in_class']), inline=True)
+
+        embedVar.add_field(name="Started", value=str(results_dict['pos_start_class']), inline=True)
+        embedVar.add_field(name="Finished", value=str(results_dict['pos_finish_class']), inline=True)
+        if 'hosted_name' not in results_dict:
+
+            embedVar.add_field(name="Champ. Pts", value=str(results_dict['points_champ']), inline=True)
+
+            for report_driver in results_dict['respo_drivers']:
+                irating_change = results_dict['respo_drivers'][report_driver]["irating_new"] - results_dict['respo_drivers'][report_driver]["irating_old"]
+
+                if results_dict['respo_drivers'][report_driver]['license_level_new'] > 20:
+                    safety_rating = "P"
+                elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 16:
+                    safety_rating = "A"
+                elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 12:
+                    safety_rating = "B"
+                elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 8:
+                    safety_rating = "C"
+                elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 4:
+                    safety_rating = "D"
+                else:
+                    safety_rating = "R"
+                safety_rating += f"{(results_dict['respo_drivers'][report_driver]['sub_level_new'] / 100):.2f}"
+
+                if multi_report is False:
+                    safety_rating_change = f"({((results_dict['respo_drivers'][report_driver]['sub_level_new'] - results_dict['respo_drivers'][report_driver]['sub_level_old']) / 100):+.2f}, {results_dict['respo_drivers'][report_driver]['incidents']}x)"
+                else:
+                    safety_rating_change = f"{((results_dict['respo_drivers'][report_driver]['sub_level_new'] - results_dict['respo_drivers'][report_driver]['sub_level_old']) / 100):+.2f}"
+
+                if multi_report is False:
+                    embedVar.add_field(name=f"iRating", value=f"{results_dict['respo_drivers'][report_driver]['irating_new']} ({irating_change:+d})", inline=False)
+                    embedVar.add_field(name=f"Safety Rating", value=f"{safety_rating} {safety_rating_change}", inline=False)
+                else:
+                    # embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"iR: {results_dict['respo_drivers'][report_driver]['irating_new']} ({irating_change:+d})\nSR: {safety_rating} {safety_rating_change}\nLaps: {results_dict['respo_drivers'][report_driver]['laps']}", inline=False)
+                    embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"{irating_change:+d} iR, {safety_rating_change} SR ({results_dict['respo_drivers'][report_driver]['incidents']}x), {results_dict['respo_drivers'][report_driver]['laps']} Laps", inline=False)
+        else:
+            for report_driver in results_dict['respo_drivers']:
+                if multi_report is False:
+                    embedVar.add_field(name=f"Incidents", value=f"{results_dict['respo_drivers'][report_driver]['incidents']}x", inline=False)
+                else:
+                    embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"{results_dict['respo_drivers'][report_driver]['incidents']}x", inline=False)
+
+        await channel.send(content="", file=picture, embed=embedVar)
+        # await thread.send(content="", file=picture, embed=embedVar)
+
+        picture.close()
+
+    if multi_report is False and os.path.exists(filepath):
+        os.remove(filepath)
+
+    return
+
+
+async def send_results_embed_compact(channel, results_dict, member_dict):
+# async def send_results_embed(thread, results_dict, member_dict):
+    track = ""
+    irating_change = 0
+    safety_rating = ""
+    safety_rating_change = ""
+    multi_report = False
+
+    if 'respo_drivers' in results_dict:
+        if len(results_dict['respo_drivers']) > 1:
+            multi_report = True
+
+    track = results_dict['track_name']
+    if(results_dict['track_config_name'] and results_dict['track_config_name'] != "N/A" and results_dict['track_config_name'] != ""):
+        track += " (" + results_dict['track_config_name'] + ")"
+
+    if multi_report is False:
+        filepath = await image_gen.generate_avatar_image(channel.guild, member_dict['discordID'], 128)
+    else:
+        filepath = env.BOT_DIRECTORY + "media/respo_logo.png"
+
+    with open(filepath, "rb") as f_avatar:
+        picture = discord.File(f_avatar, filename="user_avatar.png")
+
+        title = ""
+        url = "https://members.iracing.com/membersite/member/EventResult.do?&subsessionid=" + str(results_dict['subsession_id'])
+
+        if 'hosted_name' not in results_dict:
+            title = "Race result for "
+        else:
+            title = "Hosted result for "
+
+        if multi_report is False:
+            url += "&custid=" + str(results_dict['cust_id'])
+            title += member_dict['leaderboardName']
+        else:
+            title += "Respo Racing"
+
+        embedVar = discord.Embed(title=title, description="", color=0xff0000, url=url)
+
+        embedVar.set_thumbnail(url="attachment://user_avatar.png")
+
+        if 'hosted_name' not in results_dict:
+            embedVar.add_field(name="Series", value=results_dict['series_name'], inline=False)
+        else:
+            embedVar.add_field(name="Session", value=results_dict['hosted_name'], inline=False)
+
+        # if 'hosted_name' not in results_dict:
+        #     if 'classes' in global_vars.series_info[str(results_dict['series_id'])] and len(global_vars.series_info[str(results_dict['series_id'])]['classes']) > 1:
+        #         embedVar.add_field(name="Class", value=results_dict['car_class_name'], inline=True)
+
+        # embedVar.add_field(name="Track", value=track, inline=False)
+        # embedVar.add_field(name="SOF", value=str(results_dict['strength_of_field']), inline=False)
+        # if results_dict['team_event'] is True:
+        #     embedVar.add_field(name="Teams in Class", value=str(results_dict['cars_in_class']))
+        # else:
+        #     embedVar.add_field(name="Car #", value=str(results_dict['car_number']), inline=True)
+        #     embedVar.add_field(name="Drivers", value=str(results_dict['cars_in_class']), inline=True)
+
+        result_string = "P" + str(results_dict['pos_finish_class'])
+        if' hosted_name' not in results_dict:
+            result_string += ", " + str(results_dict['points_champ']) + " champ pts"
+
+        for cust_id in results_dict['respo_drivers']:
+            if int(cust_id) == member_dict['iracingCustID']:
+                result_string += ", " + str(results_dict['respo_drivers'][cust_id]['incidents']) + "x"
+
+        embedVar.add_field(name="Result", value=result_string, inline=True)
+
+        # embedVar.add_field(name="Started", value=str(results_dict['pos_start_class']), inline=True)
+        # embedVar.add_field(name="Finished", value=str(results_dict['pos_finish_class']), inline=True)
+        # if 'hosted_name' not in results_dict:
+
+        #     embedVar.add_field(name="Champ. Pts", value=str(results_dict['points_champ']), inline=True)
+
+        #     for report_driver in results_dict['respo_drivers']:
+        #         irating_change = results_dict['respo_drivers'][report_driver]["irating_new"] - results_dict['respo_drivers'][report_driver]["irating_old"]
+
+        #         if results_dict['respo_drivers'][report_driver]['license_level_new'] > 20:
+        #             safety_rating = "P"
+        #         elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 16:
+        #             safety_rating = "A"
+        #         elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 12:
+        #             safety_rating = "B"
+        #         elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 8:
+        #             safety_rating = "C"
+        #         elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 4:
+        #             safety_rating = "D"
+        #         else:
+        #             safety_rating = "R"
+        #         safety_rating += f"{(results_dict['respo_drivers'][report_driver]['sub_level_new'] / 100):.2f}"
+
+        #         if multi_report is False:
+        #             safety_rating_change = f"({((results_dict['respo_drivers'][report_driver]['sub_level_new'] - results_dict['respo_drivers'][report_driver]['sub_level_old']) / 100):+.2f}, {results_dict['respo_drivers'][report_driver]['incidents']}x)"
+        #         else:
+        #             safety_rating_change = f"{((results_dict['respo_drivers'][report_driver]['sub_level_new'] - results_dict['respo_drivers'][report_driver]['sub_level_old']) / 100):+.2f}"
+
+        #         if multi_report is False:
+        #             embedVar.add_field(name=f"iRating", value=f"{results_dict['respo_drivers'][report_driver]['irating_new']} ({irating_change:+d})", inline=False)
+        #             embedVar.add_field(name=f"Safety Rating", value=f"{safety_rating} {safety_rating_change}", inline=False)
+        #         else:
+        #             # embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"iR: {results_dict['respo_drivers'][report_driver]['irating_new']} ({irating_change:+d})\nSR: {safety_rating} {safety_rating_change}\nLaps: {results_dict['respo_drivers'][report_driver]['laps']}", inline=False)
+        #             embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"{irating_change:+d} iR, {safety_rating_change} SR ({results_dict['respo_drivers'][report_driver]['incidents']}x), {results_dict['respo_drivers'][report_driver]['laps']} Laps", inline=False)
+        # else:
+        #     for report_driver in results_dict['respo_drivers']:
+        #         if multi_report is False:
+        #             embedVar.add_field(name=f"Incidents", value=f"{results_dict['respo_drivers'][report_driver]['incidents']}x", inline=False)
+        #         else:
+        #             embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"{results_dict['respo_drivers'][report_driver]['incidents']}x", inline=False)
+
+        message = await channel.send(content="", file=picture, embed=embedVar)
+        # await thread.send(content="", file=picture, embed=embedVar)
+
+        picture.close()
+
+    if multi_report is False and os.path.exists(filepath):
+        os.remove(filepath)
+
+    return message
