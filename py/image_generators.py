@@ -2,6 +2,7 @@ import os
 import math
 import random
 import environment_variables as env
+import global_vars
 import respobot_logging as log
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, date
@@ -562,7 +563,7 @@ def generate_ir_graph(ir_dict, title, print_legend):
     for i in range(1, ir_scale_maj_divisions + 1):
         x = margin_h_left
         y = image_height - margin_v_bottom - i * ir_scale_pixels / ir_scale_maj_divisions
-        if int(i * ir_scale_maj_division_size) != 2000:
+        if int(i * ir_scale_maj_division_size) != global_vars.pleb_line:
             draw.line([(x, y), (image_width - margin_h_right, y)], fill=(255, 255, 255, 64), width=1, joint=None)
             draw.text((x - tick_length / 2, y), str(i * ir_scale_maj_division_size), font=font, fill=(255, 255, 255, 255), anchor="rm")
         else:
