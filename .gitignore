@@ -1,0 +1,11 @@
+json/*.json
+!sass_talk.json
+!series_info.json
+
+__pycache__/*
+log/*
+misc/*
+
+.env
+
+*.sublime-*
