@@ -2,7 +2,9 @@ json/*.json
 !sass_talk.json
 !series_info.json
 
-*__pycache__/*
+__pycache__/*
+py/__pycache__/*
+py/commands/__pycache__/*
 
 *.pyc
 
