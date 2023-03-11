@@ -18,24 +18,26 @@ import race_results as results
 import respobot_logging as log
 
 # Import all bot command cogs
-from champ import ChampCog
-from compass import CompassCog
-from head2head import Head2HeadCog
-from ir_graph import IrGraphCog
-from ir_leaderboard import IrLeaderboardCog
-from next_race import NextRaceCog
+from commands.champ import ChampCog
+from commands.compass import CompassCog
+from commands.head2head import Head2HeadCog
+from commands.ir_graph import IrGraphCog
+from commands.ir_leaderboard import IrLeaderboardCog
+from commands.next_race import NextRaceCog
+from commands.quote_add import QuoteAddCog
+from commands.quote_leaderboard import QuoteLeaderboardCog
+from commands.quote_list import QuoteListCog
+from commands.quote_message_add import QuoteMessageAddCog
+from commands.quote_show import QuoteShowCog
+from commands.refresh_cache import RefreshCacheCog
+from commands.schedule import ScheduleCog
+from commands.send_nudes import SendNudesCog
+from commands.series import SeriesCog
+from commands.test_race_results import TestRaceResultsCog
+
+# Import all bot event handlers
 from on_message import OnMessageCog
 from on_reaction_add import OnReactionAddCog
-from quote_add import QuoteAddCog
-from quote_leaderboard import QuoteLeaderboardCog
-from quote_list import QuoteListCog
-from quote_message_add import QuoteMessageAddCog
-from quote_show import QuoteShowCog
-from refresh_cache import RefreshCacheCog
-from schedule import ScheduleCog
-from send_nudes import SendNudesCog
-from series import SeriesCog
-from test_race_results import TestRaceResultsCog
 
 # Attach all bot command cogs
 global_vars.client.add_cog(ChampCog(global_vars.client))
