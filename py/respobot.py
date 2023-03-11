@@ -92,7 +92,7 @@ async def on_ready():
     await global_vars.client.change_presence(activity=discord.Game(name="50 Cent: Bulletproof"))
 
     print("I'm alive!")
-    # task_loop.start()
+    task_loop.start()
 
 
 @tasks.loop(seconds=180)
