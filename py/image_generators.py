@@ -14,8 +14,8 @@ async def generate_compass_image(guild, compass_data, time_span_text):
     avatar_size = 25
     font_size = image_width * 18 / 600
     bg = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 255))
-    font = ImageFont.truetype("media/lucon.ttf", int(font_size))
-    fontBig = ImageFont.truetype("media/lucon.ttf", int(font_size * 2))
+    font = ImageFont.truetype(env. BOT_DIRECTORY + "media/lucon.ttf", int(font_size))
+    fontBig = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", int(font_size * 2))
 
     margin_v_top = 0.0 * image_width
     margin_v_bottom = 0.05 * image_width
@@ -169,8 +169,8 @@ async def generate_head2head_image(guild, title, racer1_info_dict, racer1_stats_
     im = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 0))
     bg = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 255))
     draw = ImageDraw.Draw(im)
-    font = ImageFont.truetype("media/lucon.ttf", int(font_size))
-    fontBig = ImageFont.truetype("media/lucon.ttf", int(font_size * 2))
+    font = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", int(font_size))
+    fontBig = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", int(font_size * 2))
 
     margin_v_top = 0.05 * image_width
     margin_v_bottom = 0.1 * image_width
@@ -335,7 +335,7 @@ def generate_champ_graph(data_dict, title, weeks_to_count, ongoing):
     else:
         data_dict = dict(sorted(data_dict.items(), key=lambda item: item[1]['projected_points'], reverse=True))
 
-    font = ImageFont.truetype("media/lucon.ttf", 18)
+    font = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", 18)
 
     margin_v_top = 3 * font.size
     margin_v_bottom = font.size
