@@ -98,8 +98,12 @@ class ChampCog(commands.Cog):
             quarter = last_run_quarter
 
         max_week = 12
+        week_13_active = False
         if year == global_vars.series_info["misc"]["current_year"] and quarter == global_vars.series_info["misc"]["current_quarter"]:
             max_week = await stats.get_current_iracing_week(series_id)
+            if max_week < 0:
+                max_week = 12
+                week_13_active = True
 
         overall_leaderboard = {}
         global_vars.members_locks += 1
@@ -169,7 +173,7 @@ class ChampCog(commands.Cog):
                 title_text += " class " + global_vars.series_info[str(series_id)]['classes'][str(car_class_id)][0]
             title_text += " for " + str(year) + "s" + str(quarter)
 
-            if year == global_vars.series_info['misc']['current_year'] and quarter == global_vars.series_info['misc']['current_quarter']:
+            if year == global_vars.series_info['misc']['current_year'] and quarter == global_vars.series_info['misc']['current_quarter'] and not week_13_active:
                 ongoing = True
             else:
                 ongoing = False
