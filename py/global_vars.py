@@ -13,19 +13,20 @@ ir = None
 intents = discord.Intents.all()
 intents.message_content = True
 
-client = discord.Bot(intents=intents)
-quote_command_group = client.create_group("quote", "Commands related to server quotes.", [env.GUILD])
-ir_command_group = client.create_group("ir", "Commands related to iRating.", [env.GUILD])
+bot = discord.Bot(intents=intents)
+quote_command_group = bot.create_group("quote", "Commands related to server quotes.", [env.GUILD])
+ir_command_group = bot.create_group("ir", "Commands related to iRating.", [env.GUILD])
 
 members_locks = 0
 race_cache_locks = 0
 quotes_locks = 0
 
+pleb_line = 2500
+
 pending_quotes = {}
 
 
 def load_json():
-    print("Heyoooooooo")
     with open(env.BOT_DIRECTORY + "json/members.json", "r") as f_members:
         global members
         members = json.load(f_members)

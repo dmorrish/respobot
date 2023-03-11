@@ -16,7 +16,7 @@ class QuoteMessageAddCog(commands.Cog):
         ctx,
         message: discord.Message
     ):
-        if message.author == global_vars.client.user:
+        if message.author == global_vars.bot.user:
             await ctx.respond("I know you love every little thing that comes out of my mouth, but sorry you can't quote me.", ephemeral=True)
             return
 

@@ -7,6 +7,7 @@ from discord.errors import NotFound, HTTPException
 from discord.ext import tasks
 import math
 from pyracing.client import Client
+from datetime import datetime
 
 import httpx
 import traceback
@@ -16,6 +17,7 @@ import global_vars
 import environment_variables as env
 import race_results as results
 import respobot_logging as log
+import roles
 
 # Import all bot command cogs
 from commands.champ import ChampCog
@@ -40,24 +42,26 @@ from on_message import OnMessageCog
 from on_reaction_add import OnReactionAddCog
 
 # Attach all bot command cogs
-global_vars.client.add_cog(ChampCog(global_vars.client))
-global_vars.client.add_cog(CompassCog(global_vars.client))
-global_vars.client.add_cog(Head2HeadCog(global_vars.client))
-global_vars.client.add_cog(IrGraphCog(global_vars.client))
-global_vars.client.add_cog(IrLeaderboardCog(global_vars.client))
-global_vars.client.add_cog(NextRaceCog(global_vars.client))
-global_vars.client.add_cog(OnMessageCog(global_vars.client))
-global_vars.client.add_cog(OnReactionAddCog(global_vars.client))
-global_vars.client.add_cog(QuoteAddCog(global_vars.client))
-global_vars.client.add_cog(QuoteLeaderboardCog(global_vars.client))
-global_vars.client.add_cog(QuoteListCog(global_vars.client))
-global_vars.client.add_cog(QuoteMessageAddCog(global_vars.client))
-global_vars.client.add_cog(QuoteShowCog(global_vars.client))
-global_vars.client.add_cog(RefreshCacheCog(global_vars.client))
-global_vars.client.add_cog(ScheduleCog(global_vars.client))
-global_vars.client.add_cog(SendNudesCog(global_vars.client))
-global_vars.client.add_cog(SeriesCog(global_vars.client))
-global_vars.client.add_cog(TestRaceResultsCog(global_vars.client))
+global_vars.bot.add_cog(ChampCog(global_vars.bot))
+global_vars.bot.add_cog(CompassCog(global_vars.bot))
+global_vars.bot.add_cog(Head2HeadCog(global_vars.bot))
+global_vars.bot.add_cog(IrGraphCog(global_vars.bot))
+global_vars.bot.add_cog(IrLeaderboardCog(global_vars.bot))
+global_vars.bot.add_cog(NextRaceCog(global_vars.bot))
+global_vars.bot.add_cog(QuoteAddCog(global_vars.bot))
+global_vars.bot.add_cog(QuoteLeaderboardCog(global_vars.bot))
+global_vars.bot.add_cog(QuoteListCog(global_vars.bot))
+global_vars.bot.add_cog(QuoteMessageAddCog(global_vars.bot))
+global_vars.bot.add_cog(QuoteShowCog(global_vars.bot))
+global_vars.bot.add_cog(RefreshCacheCog(global_vars.bot))
+global_vars.bot.add_cog(ScheduleCog(global_vars.bot))
+global_vars.bot.add_cog(SendNudesCog(global_vars.bot))
+global_vars.bot.add_cog(SeriesCog(global_vars.bot))
+global_vars.bot.add_cog(TestRaceResultsCog(global_vars.bot))
+
+# Attach all bot event handlers
+global_vars.bot.add_cog(OnMessageCog(global_vars.bot))
+global_vars.bot.add_cog(OnReactionAddCog(global_vars.bot))
 
 global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
 
@@ -65,7 +69,7 @@ first_run = True
 kill_switch = False
 
 
-# @global_vars.client.slash_command(
+# @global_vars.bot.slash_command(
 #     guild_ids=[env.GUILD],
 #     name='puppetmaster'
 # )
@@ -85,23 +89,32 @@ kill_switch = False
 #     return
 
 
-@global_vars.client.event
+@global_vars.bot.event
 async def on_ready():
 
     global_vars.load_json()
-    await global_vars.client.change_presence(activity=discord.Game(name="50 Cent: Bulletproof"))
+    await global_vars.bot.change_presence(activity=discord.Game(name="50 Cent: Bulletproof"))
 
     print("I'm alive!")
+
+    for guild in global_vars.bot.guilds:
+        if guild.id == env.GUILD:
+            global_vars.members_locks += 1
+            for member in global_vars.members:
+                if 'last_known_ir' in global_vars.members[member] and 'discordID' in global_vars.members[member]:
+                    if global_vars.members[member]['last_known_ir'] < global_vars.pleb_line:
+                        await roles.demote_driver(global_vars.members[member]['discordID'])
+                    else:
+                        await roles.promote_driver(global_vars.members[member]['discordID'])
+
     task_loop.start()
 
 
 @tasks.loop(seconds=180)
 async def task_loop():
 
-    print("Oh, hi there!")
-
     # Update colours
-    for guild in global_vars.client.guilds:
+    for guild in global_vars.bot.guilds:
         if guild.id == env.GUILD:
             global_vars.members_locks += 1
             for member in global_vars.members:
@@ -119,16 +132,25 @@ async def task_loop():
                     log.logger_discord.warning("Member: " + member + " not found in the guild.")
                 except HTTPException:
                     log.logger_discord.warning("HTTPException while fetching users for graph colours.")
-                except:
+                except Exception:
                     log.logger_discord.warning("Something went wrong when updating member colours.")
             global_vars.members_locks -= 1
+
+            # Delete old Race Report threads
+            threads = await guild.active_threads()
+
+            for thread in threads:
+                age = int(datetime.timestamp(datetime.now())) - int(datetime.timestamp(thread.created_at))
+
+                if thread.owner_id == global_vars.bot.user.id and age > 7 * 24 * 60 * 60:
+                    await thread.delete()
 
     # await get_race_results()
     # logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
 
     try:
         await results.get_race_results()
-        print('Finished scanning for new races. Sleeping until next check.')
+        # print('Finished scanning for new races. Sleeping until next check.')
         log.logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
     except httpx.HTTPError:
         print("pyracing timed out. Reinitializing client...")
@@ -143,7 +165,4 @@ async def task_loop():
         # print(message)
         log.logger_pyracing.error(message)
 
-    # Next update in 3 minutes
-    # await asyncio.sleep(180)
-
-global_vars.client.run(env.TOKEN)
+global_vars.bot.run(env.TOKEN)

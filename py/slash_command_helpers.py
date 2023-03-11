@@ -93,6 +93,20 @@ def get_member_details(member_name_from_list):
     return {}
 
 
+def get_member_key(member_name_from_list):
+    global_vars.members_locks += 1
+    for member_key in global_vars.members:
+        if "leaderboardName" in global_vars.members[member_key]:
+            name_split = global_vars.members[member_key]["leaderboardName"].split()
+            if len(name_split) > 0 and name_split[0].lower() == member_name_from_list.lower():
+                global_vars.members_locks -= 1
+                return member_key
+
+    global_vars.members_locks -= 1
+
+    return ""
+
+
 async def get_member_dict(member: str):
     member_dict = {}
     if not member.isnumeric():

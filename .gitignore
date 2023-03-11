@@ -2,10 +2,15 @@ json/*.json
 !sass_talk.json
 !series_info.json
 
-__pycache__/*
+*__pycache__/*
+
+*.pyc
+
 log/*
 misc/*
 
 .env
 
 *.sublime-*
+
+media/tmp*

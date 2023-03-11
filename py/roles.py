@@ -1,12 +1,13 @@
 from discord.errors import NotFound
 
 import helpers
+import global_vars
 import respobot_logging as log
 import environment_variables as env
 
 
-async def promote_driver(client, discord_id):
-    for guild in client.guilds:
+async def promote_driver(discord_id):
+    for guild in global_vars.bot.guilds:
         if guild.id == env.GUILD:
             try:
                 discord_member = await guild.fetch_member(discord_id)
@@ -25,8 +26,8 @@ async def promote_driver(client, discord_id):
                 log.logger_discord.warning("User: " + str(discord_id) + " not found. Can not promote role.")
 
 
-async def demote_driver(client, discord_id):
-    for guild in client.guilds:
+async def demote_driver(discord_id):
+    for guild in global_vars.bot.guilds:
         if guild.id == env.GUILD:
             try:
                 discord_member = await guild.fetch_member(discord_id)

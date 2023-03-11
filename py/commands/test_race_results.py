@@ -1,7 +1,7 @@
 from discord.ext import commands
 from discord.commands import Option
-import slash_command_helpers as slash_helpers
 import global_vars
+import slash_command_helpers as slash_helpers
 import race_results
 
 
@@ -24,12 +24,13 @@ class TestRaceResultsCog(commands.Cog):
 
         await ctx.respond("Working on it...")
 
-        member_dict = slash_helpers.get_member_details(racer)
-        results_dict = await race_results.get_results_summary(member_dict['iracingCustID'], subsession_id)
+        member = slash_helpers.get_member_key(racer)
 
-        if results_dict is not None:
-            await race_results.results.send_results_embed(ctx.channel, results_dict, member_dict)
-            await ctx.edit(content="Done!")
+        if 'iracingCustID' in global_vars.members[member]:
+            subsession = await global_vars.ir.subsession_data(subsession_id)
+
+        if subsession:
+            await race_results.process_race_result(member, subsession)
         else:
             await ctx.edit(content='Error! This driver was not found in the provided subsession.')
         return
