@@ -366,8 +366,9 @@ async def send_results_embed(channel, results_dict, member_dict):
             embedVar.add_field(name="Session", value=results_dict['hosted_name'], inline=False)
 
         if 'hosted_name' not in results_dict:
-            if 'classes' in global_vars.series_info[str(results_dict['series_id'])] and len(global_vars.series_info[str(results_dict['series_id'])]['classes']) > 1:
-                embedVar.add_field(name="Class", value=results_dict['car_class_name'], inline=True)
+            if str(results_dict['series_id']) in global_vars.series_info:
+                if 'classes' in global_vars.series_info[str(results_dict['series_id'])] and len(global_vars.series_info[str(results_dict['series_id'])]['classes']) > 1:
+                    embedVar.add_field(name="Class", value=results_dict['car_class_name'], inline=True)
 
         embedVar.add_field(name="Track", value=track, inline=False)
         embedVar.add_field(name="SOF", value=str(results_dict['strength_of_field']), inline=False)
@@ -431,11 +432,8 @@ async def send_results_embed(channel, results_dict, member_dict):
 
 
 async def send_results_embed_compact(channel, results_dict, member_dict):
-# async def send_results_embed(thread, results_dict, member_dict):
     track = ""
     irating_change = 0
-    safety_rating = ""
-    safety_rating_change = ""
     multi_report = False
 
     if 'respo_drivers' in results_dict:
@@ -477,18 +475,6 @@ async def send_results_embed_compact(channel, results_dict, member_dict):
         else:
             embedVar.add_field(name="Session", value=results_dict['hosted_name'], inline=False)
 
-        # if 'hosted_name' not in results_dict:
-        #     if 'classes' in global_vars.series_info[str(results_dict['series_id'])] and len(global_vars.series_info[str(results_dict['series_id'])]['classes']) > 1:
-        #         embedVar.add_field(name="Class", value=results_dict['car_class_name'], inline=True)
-
-        # embedVar.add_field(name="Track", value=track, inline=False)
-        # embedVar.add_field(name="SOF", value=str(results_dict['strength_of_field']), inline=False)
-        # if results_dict['team_event'] is True:
-        #     embedVar.add_field(name="Teams in Class", value=str(results_dict['cars_in_class']))
-        # else:
-        #     embedVar.add_field(name="Car #", value=str(results_dict['car_number']), inline=True)
-        #     embedVar.add_field(name="Drivers", value=str(results_dict['cars_in_class']), inline=True)
-
         result_string = "P" + str(results_dict['pos_finish_class'])
         if' hosted_name' not in results_dict:
             result_string += ", " + str(results_dict['points_champ']) + " champ pts"
@@ -500,49 +486,7 @@ async def send_results_embed_compact(channel, results_dict, member_dict):
 
         embedVar.add_field(name="Result", value=result_string, inline=True)
 
-        # embedVar.add_field(name="Started", value=str(results_dict['pos_start_class']), inline=True)
-        # embedVar.add_field(name="Finished", value=str(results_dict['pos_finish_class']), inline=True)
-        # if 'hosted_name' not in results_dict:
-
-        #     embedVar.add_field(name="Champ. Pts", value=str(results_dict['points_champ']), inline=True)
-
-        #     for report_driver in results_dict['respo_drivers']:
-        #         irating_change = results_dict['respo_drivers'][report_driver]["irating_new"] - results_dict['respo_drivers'][report_driver]["irating_old"]
-
-        #         if results_dict['respo_drivers'][report_driver]['license_level_new'] > 20:
-        #             safety_rating = "P"
-        #         elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 16:
-        #             safety_rating = "A"
-        #         elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 12:
-        #             safety_rating = "B"
-        #         elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 8:
-        #             safety_rating = "C"
-        #         elif results_dict['respo_drivers'][report_driver]['license_level_new'] > 4:
-        #             safety_rating = "D"
-        #         else:
-        #             safety_rating = "R"
-        #         safety_rating += f"{(results_dict['respo_drivers'][report_driver]['sub_level_new'] / 100):.2f}"
-
-        #         if multi_report is False:
-        #             safety_rating_change = f"({((results_dict['respo_drivers'][report_driver]['sub_level_new'] - results_dict['respo_drivers'][report_driver]['sub_level_old']) / 100):+.2f}, {results_dict['respo_drivers'][report_driver]['incidents']}x)"
-        #         else:
-        #             safety_rating_change = f"{((results_dict['respo_drivers'][report_driver]['sub_level_new'] - results_dict['respo_drivers'][report_driver]['sub_level_old']) / 100):+.2f}"
-
-        #         if multi_report is False:
-        #             embedVar.add_field(name=f"iRating", value=f"{results_dict['respo_drivers'][report_driver]['irating_new']} ({irating_change:+d})", inline=False)
-        #             embedVar.add_field(name=f"Safety Rating", value=f"{safety_rating} {safety_rating_change}", inline=False)
-        #         else:
-        #             # embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"iR: {results_dict['respo_drivers'][report_driver]['irating_new']} ({irating_change:+d})\nSR: {safety_rating} {safety_rating_change}\nLaps: {results_dict['respo_drivers'][report_driver]['laps']}", inline=False)
-        #             embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"{irating_change:+d} iR, {safety_rating_change} SR ({results_dict['respo_drivers'][report_driver]['incidents']}x), {results_dict['respo_drivers'][report_driver]['laps']} Laps", inline=False)
-        # else:
-        #     for report_driver in results_dict['respo_drivers']:
-        #         if multi_report is False:
-        #             embedVar.add_field(name=f"Incidents", value=f"{results_dict['respo_drivers'][report_driver]['incidents']}x", inline=False)
-        #         else:
-        #             embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"{results_dict['respo_drivers'][report_driver]['incidents']}x", inline=False)
-
         message = await channel.send(content="", file=picture, embed=embedVar)
-        # await thread.send(content="", file=picture, embed=embedVar)
 
         picture.close()
 

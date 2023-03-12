@@ -18,6 +18,7 @@ import environment_variables as env
 import race_results as results
 import respobot_logging as log
 import roles
+import update_series
 
 # Import all bot command cogs
 from commands.champ import ChampCog
@@ -75,7 +76,9 @@ async def on_ready():
     global_vars.load_json()
     await global_vars.bot.change_presence(activity=discord.Game(name="50 Cent: Bulletproof"))
 
-    print("I'm alive!")
+    print("I'm alive !")
+
+    await update_series.run()
 
     for guild in global_vars.bot.guilds:
         if guild.id == env.GUILD:
