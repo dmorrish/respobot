@@ -1,6 +1,7 @@
 import os
 import random
 import discord
+import asyncio
 from datetime import datetime
 from discord.ext import commands
 from discord.commands import Option
@@ -27,7 +28,7 @@ class IrGraphCog(commands.Cog):
     ):
         ir_dict = {}
         if member is not None:
-            member_dict = slash_helpers.get_member_details(member)
+            member_dict = slash_helpers.get_member_dict_from_first_name(member)
             if member_dict:
                 await ctx.respond("Plotting iRating for " + member)
                 ir_dict[member_dict["iracingCustID"]] = {}
@@ -135,6 +136,7 @@ class IrGraphCog(commands.Cog):
             picture.close()
 
         if os.path.exists(filepath):
+            await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
             os.remove(filepath)
 
         return

@@ -31,6 +31,7 @@ class TestRaceResultsCog(commands.Cog):
 
         if subsession:
             await race_results.process_race_result(member, subsession)
+            await ctx.edit(content='Done!')
         else:
             await ctx.edit(content='Error! This driver was not found in the provided subsession.')
         return

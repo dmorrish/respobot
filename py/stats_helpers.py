@@ -156,20 +156,55 @@ def get_ir_data_from_cache(iracing_id, category):
     return ir_dict
 
 
-def calc_total_champ_points(weeks_dict, weeks_to_count):
-    total_points = 0
-    weeks_counted = 0
+def calc_total_champ_points(leaderboard_dict, weeks_to_count):
 
-    sorted_weeks_dict = dict(sorted(weeks_dict.items(), key=lambda item: item[1], reverse=True))
+    for member in leaderboard_dict:
+        leaderboard_dict[member]['weeks'] = dict(sorted(leaderboard_dict[member]['weeks'].items(), key=lambda item: item[0], reverse=False))
+        leaderboard_dict[member]['weeks'] = dict(sorted(leaderboard_dict[member]['weeks'].items(), key=lambda item: item[1], reverse=True))
 
-    for week in sorted_weeks_dict:
-        total_points += sorted_weeks_dict[week]
-        weeks_counted += 1
+        total_points = 0
+        weeks_counted = 0
+        for week in leaderboard_dict[member]['weeks']:
+            total_points += leaderboard_dict[member]['weeks'][week]
+            weeks_counted += 1
 
-        if weeks_counted >= weeks_to_count:
-            break
+            if weeks_counted >= weeks_to_count:
+                break
 
-    return total_points
+        leaderboard_dict[member]['total_points'] = total_points
+
+
+def calc_projected_champ_points(leaderboard_dict, max_week, weeks_to_count, active_season):
+    for member in leaderboard_dict:
+        leaderboard_dict[member]['weeks'] = dict(sorted(leaderboard_dict[member]['weeks'].items(), key=lambda item: item[0], reverse=False))
+        leaderboard_dict[member]['weeks'] = dict(sorted(leaderboard_dict[member]['weeks'].items(), key=lambda item: item[1], reverse=True))
+
+        num_weeks_raced = len(leaderboard_dict[member]['weeks'])
+        projected_weeks_raced = num_weeks_raced / max_week * 12
+        if projected_weeks_raced > 0:
+            inclusion_rate = 6 / projected_weeks_raced
+        else:
+            inclusion_rate = 1
+        projected_points = 0
+
+        weeks_to_project = math.ceil(num_weeks_raced * inclusion_rate)
+
+        # If they haven't raced in the current week in an active series
+        if active_season:
+            if str(max_week) not in leaderboard_dict[member]["weeks"]:
+                if weeks_to_project >= weeks_to_count:
+                    weeks_to_project -= 1
+
+        weeks_counted = 0
+        for week in leaderboard_dict[member]['weeks']:
+            projected_points += leaderboard_dict[member]['weeks'][week]
+            weeks_counted += 1
+            if weeks_counted >= weeks_to_project:
+                break
+        if weeks_to_project > 0:
+            leaderboard_dict[member]['projected_points'] = int(projected_points / weeks_to_project * weeks_to_count)
+        else:
+            leaderboard_dict[member]['projected_points'] = 0
 
 
 def get_champ_points(series_id, car_class_id, year, quarter, up_to_week):

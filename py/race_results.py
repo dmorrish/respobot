@@ -3,13 +3,11 @@ import discord
 import global_vars
 import cache_races
 import environment_variables as env
-import helpers
 import roles
+import stats_helpers as stats
 import image_generators as image_gen
 from pyracing import constants as pyracingConstants
 import asyncio
-import random
-from discord.errors import NotFound
 
 from datetime import datetime
 
@@ -80,7 +78,26 @@ async def process_race_result(member, race):
     if results_dict is not None and results_dict != {}:
 
         if 'respo_drivers' in results_dict:
-            if len(results_dict['respo_drivers']) > 1:
+
+            weeks_to_count = 6
+            current_racing_week = await stats.get_current_iracing_week(-1)
+
+            if current_racing_week < 0:
+                current_racing_week = 12
+
+            week_data_before = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], global_vars.series_info['misc']['current_quarter'], current_racing_week)
+            stats.calc_total_champ_points(week_data_before, weeks_to_count)
+            week_data_before = dict(sorted(week_data_before.items(), key=lambda item: item[1]['total_points'], reverse=True))
+            to_remove = []
+            for inner_member in week_data_before:
+                if week_data_before[inner_member]['total_points'] == 0:
+                    to_remove.append(inner_member)
+
+            for inner_member in to_remove:
+                week_data_before.pop(inner_member)
+
+            num_respo_drivers = len(results_dict['respo_drivers'])
+            if num_respo_drivers > 1:
                 multi_report = True
                 message_text = "Well lookie here. "
 
@@ -90,8 +107,11 @@ async def process_race_result(member, race):
             for inner_member in global_vars.members:
                 if str(global_vars.members[inner_member]['iracingCustID']) in results_dict['respo_drivers']:
                     # update the message text with the participants' names
-                    if drivers_listed < len(results_dict['respo_drivers']) - 1:
-                        message_text += global_vars.members[inner_member]['leaderboardName'] + ", "
+                    if drivers_listed < num_respo_drivers - 1:
+                        if drivers_listed == 0 and num_respo_drivers == 2:
+                            message_text += global_vars.members[inner_member]['leaderboardName'] + " "
+                        else:
+                            message_text += global_vars.members[inner_member]['leaderboardName'] + ", "
                     else:
                         message_text += "and " + global_vars.members[inner_member]['leaderboardName'] + " "
 
@@ -152,28 +172,54 @@ async def process_race_result(member, race):
                                 if results_dict['official'] == 1:
                                     global_vars.members[inner_member]['last_known_ir'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_new']
 
+            week_data_after = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], global_vars.series_info['misc']['current_quarter'], current_racing_week)
+            stats.calc_total_champ_points(week_data_after, weeks_to_count)
+
+            week_data_after = dict(sorted(week_data_after.items(), key=lambda item: item[1]['total_points'], reverse=True))
+            to_remove = []
+            for inner_member in week_data_after:
+                if week_data_after[inner_member]['total_points'] == 0:
+                    to_remove.append(inner_member)
+
+            for inner_member in to_remove:
+                week_data_after.pop(inner_member)
+
             if env.SUPPRESS_RACE_RESULTS == "False":
 
                 if multi_report is True:
-                    message_text += "all just finished playing with eachother for hours on end. Let's see how they made out."
+                    message_text += "just finished playing with each other for hours on end."
 
                 for guild in global_vars.bot.guilds:
                     if guild.id == env.GUILD:
                         for channel in guild.channels:
                             if channel.id == env.CHANNEL:
-                                # message = await channel.send(message_text)
-                                # thread = await message.create_thread(name="Race Result", auto_archive_duration=1440)
-                                # await send_results_embed(thread, results_dict, members[member])
                                 if multi_report is False:
                                     await send_results_embed_compact(channel, results_dict, global_vars.members[member])
                                     if role_change_reason:
                                         await channel.send(role_change_reason)
-                                    # thread = await message.create_thread(name="Race Result", auto_archive_duration=1440)
-                                    # await send_results_embed(thread, results_dict, global_vars.members[member])
-                                    # await thread.send(quote_text)
-                                    # await thread.send(global_vars.sass_talk['clickbait'][random.randint(0, len(global_vars.sass_talk['clickbait']) - 1)])
                                 else:
+                                    await channel.send(message_text)
                                     await send_results_embed(channel, results_dict, global_vars.members[member])
+
+                                for inner_member in week_data_after:
+                                    place_after = list(week_data_after.keys()).index(inner_member)
+                                    place_after_string = str(place_after + 1)
+                                    if place_after_string[-1] == '1':
+                                        place_after_string += "st"
+                                    elif place_after_string[-1] == '2':
+                                        place_after_string += "nd"
+                                    elif place_after_string[-1] == '3':
+                                        place_after_string += "rd"
+                                    else:
+                                        place_after_string += "th"
+
+                                    if inner_member in week_data_before:
+                                        place_before = list(week_data_before.keys()).index(inner_member)
+
+                                        if place_after < place_before:
+                                            await channel.send(inner_member + " just moved up the Respo championship leaderboard to " + place_after_string + " place with " + str(week_data_after[inner_member]['total_points']) + " pts.")
+                                    else:
+                                        await channel.send(inner_member + " is now on the Respo championship leaderboard and in " + place_after_string + " place with " + str(week_data_after[inner_member]['total_points']) + " pts.")
 
 
 async def get_results_summary(iracing_id, subsession_id, **kwargs):
@@ -378,6 +424,7 @@ async def send_results_embed(channel, results_dict, member_dict):
         picture.close()
 
     if multi_report is False and os.path.exists(filepath):
+        await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
         os.remove(filepath)
 
     return
@@ -500,6 +547,7 @@ async def send_results_embed_compact(channel, results_dict, member_dict):
         picture.close()
 
     if multi_report is False and os.path.exists(filepath):
+        await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
         os.remove(filepath)
 
     return message

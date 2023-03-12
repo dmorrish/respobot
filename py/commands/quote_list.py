@@ -22,7 +22,7 @@ class QuoteListCog(commands.Cog):
         member_name = ""
         message_text = ""
 
-        member_dict = slash_helpers.get_member_details(member)
+        member_dict = slash_helpers.get_member_dict_from_first_name(member)
 
         if 'discordID' in member_dict:
             id_to_list = member_dict['discordID']

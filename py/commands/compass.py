@@ -1,6 +1,7 @@
 import os
 import discord
 import math
+import asyncio
 from datetime import datetime
 from discord.ext import commands
 from discord.commands import Option
@@ -86,6 +87,7 @@ class CompassCog(commands.Cog):
             picture.close()
 
         if os.path.exists(filepath):
+            await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
             os.remove(filepath)
 
         return

@@ -13,6 +13,7 @@ class QuoteMessageAddCog(commands.Cog):
         description="Add this message to the Respo Racing quotes database."
     )
     async def quote_add_message_command(
+        self,
         ctx,
         message: discord.Message
     ):
@@ -33,12 +34,12 @@ class QuoteMessageAddCog(commands.Cog):
 
         # Don't quote commands.
         if message.content[0] == "$" or message.content[0] == "!":
-            await ctx.respond("Why the fuck would you want to quote a bot command? Yeah, that will _totally_ be hilarious 6 months from now.", ephemeral=True)
+            await ctx.respond("Why the fuck would you want to quote a bot command? Yeah, that will be _totally_ hilarious 6 months from now.", ephemeral=True)
             return
 
-        global pendingQuotes
-        for pending_quote in pendingQuotes:
-            if pendingQuotes[pending_quote] == message.id:
+        # Don't quote if it's already pending
+        for pending_quote in global_vars.pending_quotes:
+            if global_vars.pending_quotes[pending_quote] == message.id:
                 await ctx.respond("Someone already suggested this, you slow ass.", ephemeral=True)
                 return
 
@@ -59,4 +60,4 @@ class QuoteMessageAddCog(commands.Cog):
         await ctx.respond("Should the following quote be added?")
         sentMessage = await ctx.channel.send(quote_text)
         await sentMessage.add_reaction('👍')
-        pendingQuotes[str(sentMessage.id)] = message.id
+        global_vars.pending_quotes[str(sentMessage.id)] = message.id

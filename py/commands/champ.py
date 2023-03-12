@@ -13,8 +13,8 @@ import global_vars
 # other imports
 import os
 import random
-import math
 from datetime import datetime
+import asyncio
 
 
 class ChampCog(commands.Cog):
@@ -99,11 +99,20 @@ class ChampCog(commands.Cog):
 
         max_week = 12
         week_13_active = False
-        if year == global_vars.series_info["misc"]["current_year"] and quarter == global_vars.series_info["misc"]["current_quarter"]:
+
+        if year == global_vars.series_info['misc']['current_year'] and quarter == global_vars.series_info['misc']['current_quarter'] and not week_13_active:
+            ongoing = True
+        else:
+            ongoing = False
+
+        if ongoing:
             max_week = await stats.get_current_iracing_week(series_id)
             if max_week < 0:
                 max_week = 12
                 week_13_active = True
+
+        if ongoing and week_13_active:
+            ongoing = False
 
         overall_leaderboard = {}
         global_vars.members_locks += 1
@@ -114,6 +123,10 @@ class ChampCog(commands.Cog):
                 overall_leaderboard[global_vars.members[member]['leaderboardName']] = {"data": [0], "colour": [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255]}
         global_vars.members_locks -= 1
 
+        weeks_to_count = 8
+        if series == 'respo':
+            weeks_to_count = 6
+
         week_data = {}
         if series_id < 0:
             week_data = stats.get_respo_champ_points(year, quarter, max_week)
@@ -123,60 +136,20 @@ class ChampCog(commands.Cog):
         else:
             week_data = stats.get_champ_points(series_id, car_class_id, year, quarter, max_week)
 
+        stats.calc_total_champ_points(week_data, weeks_to_count)
+        stats.calc_projected_champ_points(week_data, max_week, weeks_to_count, ongoing)
+
         someone_racing = False
         for member in week_data:
-            if len(week_data[member]) > 0:
+            if len(week_data[member]['weeks']) > 0:
                 someone_racing = True
                 break
-
-        weeks_to_count = 8
-        if series == 'respo':
-            weeks_to_count = 6
-
-        # Sort weeks, calculate totals, and project totals
-        for member in week_data:
-            week_data[member]['weeks'] = dict(sorted(week_data[member]['weeks'].items(), key=lambda item: item[0], reverse=False))
-            week_data[member]['weeks'] = dict(sorted(week_data[member]['weeks'].items(), key=lambda item: item[1], reverse=True))
-
-            week_data[member]['total_points'] = stats.calc_total_champ_points(week_data[member]['weeks'], weeks_to_count)
-
-            num_weeks_raced = len(week_data[member]['weeks'])
-            projected_weeks_raced = num_weeks_raced / max_week * 12
-            if projected_weeks_raced > 0:
-                inclusion_rate = 6 / projected_weeks_raced
-            else:
-                inclusion_rate = 1
-            projected_points = 0
-
-            weeks_to_project = math.ceil(num_weeks_raced * inclusion_rate)
-
-            # If they haven't raced in the current week in an active series
-            if year == global_vars.series_info["misc"]["current_year"] and quarter == global_vars.series_info["misc"]["current_quarter"]:
-                if str(max_week) not in week_data[member]["weeks"]:
-                    if weeks_to_project >= weeks_to_count:
-                        weeks_to_project -= 1
-
-            weeks_counted = 0
-            for week in week_data[member]['weeks']:
-                projected_points += week_data[member]['weeks'][week]
-                weeks_counted += 1
-                if weeks_counted >= weeks_to_project:
-                    break
-            if weeks_to_project > 0:
-                week_data[member]['projected_points'] = int(projected_points / weeks_to_project * weeks_to_count)
-            else:
-                week_data[member]['projected_points'] = 0
 
         if someone_racing:
             title_text = "Championship Points for " + season_name
             if car_class_id > 0:
                 title_text += " class " + global_vars.series_info[str(series_id)]['classes'][str(car_class_id)][0]
             title_text += " for " + str(year) + "s" + str(quarter)
-
-            if year == global_vars.series_info['misc']['current_year'] and quarter == global_vars.series_info['misc']['current_quarter'] and not week_13_active:
-                ongoing = True
-            else:
-                ongoing = False
 
             graph = image_gen.generate_champ_graph(week_data, title_text, weeks_to_count, ongoing)
 
@@ -190,9 +163,10 @@ class ChampCog(commands.Cog):
                 picture.close()
 
             if os.path.exists(filepath):
+                await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
                 os.remove(filepath)
 
             return
         else:
-            await ctx.edit(content="No one is racing this series because it sucks ass.")
+            await ctx.edit(content="This query generated no results, kinda like you.")
             return

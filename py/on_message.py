@@ -23,7 +23,7 @@ class OnMessageCog(commands.Cog):
                 if argument_count < 1:
                     return
 
-                if arguments[0].lower() == "$puppetmaster" and env.IS_PRODUCTION == "True":
+                if arguments[0].lower() == "$puppetmaster":
                     if argument_count > 1:
                         response = message.content[14:]
                         if response != "":
@@ -32,7 +32,7 @@ class OnMessageCog(commands.Cog):
                                     for channel in guild.channels:
                                         if channel.id == env.CHANNEL:
                                             await channel.send(helpers.spongify(response))
-                elif arguments[0].lower() == "$seriouspuppet" and env.IS_PRODUCTION == "True":
+                elif arguments[0].lower() == "$seriouspuppet":
                     if argument_count > 1:
                         response = message.content[15:]
                         if response != "":

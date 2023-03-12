@@ -79,7 +79,7 @@ def parse_season_string(season_string):
     return year, quarter
 
 
-def get_member_details(member_name_from_list):
+def get_member_dict_from_first_name(member_name_from_list):
     global_vars.members_locks += 1
     for member_key in global_vars.members:
         if "leaderboardName" in global_vars.members[member_key]:
@@ -107,49 +107,48 @@ def get_member_key(member_name_from_list):
     return ""
 
 
-async def get_member_dict(member: str):
-    member_dict = {}
-    if not member.isnumeric():
-        if len(member.split()) == 1:
+# async def get_member_dict(member: str):
+#     member_dict = {}
 
-            member_name_list = []
-            for tmp_member in global_vars.members:
-                member_name_list.append(global_vars.members[tmp_member]['leaderboardName'].split()[0])
+#     if not member.isnumeric():
+#         if len(member.split()) == 1:
+#             member_name_list = []
+#             for tmp_member in global_vars.members:
+#                 member_name_list.append(global_vars.members[tmp_member]['leaderboardName'].split()[0])
 
-            if member in member_name_list:
-                member_dict = get_member_details(member)
-                if member_dict:
-                    return member_dict
-            else:
-                return {}
+#             if member in member_name_list:
+#                 member_dict = get_member_dict_from_first_name(member)
+#                 if member_dict:
+#                     return member_dict
+#             else:
+#                 return {}
 
-    # This stuff is disabled because the stats would take far too long to populate from iRacing server requests.
-    #     driver_name = ""
-    #     if (member[0] == '"' or member[0] == "“") and (member[-1] == '"' or member[-1] == '”'):
-    #         # Adding by quoted name.
-    #         driver_name = member[1:-1]
-    #     else:
-    #         # Adding by unquoted name
-    #         driver_name = member
+#         driver_name = ""
+#         if (member[0] == '"' or member[0] == "“") and (member[-1] == '"' or member[-1] == '”'):
+#             # Adding by quoted name.
+#             driver_name = member[1:-1]
+#         else:
+#             # Adding by unquoted name
+#             driver_name = member
 
-    #     driver_list = await global_vars.ir.driver_stats(search=driver_name)  # This returns a list of drivers, but we only want exact matches.
-    #     driver_found = False
-    #     for driver in driver_list:
-    #         if driver.display_name.lower() == driver_name.lower():
-    #             member_dict['leaderboardName'] = driver.display_name
-    #             member_dict['iracingCustID'] = driver.cust_id
-    #             return member_dict
-    #     if not driver_found:
-    #         return {}
-    # else:
-    #     iracing_id = int(member)
-    #     races_list = await global_vars.ir.last_races_stats(iracing_id)
-    #     if len(races_list) < 1:
-    #         return {}
+#         driver_list = await global_vars.ir.driver_stats(search=driver_name)  # This returns a list of drivers, but we only want exact matches.
+#         driver_found = False
+#         for driver in driver_list:
+#             if driver.display_name.lower() == driver_name.lower():
+#                 member_dict['leaderboardName'] = driver.display_name
+#                 member_dict['iracingCustID'] = driver.cust_id
+#                 return member_dict
+#         if not driver_found:
+#             return {}
+#     else:
+#         iracing_id = int(member)
+#         races_list = await global_vars.ir.last_races_stats(iracing_id)
+#         if len(races_list) < 1:
+#             return {}
 
-    #     subsession = await global_vars.ir.subsession_data(races_list[0].subsession_id)
-    #     for driver in subsession.drivers:
-    #         if driver.cust_id == int(member):
-    #             member_dict['leaderboardName'] = driver.display_name
-    #             member_dict['iracingCustID'] = driver.cust_id
-    #             return member_dict
+#         subsession = await global_vars.ir.subsession_data(races_list[0].subsession_id)
+#         for driver in subsession.drivers:
+#             if driver.cust_id == int(member):
+#                 member_dict['leaderboardName'] = driver.display_name
+#                 member_dict['iracingCustID'] = driver.cust_id
+#                 return member_dict

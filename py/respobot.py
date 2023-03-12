@@ -69,26 +69,6 @@ first_run = True
 kill_switch = False
 
 
-# @global_vars.bot.slash_command(
-#     guild_ids=[env.GUILD],
-#     name='puppetmaster'
-# )
-# @permissions.is_user(173613324666273792)
-# async def puppetmaster(
-#     ctx,
-#     display: Option(str, "Should the text be spongified?", required=True, choices=['Spongify', 'Normal']),
-#     message: Option(str, "What do you want RespoBot to say?", required=True)
-# ):
-#     if display == 'Spongify':
-#         response = spongify(message)
-#     else:
-#         response = message
-
-#     await ctx.respond("Done.", ephemeral=True)
-#     await ctx.channel.send(response)
-#     return
-
-
 @global_vars.bot.event
 async def on_ready():
 

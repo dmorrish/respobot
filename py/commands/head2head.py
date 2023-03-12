@@ -35,12 +35,12 @@ class Head2HeadCog(commands.Cog):
 
         await ctx.respond("Working on it...")
 
-        racer1_dict = await slash_helpers.get_member_dict(racer1)
+        racer1_dict = slash_helpers.get_member_dict_from_first_name(racer1)
         if not racer1_dict:
             await ctx.edit(content="I didn't find " + racer1 + " as a Respo member. Make sure you pick someone from the list.")
             return
 
-        racer2_dict = await slash_helpers.get_member_dict(racer2)
+        racer2_dict = slash_helpers.get_member_dict_from_first_name(racer2)
         if not racer2_dict:
             await ctx.edit(content="I didn't find " + racer2 + " as a Respo member. Make sure you pick someone from the list.")
             return
@@ -96,9 +96,8 @@ class Head2HeadCog(commands.Cog):
             await ctx.edit(content='', file=picture)
             picture.close()
 
-        await asyncio.sleep(10)
-
         if os.path.exists(filepath):
+            await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
             os.remove(filepath)
 
         return

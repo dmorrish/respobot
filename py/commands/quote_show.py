@@ -23,7 +23,7 @@ class QuoteShowCog(commands.Cog):
         quote_dict = {}
         id_to_quote = -1
         if member is not None:
-            member_dict = slash_helpers.get_member_details(member)
+            member_dict = slash_helpers.get_member_dict_from_first_name(member)
             if 'discordID' in member_dict:
                 id_to_quote = member_dict['discordID']
             else:
