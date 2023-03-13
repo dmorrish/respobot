@@ -16,7 +16,7 @@ async def run():
             new_series_found = True
             message += "\nNew series: "
             message += series.series_name_short + " "
-            message += + "(" + str(series.series_id) + ")"
+            message += "(" + str(series.series_id) + ")"
 
             global_vars.series_info[str(series.series_id)] = {}
             global_vars.series_info[str(series.series_id)]["name"] = series.series_name_short
