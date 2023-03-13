@@ -1,6 +1,8 @@
 # RespoBot.py
 # Hold on to your butts.
 
+import os
+import asyncio
 import discord
 import discord.commands
 from discord.errors import NotFound, HTTPException
@@ -8,7 +10,6 @@ from discord.ext import tasks
 import math
 from pyracing.client import Client
 from datetime import datetime
-
 import httpx
 import traceback
 
@@ -19,6 +20,8 @@ import race_results as results
 import respobot_logging as log
 import roles
 import update_series
+import stats_helpers as stats
+import image_generators as image_gen
 
 # Import all bot command cogs
 from commands.champ import ChampCog
@@ -128,7 +131,7 @@ async def task_loop():
                 if thread.owner_id == global_vars.bot.user.id and age > 7 * 24 * 60 * 60:
                     await thread.delete()
 
-    # await get_race_results()
+    # await results.get_race_results()
     # logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
 
     try:
@@ -147,5 +150,74 @@ async def task_loop():
         message = template.format(type(ex).__name__, ex.args)
         # print(message)
         log.logger_pyracing.error(message)
+
+    current_seasons = await global_vars.ir.current_seasons(only_active=1)
+
+    season_active = False
+    current_race_week = -1
+
+    for season in current_seasons:
+        if season.series_id == 139:
+            season_active = True
+            current_race_week = season.race_week
+
+    post_update = False
+    active_season = False
+    update_message = ""
+
+    if 'current_race_week' not in global_vars.series_info['misc']:
+        global_vars.series_info['misc']['current_race_week'] = -1
+
+    if season_active:
+        if current_race_week != global_vars.series_info['misc']['current_race_week']:
+            if current_race_week != 1:
+                # Post the end of week Respo Update
+                post_update = True
+                active_season = True
+                update_message = "We've reached the end of week " + str(current_race_week - 1) + ", so let's see who's racing well, who's racing like shit, and who's not even racing at all!"
+    else:
+        if global_vars.series_info['misc']['current_race_week'] == 12:
+            post_update = True
+            active_season = False
+            update_message = "Wow, I can't believe another season has passed. Let's see how you shitheels stack up."
+
+    if post_update:
+        week_data = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], global_vars.series_info['misc']['current_quarter'], global_vars.series_info['misc']['current_race_week'])
+        week_data = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], 1, global_vars.series_info['misc']['current_race_week'])
+        stats.calc_total_champ_points(week_data, 6)
+        stats.calc_projected_champ_points(week_data, global_vars.series_info['misc']['current_race_week'], 6, active_season)
+
+        someone_racing = False
+        for member in week_data:
+            if len(week_data[member]['weeks']) > 0:
+                someone_racing = True
+                break
+
+        if someone_racing:
+            for guild in global_vars.bot.guilds:
+                if guild.id == env.GUILD:
+                    for channel in guild.channels:
+                        if channel.id == env.CHANNEL:
+                            title_text = "Championship Points for Respo Racing Whatever the Fuck You Want Series"
+
+                            title_text += " for " + str(global_vars.series_info['misc']['current_year']) + "s" + str(global_vars.series_info['misc']['current_quarter'])
+
+                            graph = image_gen.generate_champ_graph(week_data, title_text, 6, active_season)
+
+                            filepath = env.BOT_DIRECTORY + "media/tmp_champ_" + str(datetime.now().strftime("%Y%m%d%H%M%S%f")) + ".png"
+
+                            graph.save(filepath, format=None)
+
+                            with open(filepath, "rb") as f_graph:
+                                picture = discord.File(f_graph)
+                                await channel.send(content=update_message, file=picture)
+                                picture.close()
+
+                            if os.path.exists(filepath):
+                                await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
+                                os.remove(filepath)
+
+    global_vars.series_info['misc']['current_race_week'] = current_race_week
+    global_vars.dump_json()
 
 global_vars.bot.run(env.TOKEN)

@@ -64,3 +64,6 @@ def dump_json():
 
     with open(env.BOT_DIRECTORY + "json/hosted_cache.json", "w") as f_hosted_cache:
         json.dump(hosted_cache, f_hosted_cache, indent=4)
+
+    with open(env.BOT_DIRECTORY + "json/series_info.json", "w") as f_series_info:
+        json.dump(series_info, f_series_info, indent=4)

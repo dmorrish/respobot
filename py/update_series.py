@@ -1,20 +1,22 @@
-import json
 import global_vars
 import environment_variables as env
 
 
 async def run():
 
-    message = "Updating Series info:\n"
+    message = "Updating Series info:"
 
     series_list = await global_vars.ir.current_seasons(only_active=0)
+
+    new_series_found = False
 
     for series in series_list:
 
         if str(series.series_id) not in global_vars.series_info:
-            message += "New series:\n"
-            message += series.series_name_short
-            message += series.series_id
+            new_series_found = True
+            message += "\nNew series: "
+            message += series.series_name_short + " "
+            message += + "(" + str(series.series_id) + ")"
 
             global_vars.series_info[str(series.series_id)] = {}
             global_vars.series_info[str(series.series_id)]["name"] = series.series_name_short
@@ -49,13 +51,13 @@ async def run():
 
     # Set the current season based off Rookie Mazda
     if "139" in global_vars.series_info:
-        global_vars.series_info['misc']['last_run_year'] = global_vars.series_info["139"]["last_run_year"]
-        global_vars.series_info['misc']['last_run_quarter'] = global_vars.series_info["139"]["last_run_quarter"]
+        global_vars.series_info['misc']['current_year'] = global_vars.series_info["139"]["last_run_year"]
+        global_vars.series_info['misc']['current_quarter'] = global_vars.series_info["139"]["last_run_quarter"]
 
-    with open(env.BOT_DIRECTORY + "json/series_info.json", "w") as f_series_info:
-        json.dump(global_vars.series_info, f_series_info, indent=4)
+    global_vars.dump_json()
 
-    for guild in global_vars.bot.guilds:
-        if guild.id == env.GUILD:
-            discord_member = guild.get_member(global_vars.members["Deryk Morrish"]["discordID"])
-            await discord_member.send(content=message)
+    if new_series_found:
+        for guild in global_vars.bot.guilds:
+            if guild.id == env.GUILD:
+                discord_member = guild.get_member(global_vars.members["Deryk Morrish"]["discordID"])
+                await discord_member.send(content=message)
