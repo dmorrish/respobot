@@ -217,9 +217,9 @@ async def process_race_result(member, race):
                                         place_before = list(week_data_before.keys()).index(inner_member)
 
                                         if place_after < place_before:
-                                            await channel.send(inner_member + " just moved up the Respo championship leaderboard to " + place_after_string + " place with " + str(week_data_after[inner_member]['total_points']) + " pts.")
+                                            await channel.send(inner_member + " just moved up the Respo championship leaderboard to " + place_after_string + " place with " + str(week_data_after[inner_member]['total_points']) + " points.")
                                     else:
-                                        await channel.send(inner_member + " is now on the Respo championship leaderboard and in " + place_after_string + " place with " + str(week_data_after[inner_member]['total_points']) + " pts.")
+                                        await channel.send(inner_member + " is now on the Respo championship leaderboard and in " + place_after_string + " place.")
 
 
 async def get_results_summary(iracing_id, subsession_id, **kwargs):
