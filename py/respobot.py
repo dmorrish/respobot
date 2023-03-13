@@ -76,7 +76,7 @@ async def on_ready():
     global_vars.load_json()
     await global_vars.bot.change_presence(activity=discord.Game(name="50 Cent: Bulletproof"))
 
-    print("I'm alive !")
+    print("I'm alive!")
 
     await update_series.run()
 
