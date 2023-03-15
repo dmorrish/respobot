@@ -162,7 +162,6 @@ async def task_loop():
             current_race_week = season.race_week
 
     post_update = False
-    active_season = False
     update_message = ""
 
     if 'current_race_week' not in global_vars.series_info['misc']:
@@ -173,19 +172,16 @@ async def task_loop():
             if current_race_week != 1:
                 # Post the end of week Respo Update
                 post_update = True
-                active_season = True
                 update_message = "We've reached the end of week " + str(current_race_week - 1) + ", so let's see who's racing well, who's racing like shit, and who's not even racing at all!"
     else:
         if global_vars.series_info['misc']['current_race_week'] == 12:
             post_update = True
-            active_season = False
             update_message = "Wow, I can't believe another season has passed. Let's see how you shitheels stack up."
 
     if post_update:
         week_data = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], global_vars.series_info['misc']['current_quarter'], global_vars.series_info['misc']['current_race_week'])
-        week_data = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], 1, global_vars.series_info['misc']['current_race_week'])
         stats.calc_total_champ_points(week_data, 6)
-        stats.calc_projected_champ_points(week_data, global_vars.series_info['misc']['current_race_week'], 6, active_season)
+        stats.calc_projected_champ_points(week_data, global_vars.series_info['misc']['current_race_week'], 6, False)
 
         someone_racing = False
         for member in week_data:
@@ -202,7 +198,7 @@ async def task_loop():
 
                             title_text += " for " + str(global_vars.series_info['misc']['current_year']) + "s" + str(global_vars.series_info['misc']['current_quarter'])
 
-                            graph = image_gen.generate_champ_graph(week_data, title_text, 6, active_season)
+                            graph = image_gen.generate_champ_graph_compact(week_data, title_text, 6, global_vars.series_info['misc']['current_race_week'])
 
                             filepath = env.BOT_DIRECTORY + "media/tmp_champ_" + str(datetime.now().strftime("%Y%m%d%H%M%S%f")) + ".png"
 

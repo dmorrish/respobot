@@ -331,10 +331,7 @@ def generate_champ_graph(data_dict, title, weeks_to_count, ongoing):
     for member in to_delete:
         del data_dict[member]
 
-    if ongoing is False:
-        data_dict = dict(sorted(data_dict.items(), key=lambda item: item[1]['total_points'], reverse=True))
-    else:
-        data_dict = dict(sorted(data_dict.items(), key=lambda item: item[1]['projected_points'], reverse=True))
+    data_dict = dict(sorted(data_dict.items(), key=lambda item: item[1]['total_points'], reverse=True))
 
     font = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", 18)
 
@@ -360,7 +357,7 @@ def generate_champ_graph(data_dict, title, weeks_to_count, ongoing):
     (left, top, right, bottom) = font.getbbox("Total")
     total_width = (right - left) + font.size
 
-    (left, top, right, bottom) = font.getbbox("Proj Tot")
+    (left, top, right, bottom) = font.getbbox("Potential")
     projected_width = (right - left) + font.size
 
     table_width = name_width + 12 * week_width + total_width
@@ -392,7 +389,7 @@ def generate_champ_graph(data_dict, title, weeks_to_count, ongoing):
 
     if ongoing is True:
         x += int(total_width / 2 + projected_width / 2)
-        draw.text((x, y), "Proj Tot", font=font, fill=(255, 255, 255, 255), anchor="mm")
+        draw.text((x, y), "Potential", font=font, fill=(255, 255, 255, 255), anchor="mm")
 
     draw.line([(margin_h_left, margin_v_top + row_height), (margin_h_left + table_width, margin_v_top + row_height)], fill=(255, 255, 255, 255), width=1, joint=None)
 
@@ -422,6 +419,122 @@ def generate_champ_graph(data_dict, title, weeks_to_count, ongoing):
         if ongoing is True:
             x = int(margin_h_left + name_width + 12 * week_width + total_width)
             draw.text((x + projected_width / 2, y), str(data_dict[member]['projected_points']), font=font, fill=(192, 64, 0, 255), anchor="mm")
+        members_drawn += 1
+
+    im = Image.alpha_composite(bg, im)
+    return im
+
+
+def generate_champ_graph_compact(data_dict, title, weeks_to_count, highlighted_week):
+
+    to_delete = []
+
+    for member in data_dict:
+        if len(data_dict[member]['weeks']) < 1:
+            to_delete.append(member)
+
+    for member in to_delete:
+        del data_dict[member]
+
+    data_dict = dict(sorted(data_dict.items(), key=lambda item: item[1]['total_points'], reverse=True))
+
+    font = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", 18)
+
+    margin_v_top = 3 * font.size
+    margin_v_bottom = font.size
+    margin_h_right = font.size
+    margin_h_left = font.size
+
+    name_width = 0
+
+    for member in data_dict:
+        (left, top, right, bottom) = font.getbbox(member)
+        if (right - left) > name_width:
+            name_width = (right - left)
+
+    row_height = 2 * font.size
+
+    name_width += font.size
+
+    (left, top, right, bottom) = font.getbbox("Wk 12")
+    week_width = (right - left) + font.size
+
+    (left, top, right, bottom) = font.getbbox("Total")
+    total_width = (right - left) + font.size
+
+    table_width = name_width + week_width + total_width
+
+    image_width = margin_h_left + table_width + margin_h_right
+
+    # Chop the title up into separate lines
+    title_words = title.split()
+    title_lines = []
+    i = 0
+    title_line_count = 0
+    title_line = ""
+    title_done = False
+    while not title_done:
+        width = 0
+        if i < len(title_words):
+            (left, top, right, bottom) = font.getbbox(title_line + title_words[i])
+            width = right - left
+        else:
+            title_done = True
+
+        if title_done or width >= image_width - margin_h_left - margin_h_right:
+            title_lines.append(title_line[:-1])
+            title_line_count += 1
+            title_line = ""
+        else:
+            title_line += title_words[i] + " "
+            i += 1
+
+    title_line_count -= 1
+
+    image_height = int(margin_v_top + title_line_count * font.size * 1.5 + row_height * (len(data_dict) + 1) + margin_v_bottom)
+
+    im = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 0))
+    bg = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 255))
+    draw = ImageDraw.Draw(im)
+
+    y = int(margin_v_top * 0.5)
+    # Draw the title
+    for title_line in title_lines:
+        draw.text((image_width * 0.5, y), title_line, font=font, fill=(255, 255, 255, 255), anchor="mm")
+        y += int(font.size * 1.5)
+
+    # Draw the headers
+    x = int(margin_h_left)
+    y = int(margin_v_top + title_line_count * font.size * 1.5 + row_height / 2)
+    draw.text((x + font.size, y), "Name", font=font, fill=(255, 255, 255, 255), anchor="lm")
+
+    x += int(name_width + week_width / 2)
+    draw.text((x, y), "wk" + str(highlighted_week), font=font, fill=(255, 255, 255, 255), anchor="mm")
+
+    x += int(total_width / 2 + week_width / 2)
+    draw.text((x, y), "Total", font=font, fill=(255, 255, 255, 255), anchor="mm")
+
+    draw.line([(margin_h_left, margin_v_top + title_line_count * font.size * 1.5 + row_height), (margin_h_left + table_width, margin_v_top + title_line_count * font.size * 1.5 + row_height)], fill=(255, 255, 255, 255), width=1, joint=None)
+
+    # Draw the members details
+    members_drawn = 0
+
+    for member in data_dict:
+        x = int(margin_h_left)
+        y = int(margin_v_top + title_line_count * font.size * 1.5 + row_height + row_height * members_drawn + row_height / 2)
+        if members_drawn % 2 == 1:
+            draw.rectangle([(margin_h_left, int(y - row_height / 2)), (margin_h_left + table_width, int(y + row_height / 2))], fill=(24, 24, 24, 255))
+        draw.text((x + font.size, y), member, font=font, fill=(255, 255, 255, 255), anchor="lm")
+
+        x += int(name_width + week_width / 2)
+        colour = (0, 128, 255, 255)
+        points = 0
+        if str(highlighted_week - 1) in data_dict[member]['weeks']:
+            points = data_dict[member]['weeks'][str(highlighted_week - 1)]
+        draw.text((x, y), str(points), font=font, fill=colour, anchor="mm")
+
+        x += int(week_width / 2 + total_width / 2)
+        draw.text((x, y), str(data_dict[member]['total_points']), font=font, fill=(192, 0, 0, 255), anchor="mm")
         members_drawn += 1
 
     im = Image.alpha_composite(bg, im)
