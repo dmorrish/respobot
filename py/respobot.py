@@ -2,6 +2,7 @@
 # Hold on to your butts.
 
 import os
+import signal
 import asyncio
 import discord
 import discord.commands
@@ -215,5 +216,15 @@ async def task_loop():
 
     global_vars.series_info['misc']['current_race_week'] = current_race_week
     global_vars.dump_json()
+
+
+def exit_handler(signum, frame):
+    if global_vars.write_lock:
+        print("Exit cancelled: Writing json files. Try again.")
+    else:
+        exit(0)
+
+
+signal.signal(signal.SIGINT, exit_handler)
 
 global_vars.bot.run(env.TOKEN)

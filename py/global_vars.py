@@ -21,6 +21,8 @@ members_locks = 0
 race_cache_locks = 0
 quotes_locks = 0
 
+write_lock = False
+
 pleb_line = 2500
 
 pending_quotes = {}
@@ -53,6 +55,8 @@ def load_json():
 
 
 def dump_json():
+    global write_lock
+    write_lock = True
     with open(env.BOT_DIRECTORY + "json/members.json", "w") as f_members:
         json.dump(members, f_members, indent=4)
 
@@ -67,3 +71,5 @@ def dump_json():
 
     with open(env.BOT_DIRECTORY + "json/series_info.json", "w") as f_series_info:
         json.dump(series_info, f_series_info, indent=4)
+
+    write_lock = False
