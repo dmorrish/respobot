@@ -132,6 +132,47 @@ async def task_loop():
                 if thread.owner_id == global_vars.bot.user.id and age > 7 * 24 * 60 * 60:
                     await thread.delete()
 
+    try:
+        current_seasons = await global_vars.ir.current_seasons(only_active=0)
+
+        season_active = False
+        current_race_week = -1
+
+        global_vars.season_times_dict = {}
+
+        for season in current_seasons:
+            if season.series_id == 139 and season.active:
+                season_active = True
+                current_race_week = season.race_week
+
+        for season in current_seasons:
+            if season.series_id == 139:
+                if str(season.season_year) not in global_vars.season_times_dict:
+                    global_vars.season_times_dict[str(season.season_year)] = {}
+
+                if str(season.season_quarter) not in global_vars.season_times_dict[str(season.season_year)]:
+                    global_vars.season_times_dict[str(season.season_year)][str(season.season_quarter)] = {}
+                    global_vars.season_times_dict[str(season.season_year)][str(season.season_quarter)]['date_start'] = season.date_start.timestamp()
+                    global_vars.season_times_dict[str(season.season_year)][str(season.season_quarter)]['date_end'] = season.date_end.timestamp()
+                else:
+                    if global_vars.season_times_dict[str(season.season_year)][str(season.season_quarter)]['date_start'] > season.date_start.timestamp():
+                        global_vars.season_times_dict[str(season.season_year)][str(season.season_quarter)]['date_start'] = season.date_start.timestamp()
+
+                    if global_vars.season_times_dict[str(season.season_year)][str(season.season_quarter)]['date_end'] < season.date_end.timestamp():
+                        global_vars.season_times_dict[str(season.season_year)][str(season.season_quarter)]['date_end'] = season.date_end.timestamp()
+    except httpx.HTTPError:
+        print("pyracing timed out. Reinitializing client...")
+        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+    except RecursionError:
+        print("pyracing hit the recursion limit. Reinitializing client...")
+        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+    except Exception as ex:
+        print(traceback.format_exc())
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        message = template.format(type(ex).__name__, ex.args)
+        # print(message)
+        log.logger_pyracing.error(message)
+
     # await results.get_race_results()
     # logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
 
@@ -151,16 +192,6 @@ async def task_loop():
         message = template.format(type(ex).__name__, ex.args)
         # print(message)
         log.logger_pyracing.error(message)
-
-    current_seasons = await global_vars.ir.current_seasons(only_active=1)
-
-    season_active = False
-    current_race_week = -1
-
-    for season in current_seasons:
-        if season.series_id == 139:
-            season_active = True
-            current_race_week = season.race_week
 
     post_update = False
     update_message = ""
