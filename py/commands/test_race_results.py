@@ -19,7 +19,8 @@ class TestRaceResultsCog(commands.Cog):
         self,
         ctx,
         racer: Option(str, "The Respo member.", required=True, autocomplete=slash_helpers.get_member_list),
-        subsession_id: Option(int, "The subsession id.", required=True)
+        subsession_id: Option(int, "The subsession id.", required=True),
+        embed_type: Option(str, "standard, compact, or auto.", required=False)
     ):
 
         await ctx.respond("Working on it...")
@@ -30,7 +31,10 @@ class TestRaceResultsCog(commands.Cog):
             subsession = await global_vars.ir.subsession_data(subsession_id)
 
         if subsession:
-            await race_results.process_race_result(member, subsession)
+            if embed_type:
+                await race_results.process_race_result(member, subsession, embed_type=embed_type)
+            else:
+                await race_results.process_race_result(member, subsession)
             await ctx.edit(content='Done!')
         else:
             await ctx.edit(content='Error! This driver was not found in the provided subsession.')

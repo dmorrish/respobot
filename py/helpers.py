@@ -1,3 +1,6 @@
+import global_vars
+
+
 # mAkE iT sPeAk LiKe ThIs
 def spongify(message):
     flip_flop = True
@@ -13,3 +16,10 @@ def spongify(message):
         else:
             response += char
     return response
+
+
+def get_name_from_iracing_id(cust_id):
+    for member in global_vars.members:
+        if 'iracingCustID' in global_vars.members[member] and 'leaderboardName' in global_vars.members[member] and global_vars.members[member]['iracingCustID'] == cust_id:
+            return global_vars.members[member]['leaderboardName']
+    return ""

@@ -6,6 +6,7 @@ import environment_variables as env
 import roles
 import stats_helpers as stats
 import image_generators as image_gen
+import helpers
 from pyracing import constants as pyracingConstants
 import asyncio
 
@@ -27,7 +28,7 @@ async def get_race_results():
             start_high = int(datetime.timestamp(datetime.now()) * 1000)
             start_low = global_vars.members[member]['last_race_check']
             if start_high - start_low > 90 * 24 * 60 * 60 * 1000:
-                start_high = start_low + 90 * 24 * 60 * 60 * 1000 + 1000
+                start_high = start_low + 90 * 24 * 60 * 60 * 1000 - 1000
             races_list = await global_vars.ir.search_results(iracing_id, start_low=start_low, start_high=start_high)
 
             # Grab all hosted races in the last week
@@ -63,7 +64,7 @@ async def get_race_results():
     # global_vars.dump_json()
 
 
-async def process_race_result(member, race):
+async def process_race_result(member, race, **kwargs):
     multi_report = False
     role_change_reason = ""
     message_text = ""
@@ -193,13 +194,19 @@ async def process_race_result(member, race):
                     if guild.id == env.GUILD:
                         for channel in guild.channels:
                             if channel.id == env.CHANNEL:
-                                if multi_report is False:
-                                    await send_results_embed_compact(channel, results_dict, global_vars.members[member])
-                                    if role_change_reason:
-                                        await channel.send(role_change_reason)
+                                if "embed_type" in kwargs and kwargs["embed_type"] != "auto":
+                                    if kwargs['embed_type'] == "compact":
+                                        await send_results_embed_compact(channel, results_dict, global_vars.members[member])
+                                    else:
+                                        await send_results_embed(channel, results_dict, global_vars.members[member])
                                 else:
-                                    await channel.send(message_text)
-                                    await send_results_embed(channel, results_dict, global_vars.members[member])
+                                    if multi_report is False:
+                                        await send_results_embed_compact(channel, results_dict, global_vars.members[member])
+                                    else:
+                                        await send_results_embed(channel, results_dict, global_vars.members[member])
+
+                                if role_change_reason:
+                                    await channel.send(role_change_reason)
 
                                 for inner_member in week_data_after:
                                     place_after = list(week_data_after.keys()).index(inner_member)
@@ -295,6 +302,7 @@ async def get_results_summary(iracing_id, subsession_id, **kwargs):
         for driver in subsession.drivers:
             if driver.car_class_id == respo_driver.car_class_id and driver.sim_ses_type_name == 'Race' and driver.pos_start < respo_driver.pos_start and (not team_event or driver.cust_id < 0):
                 new_race_dict["pos_start_class"] += 1
+
     new_race_dict["official"] = respo_driver.official
     new_race_dict["category"] = subsession.cat_id
     new_race_dict["points_champ"] = respo_driver.points_champ
@@ -432,17 +440,12 @@ async def send_results_embed(channel, results_dict, member_dict):
 
 
 async def send_results_embed_compact(channel, results_dict, member_dict):
-    track = ""
     irating_change = 0
     multi_report = False
 
     if 'respo_drivers' in results_dict:
         if len(results_dict['respo_drivers']) > 1:
             multi_report = True
-
-    track = results_dict['track_name']
-    if(results_dict['track_config_name'] and results_dict['track_config_name'] != "N/A" and results_dict['track_config_name'] != ""):
-        track += " (" + results_dict['track_config_name'] + ")"
 
     if multi_report is False:
         filepath = await image_gen.generate_avatar_image(channel.guild, member_dict['discordID'], 128)
@@ -475,16 +478,17 @@ async def send_results_embed_compact(channel, results_dict, member_dict):
         else:
             embedVar.add_field(name="Session", value=results_dict['hosted_name'], inline=False)
 
-        result_string = "P" + str(results_dict['pos_finish_class'])
-        if' hosted_name' not in results_dict:
-            result_string += ", " + str(results_dict['points_champ']) + " champ pts"
+        if multi_report is True:
+            result_string = "P" + str(results_dict['pos_finish_class']) + ", " + str(results_dict['points_champ']) + " champ pts"
+            embedVar.add_field(name="Result", value=result_string, inline=True)
 
-        for cust_id in results_dict['respo_drivers']:
-            if int(cust_id) == member_dict['iracingCustID']:
-                irating_change = results_dict['respo_drivers'][cust_id]["irating_new"] - results_dict['respo_drivers'][cust_id]["irating_old"]
-                result_string += ", " + f"{irating_change:+d}" + " iR, " + str(results_dict['respo_drivers'][cust_id]['incidents']) + "x"
-
-        embedVar.add_field(name="Result", value=result_string, inline=True)
+            for cust_id in results_dict['respo_drivers']:
+                result_string = ""
+                if 'hosted_name' not in results_dict:
+                    irating_change = results_dict['respo_drivers'][cust_id]["irating_new"] - results_dict['respo_drivers'][cust_id]["irating_old"]
+                    result_string += f"{irating_change:+d}" + " iR (" + str(results_dict['respo_drivers'][cust_id]['irating_new']) + "), "
+                result_string += str(results_dict['respo_drivers'][cust_id]['incidents']) + "x, " + str(results_dict['respo_drivers'][cust_id]['laps']) + " laps"
+                embedVar.add_field(name=results_dict['respo_drivers'][cust_id]['leaderboard_name'], value=result_string, inline=True)
 
         message = await channel.send(content="", file=picture, embed=embedVar)
 

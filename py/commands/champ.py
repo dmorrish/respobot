@@ -134,7 +134,7 @@ class ChampCog(commands.Cog):
                 await ctx.edit(content="You idiot. Didn't you know? No on in Respo actually races.")
                 return
         else:
-            week_data = stats.get_champ_points(series_id, car_class_id, year, quarter, max_week)
+            week_data = stats.get_champ_points(series_id, car_class_id, year, quarter, max_week, False)
 
         stats.calc_total_champ_points(week_data, weeks_to_count)
         stats.calc_projected_champ_points(week_data, max_week, weeks_to_count, ongoing)

@@ -115,7 +115,7 @@ def get_respo_champ_points(year, quarter, up_to_week):
 
     # Generate weekly points breakdown for each series
     for series in series_list:
-        series_leaderboards[series] = get_champ_points(series, -1, year, quarter, up_to_week)
+        series_leaderboards[series] = get_champ_points(series, -1, year, quarter, up_to_week, True)
 
     if len(series_list) < 1:
         return leaderboard_best_weeks
@@ -135,6 +135,25 @@ def get_respo_champ_points(year, quarter, up_to_week):
                     leaderboard_best_weeks[member]['weeks'][week_key] = series_leaderboards[series][member]['weeks'][week_key]
 
     return leaderboard_best_weeks
+
+
+def get_respo_race_week(time_start_raw):
+    time_start = time_start_raw / 1000
+    race_week = -1
+
+    for year in global_vars.season_times_dict:
+        for quarter in global_vars.season_times_dict[year]:
+            if global_vars.season_times_dict[year][quarter]['date_start'] <= time_start and global_vars.season_times_dict[year][quarter]['date_end'] > time_start:
+                race_week = int((time_start - global_vars.season_times_dict[year][quarter]['date_start']) / (7 * 24 * 60 * 60))
+                break
+
+    if race_week > 12 and year == '2020' and quarter == '3':
+        # 2020s3 had a "leap week"
+        race_week = -1
+    elif race_week > 11:
+        race_week = -1
+
+    return race_week
 
 
 def get_ir_data_from_cache(iracing_id, category):
@@ -207,15 +226,15 @@ def calc_projected_champ_points(leaderboard_dict, max_week, weeks_to_count, acti
             leaderboard_dict[member]['projected_points'] = 0
 
 
-def get_champ_points(series_id, car_class_id, year, quarter, up_to_week):
+def get_champ_points(series_id, car_class_id, year, quarter, up_to_week, adjust_race_weeks):
     leaderboard = {}
 
-    # Hard coding bullshit to handle NEC
-    actual_quarter = -1
+    # # Hard coding bullshit to handle NEC
+    # actual_quarter = -1
 
-    if series_id == 275:
-        actual_quarter = quarter
-        quarter = 2
+    # if series_id == 275:
+    #     actual_quarter = quarter
+    #     quarter = 2
 
     global_vars.members_locks += 1
     for member in global_vars.members:
@@ -235,55 +254,61 @@ def get_champ_points(series_id, car_class_id, year, quarter, up_to_week):
                                     if 'race_week' in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]:
                                         if global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["race_week"] <= up_to_week:
                                             if 'points_champ' in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]:
-                                                race_week = global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["race_week"]
+                                                race_week = -1
+                                                if adjust_race_weeks and 'time_start_raw' in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]:
+                                                    race_week = get_respo_race_week(global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]['time_start_raw'])
+
+                                                if race_week == -1:
+                                                    race_week = global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["race_week"]
 
                                                 # Adjust for IMSA Endurance being on week 1, 3, 5, 7, 9, and 11
                                                 # and ESS being on week 2, 4, 6, 8, 10, and 12
-                                                if series_id == 419:
-                                                    race_week *= 2
-                                                elif series_id == 331:
-                                                    race_week = race_week * 2 + 1
+                                                # if series_id == 419:
+                                                #     race_week *= 2
+                                                # elif series_id == 331:
+                                                #     race_week = race_week * 2 + 1
 
                                                 if global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["points_champ"] > 0:
-                                                    # More NEC bullshit
-                                                    use_race = False
-                                                    if series_id == 275:
-                                                        nec_week = race_week
-                                                        if actual_quarter == 2:
-                                                            if nec_week == 0:
-                                                                race_week = 5
-                                                                use_race = True
-                                                            elif nec_week == 1:
-                                                                race_week = 7
-                                                                use_race = True
-                                                            elif nec_week == 2:
-                                                                race_week = 10
-                                                                use_race = True
-                                                        elif actual_quarter == 3:
-                                                            if nec_week == 3:
-                                                                race_week = 2
-                                                                use_race = True
-                                                            elif nec_week == 4:
-                                                                race_week = 4
-                                                                use_race = True
-                                                            elif nec_week == 5:
-                                                                race_week = 7
-                                                                use_race = True
-                                                            elif nec_week == 6:
-                                                                race_week = 11
-                                                                use_race = True
-                                                        elif actual_quarter == 3:
-                                                            if nec_week == 7:
-                                                                race_week = 1
-                                                                use_race = True
-                                                            elif nec_week == 8:
-                                                                race_week = 4
-                                                                use_race = True
+                                                    # # More NEC bullshit
+                                                    # use_race = False
+                                                    # if series_id == 275:
+                                                    #     nec_week = race_week
+                                                    #     if actual_quarter == 2:
+                                                    #         if nec_week == 0:
+                                                    #             race_week = 5
+                                                    #             use_race = True
+                                                    #         elif nec_week == 1:
+                                                    #             race_week = 7
+                                                    #             use_race = True
+                                                    #         elif nec_week == 2:
+                                                    #             race_week = 10
+                                                    #             use_race = True
+                                                    #     elif actual_quarter == 3:
+                                                    #         if nec_week == 3:
+                                                    #             race_week = 2
+                                                    #             use_race = True
+                                                    #         elif nec_week == 4:
+                                                    #             race_week = 4
+                                                    #             use_race = True
+                                                    #         elif nec_week == 5:
+                                                    #             race_week = 7
+                                                    #             use_race = True
+                                                    #         elif nec_week == 6:
+                                                    #             race_week = 11
+                                                    #             use_race = True
+                                                    #     elif actual_quarter == 3:
+                                                    #         if nec_week == 7:
+                                                    #             race_week = 1
+                                                    #             use_race = True
+                                                    #         elif nec_week == 8:
+                                                    #             race_week = 4
+                                                    #             use_race = True
 
-                                                        if use_race is True:
-                                                            points[str(race_week)].append(global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["points_champ"])
-                                                    else:
-                                                        points[str(race_week)].append(global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["points_champ"])
+                                                    #     if use_race is True:
+                                                    #         points[str(race_week)].append(global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["points_champ"])
+                                                    # else:
+                                                    #     points[str(race_week)].append(global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["points_champ"])
+                                                    points[str(race_week)].append(global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["points_champ"])
                                                 else:
                                                     if race_week < 12:
                                                         points[str(race_week)].append(0)

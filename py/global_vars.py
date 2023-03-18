@@ -26,6 +26,7 @@ write_lock = False
 pleb_line = 2500
 
 pending_quotes = {}
+season_times_dict = {}
 
 
 def load_json():
