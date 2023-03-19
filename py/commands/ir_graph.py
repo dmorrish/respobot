@@ -6,6 +6,7 @@ from datetime import datetime
 from discord.ext import commands
 from discord.commands import Option
 import environment_variables as env
+import helpers
 import slash_command_helpers as slash_helpers
 import stats_helpers as stats
 import image_generators as image_gen
@@ -28,7 +29,7 @@ class IrGraphCog(commands.Cog):
     ):
         ir_dict = {}
         if member is not None:
-            member_dict = slash_helpers.get_member_dict_from_first_name(member)
+            member_dict = helpers.get_member_dict_from_first_name(member)
             if member_dict:
                 await ctx.respond("Plotting iRating for " + member)
                 ir_dict[member_dict["iracingCustID"]] = {}

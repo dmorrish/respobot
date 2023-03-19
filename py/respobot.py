@@ -145,8 +145,6 @@ async def task_loop():
                 season_active = True
                 current_race_week = season.race_week
 
-        for season in current_seasons:
-            if season.series_id == 139:
                 if str(season.season_year) not in global_vars.season_times_dict:
                     global_vars.season_times_dict[str(season.season_year)] = {}
 
@@ -160,6 +158,8 @@ async def task_loop():
 
                     if global_vars.season_times_dict[str(season.season_year)][str(season.season_quarter)]['date_end'] < season.date_end.timestamp():
                         global_vars.season_times_dict[str(season.season_year)][str(season.season_quarter)]['date_end'] = season.date_end.timestamp()
+                break
+
     except httpx.HTTPError:
         print("pyracing timed out. Reinitializing client...")
         global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
@@ -206,7 +206,7 @@ async def task_loop():
                 post_update = True
                 update_message = "We've reached the end of week " + str(current_race_week - 1) + ", so let's see who's racing well, who's racing like shit, and who's not even racing at all!"
     else:
-        if global_vars.series_info['misc']['current_race_week'] == 12:
+        if global_vars.series_info['misc']['current_race_week'] != -1:
             post_update = True
             update_message = "Wow, I can't believe another season has passed. Let's see how you shitheels stack up."
 
@@ -230,7 +230,10 @@ async def task_loop():
 
                             title_text += " for " + str(global_vars.series_info['misc']['current_year']) + "s" + str(global_vars.series_info['misc']['current_quarter'])
 
-                            graph = image_gen.generate_champ_graph_compact(week_data, title_text, 6, global_vars.series_info['misc']['current_race_week'])
+                            if season_active:
+                                graph = image_gen.generate_champ_graph_compact(week_data, title_text, 6, global_vars.series_info['misc']['current_race_week'])
+                            else:
+                                graph = image_gen.generate_champ_graph(week_data, title_text, 6, False)
 
                             filepath = env.BOT_DIRECTORY + "media/tmp_champ_" + str(datetime.now().strftime("%Y%m%d%H%M%S%f")) + ".png"
 

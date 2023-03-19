@@ -1,6 +1,7 @@
 from discord.ext import commands
 from discord.commands import Option
 from discord.errors import NotFound
+import helpers
 import slash_command_helpers as slash_helpers
 import global_vars
 
@@ -22,7 +23,7 @@ class QuoteListCog(commands.Cog):
         member_name = ""
         message_text = ""
 
-        member_dict = slash_helpers.get_member_dict_from_first_name(member)
+        member_dict = helpers.get_member_dict_from_first_name(member)
 
         if 'discordID' in member_dict:
             id_to_list = member_dict['discordID']

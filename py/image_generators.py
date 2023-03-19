@@ -381,7 +381,7 @@ def generate_champ_graph(data_dict, title, weeks_to_count, ongoing):
 
     x += int(name_width + week_width / 2)
     for i in range(0, 12):
-        draw.text((x, y), "w" + str(i + 1), font=font, fill=(255, 255, 255, 255), anchor="mm")
+        draw.text((x, y), "wk" + str(i + 1), font=font, fill=(255, 255, 255, 255), anchor="mm")
         x += int(week_width)
 
     x += int(total_width / 2 - week_width / 2)
@@ -526,8 +526,14 @@ def generate_champ_graph_compact(data_dict, title, weeks_to_count, highlighted_w
             draw.rectangle([(margin_h_left, int(y - row_height / 2)), (margin_h_left + table_width, int(y + row_height / 2))], fill=(24, 24, 24, 255))
         draw.text((x + font.size, y), member, font=font, fill=(255, 255, 255, 255), anchor="lm")
 
+        weeks_counted = 0
+        colour = (112, 112, 112, 255)
+        for week in data_dict[member]['weeks']:
+            if weeks_counted < weeks_to_count and int(week) == highlighted_week - 1:
+                colour = (0, 128, 255, 255)
+            weeks_counted += 1
+
         x += int(name_width + week_width / 2)
-        colour = (0, 128, 255, 255)
         points = 0
         if str(highlighted_week - 1) in data_dict[member]['weeks']:
             points = data_dict[member]['weeks'][str(highlighted_week - 1)]

@@ -5,6 +5,7 @@ from datetime import datetime
 from discord.ext import commands
 from discord.commands import Option
 import environment_variables as env
+import helpers
 import slash_command_helpers as slash_helpers
 import stats_helpers as stats
 import image_generators as image_gen
@@ -35,12 +36,12 @@ class Head2HeadCog(commands.Cog):
 
         await ctx.respond("Working on it...")
 
-        racer1_dict = slash_helpers.get_member_dict_from_first_name(racer1)
+        racer1_dict = helpers.get_member_dict_from_first_name(racer1)
         if not racer1_dict:
             await ctx.edit(content="I didn't find " + racer1 + " as a Respo member. Make sure you pick someone from the list.")
             return
 
-        racer2_dict = slash_helpers.get_member_dict_from_first_name(racer2)
+        racer2_dict = helpers.get_member_dict_from_first_name(racer2)
         if not racer2_dict:
             await ctx.edit(content="I didn't find " + racer2 + " as a Respo member. Make sure you pick someone from the list.")
             return
