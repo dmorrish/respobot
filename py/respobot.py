@@ -132,10 +132,11 @@ async def task_loop():
                 if thread.owner_id == global_vars.bot.user.id and age > 7 * 24 * 60 * 60:
                     await thread.delete()
 
+    season_active = False
+
     try:
         current_seasons = await global_vars.ir.current_seasons(only_active=0)
 
-        season_active = False
         current_race_week = -1
 
         global_vars.season_times_dict = {}
