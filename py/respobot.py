@@ -40,6 +40,7 @@ from commands.refresh_cache import RefreshCacheCog
 from commands.schedule import ScheduleCog
 from commands.send_nudes import SendNudesCog
 from commands.series import SeriesCog
+from commands.special_events import SpecialEventsCog
 from commands.test_race_results import TestRaceResultsCog
 
 # Import all bot event handlers
@@ -62,6 +63,7 @@ global_vars.bot.add_cog(RefreshCacheCog(global_vars.bot))
 global_vars.bot.add_cog(ScheduleCog(global_vars.bot))
 global_vars.bot.add_cog(SendNudesCog(global_vars.bot))
 global_vars.bot.add_cog(SeriesCog(global_vars.bot))
+global_vars.bot.add_cog(SpecialEventsCog(global_vars.bot))
 global_vars.bot.add_cog(TestRaceResultsCog(global_vars.bot))
 
 # Attach all bot event handlers
