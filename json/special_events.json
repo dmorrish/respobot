@@ -1,0 +1,334 @@
+{
+    "2023": {
+        "0": {
+            "name": "iRacing ROAR",
+            "start": {
+                "year": 2023,
+                "month": 1,
+                "day": 13
+            },
+            "end": {
+                "year": 2023,
+                "month": 1,
+                "day": 15
+            },
+            "track": "Daytona International Speedway - Road Course",
+            "cars": "GT4, Touring Cars, Toyota GR86",
+            "category" : "road"
+        },
+        "1": {
+            "name": "Daytona 24",
+            "start": {
+                "year": 2023,
+                "month": 1,
+                "day": 20
+            },
+            "end": {
+                "year": 2023,
+                "month": 1,
+                "day": 22
+            },
+            "track": "Daytona International Speedway - Road Course",
+            "cars": "GTP, LMP2, GT3 (IMSA)",
+            "category" : "road"
+        },
+        "2": {
+            "name": "Bathurst 12",
+            "start": {
+                "year": 2023,
+                "month": 2,
+                "day": 10
+            },
+            "end": {
+                "year": 2023,
+                "month": 2,
+                "day": 12
+            },
+            "track": "Mount Panorama Circuit",
+            "cars": "GT3 Class",
+            "category" : "road"
+        },
+        "3": {
+            "name": "Daytona 500",
+            "start": {
+                "year": 2023,
+                "month": 2,
+                "day": 14
+            },
+            "end": {
+                "year": 2023,
+                "month": 2,
+                "day": 19
+            },
+            "track": "Daytona International Speedway",
+            "cars": "NASCAR Cup Series",
+            "category" : "oval"
+        },
+        "4": {
+            "name": "Sebring 12",
+            "start": {
+                "year": 2023,
+                "month": 3,
+                "day": 24
+            },
+            "end": {
+                "year": 2023,
+                "month": 3,
+                "day": 26
+            },
+            "track": "Sebring International Raceway",
+            "cars": "GTP, LMP2, GT3 (IMSA)",
+            "category" : "road"
+        },
+        "5": {
+            "name": "Road America 500",
+            "start": {
+                "year": 2023,
+                "month": 4,
+                "day": 14
+            },
+            "end": {
+                "year": 2023,
+                "month": 4,
+                "day": 16
+            },
+            "track": "Road America",
+            "cars": "Nissan GTP ZX-T, Audi 90 GTO",
+            "category" : "road"
+        },
+        "6": {
+            "name": "N\u00fcrburgring 24h",
+            "start": {
+                "year": 2023,
+                "month": 5,
+                "day": 12
+            },
+            "end": {
+                "year": 2023,
+                "month": 5,
+                "day": 14
+            },
+            "track": "N\u00fcrburgring Combined \u2013 Gesamtstrecke 24h",
+            "cars": "GT3, Porsche Cup, GT4, Touring Car",
+            "category" : "road"
+        },
+        "7": {
+            "name": "Coke 600",
+            "start": {
+                "year": 2023,
+                "month": 5,
+                "day": 23
+            },
+            "end": {
+                "year": 2023,
+                "month": 5,
+                "day": 29
+            },
+            "track": "Charlotte Motor Speedway",
+            "cars": "NASCAR Cup Series",
+            "category" : "oval"
+        },
+        "8": {
+            "name": "Watkins Glen 6HR",
+            "start": {
+                "year": 2023,
+                "month": 6,
+                "day": 16
+            },
+            "end": {
+                "year": 2023,
+                "month": 6,
+                "day": 18
+            },
+            "track": "Watkins Glen International",
+            "cars": "GTP, LMP2, GT3 (IMSA)",
+            "category" : "road"
+        },
+        "9": {
+            "name": "Spa 24",
+            "start": {
+                "year": 2023,
+                "month": 7,
+                "day": 21
+            },
+            "end": {
+                "year": 2023,
+                "month": 7,
+                "day": 23
+            },
+            "track": "Circuit de Spa-Francorchamps",
+            "cars": "GT3 Class",
+            "category" : "road"
+        },
+        "10": {
+            "name": "Knoxville Nationals",
+            "start": {
+                "year": 2023,
+                "month": 8,
+                "day": 18
+            },
+            "end": {
+                "year": 2023,
+                "month": 8,
+                "day": 20
+            },
+            "track": "Knoxville Raceway",
+            "cars": "410 Winged Sprint",
+            "category" : "dirt_oval"
+        },
+        "11": {
+            "name": "Bristol 500",
+            "start": {
+                "year": 2023,
+                "month": 9,
+                "day": 5
+            },
+            "end": {
+                "year": 2023,
+                "month": 9,
+                "day": 11
+            },
+            "track": "Bristol Motor Speedway",
+            "cars": "NASCAR Cup Series",
+            "category" : "oval"
+        },
+        "12": {
+            "name": "Bathurst 1000",
+            "start": {
+                "year": 2023,
+                "month": 9,
+                "day": 15
+            },
+            "end": {
+                "year": 2023,
+                "month": 9,
+                "day": 17
+            },
+            "track": "Mount Panorama Circuit",
+            "cars": "Supercars",
+            "category" : "road"
+        },
+        "13": {
+            "name": "Petit Le Mans",
+            "start": {
+                "year": 2023,
+                "month": 10,
+                "day": 6
+            },
+            "end": {
+                "year": 2023,
+                "month": 10,
+                "day": 8
+            },
+            "track": "Roat  Atlanta",
+            "cars": "GTP, LMP2, GT3 (IMSA)",
+            "category" : "road"
+        },
+        "14": {
+            "name": "Crandon Pro 4 Championship",
+            "start": {
+                "year": 2023,
+                "month": 10,
+                "day": 15
+            },
+            "end": {
+                "year": 2023,
+                "month": 10,
+                "day": 15
+            },
+            "track": "Crandon International Raceway",
+            "cars": "Pro 4 Off-Road Truck",
+            "category" : "dirt_road"
+        },
+        "15": {
+            "name": "SCCA Runoffs",
+            "start": {
+                "year": 2023,
+                "month": 10,
+                "day": 17
+            },
+            "end": {
+                "year": 2023,
+                "month": 10,
+                "day": 22
+            },
+            "track": "Virginia International Raceway",
+            "cars": "TBD",
+            "category" : "road"
+        },
+        "16": {
+            "name": "NiS Phoenix Finale",
+            "start": {
+                "year": 2023,
+                "month": 10,
+                "day": 31
+            },
+            "end": {
+                "year": 2023,
+                "month": 11,
+                "day": 6
+            },
+            "track": "Phoenix Raceway",
+            "cars": "NASCAR Cup Series",
+            "category" : "oval"
+        },
+        "17": {
+            "name": "Fuji 8HR",
+            "start": {
+                "year": 2023,
+                "month": 11,
+                "day": 10
+            },
+            "end": {
+                "year": 2023,
+                "month": 11,
+                "day": 12
+            },
+            "track": "Fuji International Speedway",
+            "cars": "GT3 Class",
+            "category" : "road"
+        },
+        "18": {
+            "name": "Winter Derby",
+            "start": {
+                "year": 2023,
+                "month": 11,
+                "day": 15
+            },
+            "end": {
+                "year": 2023,
+                "month": 11,
+                "day": 25
+            },
+            "track": "Five Flags Speedway",
+            "cars": "Super Late Model",
+            "category" : "oval"
+        },
+        "19": {
+            "name": "Chili Bowl",
+            "start": {
+                "year": 2023,
+                "month": 12,
+                "day": 17
+            },
+            "end": {
+                "year": 2023,
+                "month": 12,
+                "day": 17
+            },
+            "track": "Tulsa Expo Center",
+            "cars": "Dirt Midget",
+            "category" : "dirt_oval"
+        },
+        "99": {
+            "name": "Peachtree Three",
+            "start": {
+            },
+            "end": {
+            },
+            "track": "Road Atlanta",
+            "cars": "Corvette C8R GTE, GT4, GR86",
+            "category" : "road"
+        }
+    }
+}

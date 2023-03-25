@@ -1,5 +1,6 @@
 json/*.json
 !sass_talk.json
+!special_events.json
 
 __pycache__/*
 py/__pycache__/*
