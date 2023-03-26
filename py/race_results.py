@@ -103,7 +103,9 @@ async def process_race_result(subsession_id, **kwargs):
 
             # Add the race to the cache for every member that took part.
             for inner_member in global_vars.members:
-                if str(global_vars.members[inner_member]['iracingCustID']) in results_dict['respo_drivers']:
+                id_string = str(global_vars.members[inner_member]['iracingCustID'])
+
+                if id_string in results_dict['respo_drivers']:
                     # update the message text with the participants' names
                     if drivers_listed < num_respo_drivers - 1:
                         if drivers_listed == 0 and num_respo_drivers == 2:
@@ -145,19 +147,19 @@ async def process_race_result(subsession_id, **kwargs):
                     new_race_dict['car_class_id'] = results_dict['car_class_id']
                     new_race_dict['pos_start_class'] = results_dict['pos_start_class']
                     new_race_dict['pos_finish_class'] = results_dict['pos_finish_class']
-                    new_race_dict['incidents'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['incidents']
-                    new_race_dict['laps'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['laps']
-                    new_race_dict['laps_led'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['laps_led']
-                    new_race_dict['irating_old'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_old']
-                    new_race_dict['irating_new'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_new']
+                    new_race_dict['incidents'] = results_dict['respo_drivers'][id_string]['incidents']
+                    new_race_dict['laps'] = results_dict['respo_drivers'][id_string]['laps']
+                    new_race_dict['laps_led'] = results_dict['respo_drivers'][id_string]['laps_led']
+                    new_race_dict['irating_old'] = results_dict['respo_drivers'][id_string]['irating_old']
+                    new_race_dict['irating_new'] = results_dict['respo_drivers'][id_string]['irating_new']
                     new_race_dict['drivers_in_class'] = results_dict['drivers_in_class']
                     new_race_dict['team_drivers_max'] = results_dict['team_drivers_max']
 
-                    if subsession.cat_id == pyracingConstants.Category.road.value and "discordID" in global_vars.members[inner_member]:
-                        if results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_old'] < global_vars.pleb_line and results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_new'] >= global_vars.pleb_line:
+                    if (subsession.cat_id == pyracingConstants.Category.road.value) and ("discordID" in global_vars.members[inner_member]) and (results_dict['respo_drivers'][id_string]['irating_new'] > 0):
+                        if results_dict['respo_drivers'][id_string]['irating_old'] < global_vars.pleb_line and results_dict['respo_drivers'][id_string]['irating_new'] >= global_vars.pleb_line:
                             await roles.promote_driver(global_vars.members[inner_member]["discordID"])
                             role_change_reason = global_vars.members[inner_member]['leaderboardName'] + " risen above the pleb line and proven themself worthy of the title God Amongst Men."
-                        elif results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_old'] >= global_vars.pleb_line and results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_new'] < global_vars.pleb_line:
+                        elif results_dict['respo_drivers'][id_string]['irating_old'] >= global_vars.pleb_line and results_dict['respo_drivers'][id_string]['irating_new'] < global_vars.pleb_line:
                             await roles.demote_driver(global_vars.members[inner_member]["discordID"])
                             role_change_reason = global_vars.members[inner_member]['leaderboardName'] + " has dropped below the pleb line and has been banished from Mount Olypmus to carry out the rest of their days among the peasants."
 
@@ -167,8 +169,8 @@ async def process_race_result(subsession_id, **kwargs):
                         else:
                             if results_dict['time_start_raw'] > global_vars.members[inner_member]['last_race_check']:
                                 global_vars.members[inner_member]['last_race_check'] = results_dict['time_start_raw']
-                                if results_dict['official'] == 1:
-                                    global_vars.members[inner_member]['last_known_ir'] = results_dict['respo_drivers'][str(global_vars.members[inner_member]['iracingCustID'])]['irating_new']
+                                if (results_dict['official'] == 1) and (results_dict['respo_drivers'][id_string]['irating_new'] > 0):
+                                    global_vars.members[inner_member]['last_known_ir'] = results_dict['respo_drivers'][id_string]['irating_new']
 
             week_data_after = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], global_vars.series_info['misc']['current_quarter'], current_racing_week)
             stats.calc_total_champ_points(week_data_after, weeks_to_count)
@@ -441,7 +443,10 @@ async def send_results_embed(channel, results_dict):
                     embedVar.add_field(name=f"Safety Rating", value=f"{safety_rating} {safety_rating_change}", inline=False)
                 else:
                     # embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"iR: {results_dict['respo_drivers'][report_driver]['irating_new']} ({irating_change:+d})\nSR: {safety_rating} {safety_rating_change}\nLaps: {results_dict['respo_drivers'][report_driver]['laps']}", inline=False)
-                    embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"{irating_change:+d} iR ({results_dict['respo_drivers'][report_driver]['irating_new']}), {safety_rating_change} SR ({results_dict['respo_drivers'][report_driver]['incidents']}x), {results_dict['respo_drivers'][report_driver]['laps']} Laps", inline=False)
+                    if (results_dict['respo_drivers'][report_driver]["irating_new"] < 0) or (results_dict['respo_drivers'][report_driver]['laps'] < 1):
+                        embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"{results_dict['respo_drivers'][report_driver]['laps']} Laps", inline=False)
+                    else:
+                        embedVar.add_field(name=results_dict['respo_drivers'][report_driver]['leaderboard_name'], value=f"{irating_change:+d} iR ({results_dict['respo_drivers'][report_driver]['irating_old']}), {safety_rating_change} SR ({results_dict['respo_drivers'][report_driver]['incidents']}x), {results_dict['respo_drivers'][report_driver]['laps']} Laps", inline=False)
         else:
             for report_driver in results_dict['respo_drivers']:
                 if multi_report is False:

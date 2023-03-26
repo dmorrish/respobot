@@ -21,7 +21,7 @@ class IrLeaderboardCog(commands.Cog):
         response = "```\nNAME                        IR\n"
         response += "--------------------------------\n"
         response += "rEsPo BoT                  " + str(random.randint(12401, 12990)) + "\n"
-        list_of_shame = "\n\nThe following asswipes have not done a road race in their previous 10 races: "
+        list_of_shame = "\n\nThe following asswipes have not done a road race in their previous 10 races: \n"
         list_of_shame_populated = False
 
         global_vars.members_locks += 1
@@ -30,12 +30,12 @@ class IrLeaderboardCog(commands.Cog):
                 if global_vars.members[member]["last_known_ir"] > 0:
                     ir_dict[helpers.spongify(global_vars.members[member]["leaderboardName"])] = global_vars.members[member]["last_known_ir"]
                 else:
-                    list_of_shame += global_vars.members[member]['leaderboardName']
+                    list_of_shame += global_vars.members[member]['leaderboardName'] + "\n"
                     list_of_shame_populated = True
         global_vars.members_locks -= 1
         sorted_ir_dict = dict(sorted(ir_dict.items(), key=lambda item: item[1], reverse=True))
         for key in sorted_ir_dict:
-            if pleb_line_printed is False and sorted_ir_dict[key] < 2000:
+            if pleb_line_printed is False and sorted_ir_dict[key] < global_vars.pleb_line:
                 response += "----------(pleb line)-----------\n"
                 pleb_line_printed = True
             response += key
