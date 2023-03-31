@@ -1,5 +1,6 @@
 import global_vars
 import math
+from datetime import datetime, timedelta
 
 
 # Pass in -1 for the series ID to get the current week based on Rookie Mazda
@@ -140,14 +141,17 @@ def get_respo_champ_points(year, quarter, up_to_week):
 def get_respo_race_week(time_start_raw):
     time_start = time_start_raw / 1000
     race_week = -1
+    start_datetime = datetime.utcfromtimestamp(time_start)
 
     for year in global_vars.season_times_dict:
         for quarter in global_vars.season_times_dict[year]:
-            if global_vars.season_times_dict[year][quarter]['date_start'] <= time_start and global_vars.season_times_dict[year][quarter]['date_end'] > time_start:
-                race_week = int((time_start - global_vars.season_times_dict[year][quarter]['date_start']) / (7 * 24 * 60 * 60))
+            if (global_vars.season_times_dict[year][quarter]['date_start'] <= time_start) and (global_vars.season_times_dict[year][quarter]['date_end'] > time_start):
+                season_datetime = datetime.fromtimestamp(global_vars.season_times_dict[year][quarter]['date_start'])
+                time_diff = (start_datetime - season_datetime).total_seconds()
+                race_week = int(time_diff / (7 * 24 * 60 * 60))
                 break
 
-    if race_week > 12 and year == '2020' and quarter == '3':
+    if (race_week > 12) and (year == '2020') and (quarter == '3'):
         # 2020s3 had a "leap week"
         race_week = -1
     elif race_week > 11:
