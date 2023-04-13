@@ -59,19 +59,19 @@ async def get_race_results():
                             race_found = True
 
                 if race_found is False:
-                    await process_race_result(race.subsession_id)
+                    await process_race_result(iracing_id, race.subsession_id)
 
     global_vars.members_locks -= 1
     global_vars.dump_json()
 
 
-async def process_race_result(subsession_id, **kwargs):
+async def process_race_result(iracing_id, subsession_id, **kwargs):
     multi_report = False
     role_change_reason = ""
     message_text = ""
 
     subsession = await global_vars.ir.subsession_data(subsession_id)
-    results_dict = await get_results_summary(subsession)
+    results_dict = await get_results_summary(iracing_id, subsession)
 
     if results_dict is not None and results_dict != {}:
 
@@ -228,7 +228,7 @@ async def process_race_result(subsession_id, **kwargs):
                                         await channel.send(inner_member + " is now on the Respo championship leaderboard and in " + place_after_string + " place.")
 
 
-async def get_results_summary(subsession):
+async def get_results_summary(iracing_id, subsession):
     if not subsession:
         return {}
     if subsession.team_drivers_max > 1:
@@ -239,7 +239,6 @@ async def get_results_summary(subsession):
     class_count = 0
     car_number = 1
     respo_driver = None
-    team_number = -1
 
     new_race_dict = {}
 
@@ -247,11 +246,9 @@ async def get_results_summary(subsession):
 
     # Prelim scan drivers to get class and which car this member ran in
     for driver in subsession.drivers:
-        if driver.sim_ses_type_name == 'Race':
-            if helpers.is_respo_driver(driver.cust_id):
-                respo_driver = driver
-                team_number = driver.car_num
-                break
+        if (driver.sim_ses_type_name == 'Race') and (driver.cust_id == iracing_id):
+            respo_driver = driver
+            break
 
     # Make sure a member actually drove in the race.
     if respo_driver is None:
@@ -282,7 +279,7 @@ async def get_results_summary(subsession):
             if driver.car_class_id == respo_driver.car_class_id and driver.sim_ses_type_name == 'Race' and isinstance(driver.irating_old, int) and driver.irating_old > respo_driver.irating_old:
                 car_number += 1
 
-        if driver.car_num == team_number:
+        if driver.car_num == respo_driver.car_num:
             for member in global_vars.members:
                 if driver.cust_id == global_vars.members[member]['iracingCustID']:
                     new_race_dict['respo_drivers'][str(driver.cust_id)] = {}
