@@ -10,7 +10,7 @@ from discord.errors import NotFound, HTTPException
 from discord.ext import tasks
 import math
 from pyracing.client import Client
-from datetime import datetime
+from datetime import datetime, timezone
 import httpx
 import traceback
 
@@ -202,16 +202,19 @@ async def task_loop():
     if 'current_race_week' not in global_vars.series_info['misc']:
         global_vars.series_info['misc']['current_race_week'] = -1
 
-    if season_active:
-        if current_race_week != global_vars.series_info['misc']['current_race_week']:
-            if current_race_week != 1:
-                # Post the end of week Respo Update
+    now = datetime.now(timezone.utc)
+
+    if now.hour == 1:
+        if season_active:
+            if current_race_week != global_vars.series_info['misc']['current_race_week']:
+                if current_race_week != 1:
+                    # Post the end of week Respo Update
+                    post_update = True
+                    update_message = "We've reached the end of week " + str(current_race_week - 1) + ", so let's see who's racing well, who's racing like shit, and who's not even racing at all!"
+        else:
+            if global_vars.series_info['misc']['current_race_week'] != -1:
                 post_update = True
-                update_message = "We've reached the end of week " + str(current_race_week - 1) + ", so let's see who's racing well, who's racing like shit, and who's not even racing at all!"
-    else:
-        if global_vars.series_info['misc']['current_race_week'] != -1:
-            post_update = True
-            update_message = "Wow, I can't believe another season has passed. Let's see how you shitheels stack up."
+                update_message = "Wow, I can't believe another season has passed. Let's see how you shitheels stack up."
 
     if post_update:
         week_data = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], global_vars.series_info['misc']['current_quarter'], global_vars.series_info['misc']['current_race_week'])
