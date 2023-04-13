@@ -62,7 +62,7 @@ async def get_race_results():
                     await process_race_result(race.subsession_id)
 
     global_vars.members_locks -= 1
-    # global_vars.dump_json()
+    global_vars.dump_json()
 
 
 async def process_race_result(subsession_id, **kwargs):
