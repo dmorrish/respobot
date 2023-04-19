@@ -135,11 +135,10 @@ async def task_loop():
                     await thread.delete()
 
     season_active = False
+    current_race_week = -1
 
     try:
         current_seasons = await global_vars.ir.current_seasons(only_active=0)
-
-        current_race_week = -1
 
         global_vars.season_times_dict = {}
 
