@@ -146,6 +146,7 @@ async def task_loop():
             if season.series_id == 139 and season.active:
                 season_active = True
                 current_race_week = season.race_week
+                global_vars.series_info['misc']['current_race_week'] = current_race_week
 
                 if str(season.season_year) not in global_vars.season_times_dict:
                     global_vars.season_times_dict[str(season.season_year)] = {}
@@ -163,11 +164,9 @@ async def task_loop():
                 break
 
     except httpx.HTTPError:
-        print("pyracing timed out. Reinitializing client...")
-        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+        print("pyracing timed out when trying to use the current_seasons() method.")
     except RecursionError:
-        print("pyracing hit the recursion limit. Reinitializing client...")
-        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+        print("pyracing hit the recursion limit when trying to use the current_seasons() method.")
     except Exception as ex:
         print(traceback.format_exc())
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -175,85 +174,86 @@ async def task_loop():
         # print(message)
         log.logger_pyracing.error(message)
 
-    # await results.get_race_results()
-    # logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
-
-    try:
-        await results.get_race_results()
-        # print('Finished scanning for new races. Sleeping until next check.')
-        log.logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
-    except httpx.HTTPError:
-        print("pyracing timed out. Reinitializing client...")
-        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
-    except RecursionError:
-        print("pyracing hit the recursion limit. Reinitializing client...")
-        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
-    except Exception as ex:
-        print(traceback.format_exc())
-        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-        message = template.format(type(ex).__name__, ex.args)
-        # print(message)
-        log.logger_pyracing.error(message)
+    # try:
+    #     await results.get_race_results()
+    #     # print('Finished scanning for new races. Sleeping until next check.')
+    #     log.logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
+    # except httpx.HTTPError:
+    #     print("pyracing timed out. Reinitializing client...")
+    #     global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+    # except RecursionError:
+    #     print("pyracing hit the recursion limit. Reinitializing client...")
+    #     global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+    # except Exception as ex:
+    #     print(traceback.format_exc())
+    #     template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+    #     message = template.format(type(ex).__name__, ex.args)
+    #     # print(message)
+    #     log.logger_pyracing.error(message)
 
     post_update = False
     update_message = ""
+    block_update = False
 
     if 'current_race_week' not in global_vars.series_info['misc']:
         global_vars.series_info['misc']['current_race_week'] = -1
+    if 'last_reported_week' not in global_vars.series_info['misc']:
+        global_vars.series_info['misc']['last_reported_week'] = -1
+        block_update = True
 
     now = datetime.now(timezone.utc)
 
-    if now.hour == 1:
-        if season_active:
-            if current_race_week != global_vars.series_info['misc']['current_race_week']:
-                if current_race_week != 1:
-                    # Post the end of week Respo Update
-                    post_update = True
-                    update_message = "We've reached the end of week " + str(current_race_week - 1) + ", so let's see who's racing well, who's racing like shit, and who's not even racing at all!"
-        else:
-            if global_vars.series_info['misc']['current_race_week'] != -1:
-                post_update = True
-                update_message = "Wow, I can't believe another season has passed. Let's see how you shitheels stack up."
+    # From 1am to 2am UTC every Monday, check if we need to post an end-of-week update.
+    if now.hour == 1 and now.weekday() == 0 and current_race_week != global_vars.series_info['misc']['last_reported_week']:
+        if season_active and current_race_week != 1:
+            # Post the end of week Respo update when week 2 or later begins and the season is still active
+            post_update = True
+            update_message = "We've reached the end of week " + str(current_race_week - 1) + ", so let's see who's racing well, who's racing like shit, and who's not even racing at all!"
+        elif not season_active and global_vars.series_info['misc']['last_reported_week'] != -1:
+            # Post an end-of season Respo update if the season is not active and the previous week was an active week.
+            post_update = True
+            update_message = "Wow, I can't believe another season has passed. Let's see how you shitheels stack up."
 
-    if post_update:
-        week_data = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], global_vars.series_info['misc']['current_quarter'], global_vars.series_info['misc']['current_race_week'])
-        stats.calc_total_champ_points(week_data, 6)
-        stats.calc_projected_champ_points(week_data, global_vars.series_info['misc']['current_race_week'], 6, False)
+        if post_update and not block_update:
+            week_data = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], global_vars.series_info['misc']['current_quarter'], global_vars.series_info['misc']['last_reported_week'])
+            stats.calc_total_champ_points(week_data, 6)
+            stats.calc_projected_champ_points(week_data, global_vars.series_info['misc']['current_race_week'], 6, False)
 
-        someone_racing = False
-        for member in week_data:
-            if len(week_data[member]['weeks']) > 0:
-                someone_racing = True
-                break
+            someone_racing = False
+            for member in week_data:
+                if len(week_data[member]['weeks']) > 0:
+                    someone_racing = True
+                    break
 
-        if someone_racing:
-            for guild in global_vars.bot.guilds:
-                if guild.id == env.GUILD:
-                    for channel in guild.channels:
-                        if channel.id == env.CHANNEL:
-                            title_text = "Championship Points for Respo Racing Whatever the Fuck You Want Series"
+            if someone_racing:
+                for guild in global_vars.bot.guilds:
+                    if guild.id == env.GUILD:
+                        for channel in guild.channels:
+                            if channel.id == env.CHANNEL:
+                                title_text = "Championship Points for Respo Racing Whatever the Fuck You Want Series"
 
-                            title_text += " for " + str(global_vars.series_info['misc']['current_year']) + "s" + str(global_vars.series_info['misc']['current_quarter'])
+                                title_text += " for " + str(global_vars.series_info['misc']['current_year']) + "s" + str(global_vars.series_info['misc']['current_quarter'])
 
-                            if season_active:
-                                graph = image_gen.generate_champ_graph_compact(week_data, title_text, 6, global_vars.series_info['misc']['current_race_week'])
-                            else:
-                                graph = image_gen.generate_champ_graph(week_data, title_text, 6, False)
+                                if season_active:
+                                    graph = image_gen.generate_champ_graph_compact(week_data, title_text, 6, global_vars.series_info['misc']['last_reported_week'])
+                                else:
+                                    graph = image_gen.generate_champ_graph(week_data, title_text, 6, False)
 
-                            filepath = env.BOT_DIRECTORY + "media/tmp_champ_" + str(datetime.now().strftime("%Y%m%d%H%M%S%f")) + ".png"
+                                filepath = env.BOT_DIRECTORY + "media/tmp_champ_" + str(datetime.now().strftime("%Y%m%d%H%M%S%f")) + ".png"
 
-                            graph.save(filepath, format=None)
+                                graph.save(filepath, format=None)
 
-                            with open(filepath, "rb") as f_graph:
-                                picture = discord.File(f_graph)
-                                await channel.send(content=update_message, file=picture)
-                                picture.close()
+                                with open(filepath, "rb") as f_graph:
+                                    picture = discord.File(f_graph)
+                                    await channel.send(content=update_message, file=picture)
+                                    picture.close()
 
-                            if os.path.exists(filepath):
-                                await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
-                                os.remove(filepath)
+                                if os.path.exists(filepath):
+                                    await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
+                                    os.remove(filepath)
 
-    global_vars.series_info['misc']['current_race_week'] = current_race_week
+        global_vars.series_info['misc']['last_reported_week'] = current_race_week
+
     global_vars.dump_json()
 
 
