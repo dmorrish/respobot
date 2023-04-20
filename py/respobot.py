@@ -134,11 +134,20 @@ async def task_loop():
                 if thread.owner_id == global_vars.bot.user.id and age > 7 * 24 * 60 * 60:
                     await thread.delete()
 
+    block_update = False
+    if 'current_race_week' not in global_vars.series_info['misc']:
+        global_vars.series_info['misc']['current_race_week'] = -1
+    if 'last_reported_week' not in global_vars.series_info['misc']:
+        global_vars.series_info['misc']['last_reported_week'] = -1
+        block_update = True
+
     season_active = False
     current_race_week = -1
+    season_info_updated = False
 
     try:
         current_seasons = await global_vars.ir.current_seasons(only_active=0)
+        season_info_updated = True
 
         global_vars.season_times_dict = {}
 
@@ -146,7 +155,6 @@ async def task_loop():
             if season.series_id == 139 and season.active:
                 season_active = True
                 current_race_week = season.race_week
-                global_vars.series_info['misc']['current_race_week'] = current_race_week
 
                 if str(season.season_year) not in global_vars.season_times_dict:
                     global_vars.season_times_dict[str(season.season_year)] = {}
@@ -171,8 +179,13 @@ async def task_loop():
         print(traceback.format_exc())
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(ex).__name__, ex.args)
-        # print(message)
         log.logger_pyracing.error(message)
+
+    if season_info_updated:
+        if season_active:
+            global_vars.series_info['misc']['current_race_week'] = current_race_week
+        else:
+            global_vars.series_info['misc']['current_race_week'] = -1
 
     try:
         await results.get_race_results()
@@ -193,24 +206,17 @@ async def task_loop():
 
     post_update = False
     update_message = ""
-    block_update = False
-
-    if 'current_race_week' not in global_vars.series_info['misc']:
-        global_vars.series_info['misc']['current_race_week'] = -1
-    if 'last_reported_week' not in global_vars.series_info['misc']:
-        global_vars.series_info['misc']['last_reported_week'] = -1
-        block_update = True
 
     now = datetime.now(timezone.utc)
 
     # From 1am to 2am UTC every Monday, check if we need to post an end-of-week update.
-    if now.hour == 1 and now.weekday() == 0 and current_race_week != global_vars.series_info['misc']['last_reported_week']:
-        if season_active and current_race_week != 1:
+    if now.hour == 1 and now.weekday() == 0 and season_info_updated is True:
+        if season_active and current_race_week > global_vars.series_info['misc']['last_reported_week']:
             # Post the end of week Respo update when week 2 or later begins and the season is still active
             post_update = True
             update_message = "We've reached the end of week " + str(current_race_week - 1) + ", so let's see who's racing well, who's racing like shit, and who's not even racing at all!"
-        elif not season_active and global_vars.series_info['misc']['last_reported_week'] != -1:
-            # Post an end-of season Respo update if the season is not active and the previous week was an active week.
+        elif not season_active and global_vars.series_info['misc']['last_reported_week'] > 0:
+            # Post an end-of season Respo update if the season is not active and the previously reported week was an active week.
             post_update = True
             update_message = "Wow, I can't believe another season has passed. Let's see how you shitheels stack up."
 
