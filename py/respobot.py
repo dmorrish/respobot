@@ -174,22 +174,22 @@ async def task_loop():
         # print(message)
         log.logger_pyracing.error(message)
 
-    # try:
-    #     await results.get_race_results()
-    #     # print('Finished scanning for new races. Sleeping until next check.')
-    #     log.logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
-    # except httpx.HTTPError:
-    #     print("pyracing timed out. Reinitializing client...")
-    #     global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
-    # except RecursionError:
-    #     print("pyracing hit the recursion limit. Reinitializing client...")
-    #     global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
-    # except Exception as ex:
-    #     print(traceback.format_exc())
-    #     template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-    #     message = template.format(type(ex).__name__, ex.args)
-    #     # print(message)
-    #     log.logger_pyracing.error(message)
+    try:
+        await results.get_race_results()
+        # print('Finished scanning for new races. Sleeping until next check.')
+        log.logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
+    except httpx.HTTPError:
+        print("pyracing timed out. Reinitializing client...")
+        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+    except RecursionError:
+        print("pyracing hit the recursion limit. Reinitializing client...")
+        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+    except Exception as ex:
+        print(traceback.format_exc())
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        message = template.format(type(ex).__name__, ex.args)
+        # print(message)
+        log.logger_pyracing.error(message)
 
     post_update = False
     update_message = ""
