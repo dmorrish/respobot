@@ -209,8 +209,8 @@ async def task_loop():
 
     now = datetime.now(timezone.utc)
 
-    # From 1am to 2am UTC every Monday, check if we need to post an end-of-week update.
-    if now.hour == 1 and now.weekday() == 0 and season_info_updated is True:
+    # From 1am to 2am UTC every Tuesday, check if we need to post an end-of-week update.
+    if now.hour == 1 and now.weekday() == 1 and season_info_updated is True:
         if season_active and current_race_week > global_vars.series_info['misc']['last_reported_week']:
             # Post the end of week Respo update when week 2 or later begins and the season is still active
             post_update = True
