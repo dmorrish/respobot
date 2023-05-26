@@ -246,7 +246,7 @@ async def get_results_summary(iracing_id, subsession):
 
     # Prelim scan drivers to get class and which car this member ran in
     for driver in subsession.drivers:
-        if (driver.sim_ses_type_name == 'Race') and (driver.cust_id == iracing_id):
+        if (driver.sim_ses_name.lower() == 'race' or driver.sim_ses_name.lower() == 'feature') and (driver.cust_id == iracing_id):
             respo_driver = driver
             break
 
@@ -262,7 +262,7 @@ async def get_results_summary(iracing_id, subsession):
     # print(subsession.session_name)
 
     for driver in subsession.drivers:
-        if driver.car_class_id == respo_driver.car_class_id and driver.sim_ses_type_name == 'Race':
+        if driver.car_class_id == respo_driver.car_class_id and (driver.sim_ses_name.lower() == 'race' or driver.sim_ses_name.lower() == 'feature'):
             if driver.cust_id > 0 and driver.irating_old > 0:
                 if str(driver.car_num) not in sof_dict:
                     sof_dict[str(driver.car_num)] = {}
@@ -276,7 +276,7 @@ async def get_results_summary(iracing_id, subsession):
                 class_count += 1  # If not a team event, count every driver in the race
 
         if team_event is False:
-            if driver.car_class_id == respo_driver.car_class_id and driver.sim_ses_type_name == 'Race' and isinstance(driver.irating_old, int) and driver.irating_old > respo_driver.irating_old:
+            if driver.car_class_id == respo_driver.car_class_id and (driver.sim_ses_name.lower() == 'race' or driver.sim_ses_name.lower() == 'feature') and isinstance(driver.irating_old, int) and driver.irating_old > respo_driver.irating_old:
                 car_number += 1
 
         if driver.car_num == respo_driver.car_num:
@@ -316,7 +316,7 @@ async def get_results_summary(iracing_id, subsession):
     new_race_dict['time_start_raw'] = respo_driver.time_session_start
     new_race_dict["pos_start_class"] = 1
     for driver in subsession.drivers:
-        if driver.car_class_id == respo_driver.car_class_id and driver.sim_ses_type_name == 'Race' and driver.pos_start < respo_driver.pos_start and (not team_event or driver.cust_id < 0):
+        if driver.car_class_id == respo_driver.car_class_id and (driver.sim_ses_name.lower() == 'race' or driver.sim_ses_name.lower() == 'feature') and driver.pos_start < respo_driver.pos_start and (not team_event or driver.cust_id < 0):
             new_race_dict["pos_start_class"] += 1
 
     new_race_dict["official"] = respo_driver.official
