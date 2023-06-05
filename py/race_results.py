@@ -514,12 +514,16 @@ async def send_results_embed_compact(channel, results_dict):
         else:
             field_name = results_dict['hosted_name']
 
-        event_description = track
+        event_description = "at " + track
 
         embedVar.add_field(name=field_name, value=event_description, inline=False)
         # embedVar.add_field(name="Track", value=track, inline=False)
 
-        result_field_name = "Result: P" + str(results_dict['pos_finish_class'])
+        result_field_name = "Result: P" + str(results_dict['pos_finish_class']) + " of " + str(results_dict['cars_in_class'])
+        # if results_dict['team_event'] is True:
+        #     result_field_name += " teams"
+        # else:
+        #     result_field_name += " cars"
 
         if multi_report is True:
             result_string = ""
