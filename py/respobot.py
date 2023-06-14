@@ -192,11 +192,11 @@ async def task_loop():
         # print('Finished scanning for new races. Sleeping until next check.')
         log.logger_pyracing.info('Finished scanning for new races. Sleeping until next check.')
     except httpx.HTTPError:
-        print("pyracing timed out. Reinitializing client...")
-        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+        print("pyracing timed out when fetching race results.")
+        # global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
     except RecursionError:
-        print("pyracing hit the recursion limit. Reinitializing client...")
-        global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
+        print("pyracing hit the recursion limit when fetching race results.")
+        # global_vars.ir = Client(env.IRACING_USERNAME, env.IRACING_PASSWORD)
     except Exception as ex:
         print(traceback.format_exc())
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -258,7 +258,7 @@ async def task_loop():
                                     await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
                                     os.remove(filepath)
 
-        global_vars.series_info['misc']['last_reported_week'] = current_race_week
+            global_vars.series_info['misc']['last_reported_week'] = current_race_week
 
     global_vars.dump_json()
 
