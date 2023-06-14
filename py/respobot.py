@@ -258,7 +258,7 @@ async def task_loop():
                                     await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
                                     os.remove(filepath)
 
-            global_vars.series_info['misc']['last_reported_week'] = current_race_week
+        global_vars.series_info['misc']['last_reported_week'] = current_race_week
 
     global_vars.dump_json()
 

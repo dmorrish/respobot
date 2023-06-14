@@ -67,9 +67,9 @@ async def run():
                     discord_member = guild.get_member(global_vars.members["Deryk Morrish"]["discordID"])
                     await discord_member.send(content=message)
     except httpx.HTTPError:
-        print("pyracing timed out when trying to use the update_series.run() method.")
+        print("pyracing timed out during the respobot.update_series.run() method.")
     except RecursionError:
-        print("pyracing hit the recursion limit when trying to use the update_series.run() method.")
+        print("pyracing hit the recursion limit during the respobot.update_series.run() method.")
     except Exception as ex:
         print(traceback.format_exc())
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
