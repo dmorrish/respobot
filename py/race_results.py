@@ -25,11 +25,13 @@ async def get_race_results():
             # This person has never had their races cached. Cache them now.
             await cache_races(global_vars.ir, iracing_id)
         else:
+            on_a_hiatus = False
             # Grab all series races since their previous cached race
             start_high = int(datetime.timestamp(datetime.now()) * 1000)
             start_low = global_vars.members[member]['last_race_check']
             if start_high - start_low > 90 * 24 * 60 * 60 * 1000:
                 start_high = start_low + 90 * 24 * 60 * 60 * 1000 - 1000
+                on_a_hiatus = True
             races_list = await global_vars.ir.search_results(iracing_id, start_low=start_low, start_high=start_high)
 
             # Grab all hosted races in the last week
@@ -60,6 +62,9 @@ async def get_race_results():
 
                 if race_found is False:
                     await process_race_result(iracing_id, race.subsession_id)
+
+            if on_a_hiatus is True:
+                global_vars.members[member]['last_race_check'] = start_high - 2 * 24 * 60 * 60 * 1000
 
     global_vars.members_locks -= 1
     global_vars.dump_json()
