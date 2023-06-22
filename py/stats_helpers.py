@@ -1,15 +1,31 @@
 import global_vars
 import math
-from datetime import datetime, timedelta
+import httpx
+import traceback
+import respobot_logging as log
 
 
 # Pass in -1 for the series ID to get the current week based on Rookie Mazda
 async def get_current_iracing_week(series_id):
-    seasons = await global_vars.ir.current_seasons(only_active=True)
+    try:
+        seasons = await global_vars.ir.current_seasons(only_active=True)
 
-    for season in seasons:
-        if season.series_id == series_id or series_id < 0 and season.series_id == 139:
-            return season.race_week
+        for season in seasons:
+            if season.series_id == series_id or (series_id < 0 and season.series_id == 139):
+                return season.race_week
+    except httpx.HTTPError:
+        print("pyracing timed out when fetching current race week in stats_helpers.get_current_iracing_week().")
+        return None
+    except RecursionError:
+        print("pyracing hit the recursion limit when fetching current race week in stats_helpers.get_current_iracing_week().")
+        return None
+    except Exception as ex:
+        print(traceback.format_exc())
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        message = template.format(type(ex).__name__, ex.args)
+        # print(message)
+        log.logger_pyracing.error(message)
+        return None
 
     return -1
 

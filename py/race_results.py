@@ -85,6 +85,9 @@ async def process_race_result(iracing_id, subsession_id, **kwargs):
             weeks_to_count = 6
             current_racing_week = await stats.get_current_iracing_week(-1)
 
+            if current_racing_week is None:
+                current_racing_week = global_vars.series_info['misc']['current_race_week']
+
             if current_racing_week < 0:
                 current_racing_week = 12
 

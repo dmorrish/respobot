@@ -107,6 +107,10 @@ class ChampCog(commands.Cog):
 
         if ongoing:
             max_week = await stats.get_current_iracing_week(series_id)
+
+            if max_week is None:
+                max_week = global_vars.series_info['misc']['current_race_week']
+
             if max_week < 0:
                 max_week = 12
                 week_13_active = True
