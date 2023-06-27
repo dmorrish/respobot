@@ -528,7 +528,7 @@ async def send_results_embed_compact(channel, results_dict):
         # embedVar.add_field(name="Track", value=track, inline=False)
 
         pos_change = int(results_dict['pos_start_class'] - results_dict['pos_finish_class'])
-        pos_change_str = " (-)"
+        pos_change_str = " (↕0)"
 
         if pos_change < 0:
             pos_change_str = " (↓" + str(abs(pos_change)) + ")"
