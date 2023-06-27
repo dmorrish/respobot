@@ -265,11 +265,18 @@ async def task_loop():
 
 def exit_handler(signum, frame):
     if global_vars.write_lock:
-        print("Exit cancelled: Writing json files. Try again.")
-    else:
-        exit(0)
+        log.logger_pyracing.info('Exit delayed: Writing json files.')
+        print("Exit delayed: Writing json files.")
+
+    while global_vars.write_lock:
+        pass
+
+    log.logger_pyracing.info('Done writing json files. Exiting...')
+    print("Done writing json files. Exiting...")
+    exit(0)
 
 
 signal.signal(signal.SIGINT, exit_handler)
+signal.signal(signal.SIGTERM, exit_handler)
 
 global_vars.bot.run(env.TOKEN)
