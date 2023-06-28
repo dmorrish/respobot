@@ -23,7 +23,7 @@ async def get_race_results():
         iracing_id = global_vars.members[member]["iracingCustID"]
         if str(iracing_id) not in global_vars.race_cache:
             # This person has never had their races cached. Cache them now.
-            await cache_races(global_vars.ir, iracing_id)
+            await cache_races.cache_races(iracing_id)
         else:
             on_a_hiatus = False
             # Grab all series races since their previous cached race
@@ -162,23 +162,23 @@ async def process_race_result(iracing_id, subsession_id, **kwargs):
                     new_race_dict['irating_new'] = results_dict['respo_drivers'][id_string]['irating_new']
                     new_race_dict['drivers_in_class'] = results_dict['drivers_in_class']
                     new_race_dict['team_drivers_max'] = results_dict['team_drivers_max']
+                    new_race_dict['track_cat_id'] = results_dict['track_cat_id']
 
-                    if (subsession.cat_id == pyracingConstants.Category.road.value) and ("discordID" in global_vars.members[inner_member]) and (results_dict['respo_drivers'][id_string]['irating_new'] > 0):
-                        if results_dict['respo_drivers'][id_string]['irating_old'] < global_vars.pleb_line and results_dict['respo_drivers'][id_string]['irating_new'] >= global_vars.pleb_line:
+                    if 'last_race_check' not in global_vars.members[inner_member]:
+                        global_vars.members[inner_member]['last_race_check'] = -1
+                        global_vars.members[inner_member]['last_known_ir'] = -1
+
+                    if (results_dict['track_cat_id'] == pyracingConstants.Category.road.value) and ("discordID" in global_vars.members[inner_member]) and (results_dict['respo_drivers'][id_string]['irating_new'] > 0):
+                        if ((results_dict['respo_drivers'][id_string]['irating_old'] < global_vars.pleb_line) or (global_vars.members[inner_member]['last_known_ir'] < 0)) and results_dict['respo_drivers'][id_string]['irating_new'] >= global_vars.pleb_line:
                             await roles.promote_driver(global_vars.members[inner_member]["discordID"])
                             role_change_reason = global_vars.members[inner_member]['leaderboardName'] + " risen above the pleb line and proven themself worthy of the title God Amongst Men."
-                        elif results_dict['respo_drivers'][id_string]['irating_old'] >= global_vars.pleb_line and results_dict['respo_drivers'][id_string]['irating_new'] < global_vars.pleb_line:
+                        elif ((results_dict['respo_drivers'][id_string]['irating_old'] >= global_vars.pleb_line) or (global_vars.members[inner_member]['last_known_ir'] < 0)) and results_dict['respo_drivers'][id_string]['irating_new'] < global_vars.pleb_line:
                             await roles.demote_driver(global_vars.members[inner_member]["discordID"])
                             role_change_reason = global_vars.members[inner_member]['leaderboardName'] + " has dropped below the pleb line and has been banished from Mount Olypmus to carry out the rest of their days among the peasants."
 
-                    if subsession.cat_id == pyracingConstants.Category.road.value:
-                        if 'last_race_check' not in global_vars.members[inner_member]:
-                            global_vars.members[inner_member]['last_race_check'] = results_dict['time_start_raw']
-                        else:
-                            if results_dict['time_start_raw'] > global_vars.members[inner_member]['last_race_check']:
-                                global_vars.members[inner_member]['last_race_check'] = results_dict['time_start_raw']
-                                if (results_dict['official'] == 1) and (results_dict['respo_drivers'][id_string]['irating_new'] > 0):
-                                    global_vars.members[inner_member]['last_known_ir'] = results_dict['respo_drivers'][id_string]['irating_new']
+                    if (results_dict['track_cat_id'] == pyracingConstants.Category.road.value) and (results_dict['time_start_raw'] > global_vars.members[inner_member]['last_race_check']) and (results_dict['official'] == 1) and (results_dict['respo_drivers'][id_string]['irating_new'] > 0):
+                        global_vars.members[inner_member]['last_race_check'] = results_dict['time_start_raw']
+                        global_vars.members[inner_member]['last_known_ir'] = results_dict['respo_drivers'][id_string]['irating_new']
 
             week_data_after = stats.get_respo_champ_points(global_vars.series_info['misc']['current_year'], global_vars.series_info['misc']['current_quarter'], current_racing_week)
             stats.calc_total_champ_points(week_data_after, weeks_to_count)
@@ -348,6 +348,7 @@ async def get_results_summary(iracing_id, subsession):
     new_race_dict['cars_in_class'] = class_count
     new_race_dict['car_number'] = car_number
     new_race_dict['strength_of_field_class'] = int(class_sof)
+    new_race_dict['track_cat_id'] = respo_driver.track_cat_id
 
     return new_race_dict
 

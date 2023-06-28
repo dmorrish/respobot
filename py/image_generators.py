@@ -620,6 +620,7 @@ def generate_ir_graph(ir_dict, title, print_legend):
     bg = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 255))
     draw = ImageDraw.Draw(im)
     font = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", int(image_height * 16 / 300))
+    fontsm = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", int(image_height * 12 / 300))
 
     margin_v_top = 0.15 * image_height
     margin_v_bottom = 0.15 * image_height
@@ -691,8 +692,9 @@ def generate_ir_graph(ir_dict, title, print_legend):
             pleb_line_drawn = True
     if not pleb_line_drawn:
         x = margin_h_left
-        y = image_height - margin_v_bottom - 2000 / (ir_scale_maj_divisions * ir_scale_maj_division_size) * ir_scale_pixels
+        y = image_height - margin_v_bottom - global_vars.pleb_line / (ir_scale_maj_divisions * ir_scale_maj_division_size) * ir_scale_pixels
         draw.line([(x, y), (image_width - margin_h_right, y)], fill=(255, 0, 0, 128), width=1, joint=None)
+        draw.text((x - tick_length / 2, y), str("Pleb Line"), font=fontsm, fill=(255, 0, 0, 128), anchor="rm")
 
     scaled_tuples = []
 

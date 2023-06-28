@@ -178,7 +178,7 @@ def get_respo_race_week(time_start_raw):
 
 
 def get_ir_data_from_cache(iracing_id, category):
-    ir_dict = []
+    ir_tuples = []
     iracing_id = str(iracing_id)
     if iracing_id in global_vars.race_cache:
         global_vars.race_cache_locks += 1
@@ -187,13 +187,13 @@ def get_ir_data_from_cache(iracing_id, category):
                 for series in global_vars.race_cache[iracing_id][year][quarter]:
                     for subsession in global_vars.race_cache[iracing_id][year][quarter][series]:
                         race = global_vars.race_cache[iracing_id][year][quarter][series][subsession]
-                        if race['category'] == category and race['irating_new'] > 0:
-                            ir_dict.append((race['time_start_raw'], race['irating_new']))
+                        if race['track_cat_id'] == category and race['irating_new'] > 0:
+                            ir_tuples.append((race['time_start_raw'], race['irating_new']))
         global_vars.race_cache_locks -= 1
 
-    ir_dict.sort(key=lambda tup: tup[0])
+    ir_tuples.sort(key=lambda tup: tup[0])
 
-    return ir_dict
+    return ir_tuples
 
 
 def calc_total_champ_points(leaderboard_dict, weeks_to_count):

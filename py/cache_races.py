@@ -4,6 +4,7 @@ from pyracing import constants as pyracingConstants
 
 
 async def cache_races(iracing_id):
+
     if str(iracing_id) not in global_vars.race_cache:
         while global_vars.race_cache_locks > 0:
             asyncio.sleep(1)
@@ -30,6 +31,11 @@ async def cache_races(iracing_id):
     while year >= first_year:
         races = await global_vars.ir.search_results(iracing_id, quarter=quarter, year=year)
         if len(races) > 0:
+            if str(iracing_id) not in global_vars.race_cache:
+                while global_vars.race_cache_locks > 0:
+                    asyncio.sleep(1)
+                global_vars.race_cache[str(iracing_id)] = {}
+
             if str(year) not in global_vars.race_cache[str(iracing_id)]:
                 while global_vars.race_cache_locks > 0:
                     asyncio.sleep(1)
@@ -93,6 +99,7 @@ async def cache_races(iracing_id):
                         new_race_dict['irating_new'] = driver.irating_new
                         new_race_dict['drivers_in_class'] = class_count
                         new_race_dict['team_drivers_max'] = subsession.team_drivers_max
+                        new_race_dict['track_cat_id'] = driver.track_cat_id
 
                         if 'last_race_check' not in global_vars.members[member]:
                             global_vars.members[member]['last_race_check'] = 0
@@ -104,6 +111,8 @@ async def cache_races(iracing_id):
                             if race.official_session == 1:
                                 global_vars.members[member]['last_known_ir'] = driver.irating_new
                                 print("New road ir is: " + str(driver.irating_new))
+
+                        break
 
         print("Driver: " + str(iracing_id) + "  Year: " + str(year) + "  Season: " + str(quarter) + "  Races found: " + str(len(races)))
 
