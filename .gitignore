@@ -12,6 +12,9 @@ log/*
 misc/*
 
 .env
+sandbox.py
+*.sqlite
+*.sqlite-journal
 
 *.sublime-*
 
