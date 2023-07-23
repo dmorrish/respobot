@@ -851,7 +851,7 @@ class BotDatabase:
                 series_dict['series_id'] if 'series_id' in series_dict else None
             )
 
-            if self.is_series_in_series_table(int(series_dict['series_id'])) is False:
+            if await self.is_series_in_series_table(int(series_dict['series_id'])) is False:
                 new_series_parameters.append(series_tuple)
             else:
                 existing_series_parameters.append(series_tuple)
@@ -874,7 +874,7 @@ class BotDatabase:
                             car_class_dict['car_class_id'] if 'car_class_id' in car_class_dict else None
                         )
 
-                        if self.is_car_class_in_season_car_classes_table(int(season_dict['season_id']), int(car_class_dict['car_class_id'])) is False:
+                        if await self.is_car_class_in_season_car_classes_table(int(season_dict['season_id']), int(car_class_dict['car_class_id'])) is False:
                             new_car_class_parameters.append(car_class_tuple)
                         else:
                             existing_car_class_parameters.append(car_class_tuple)
@@ -914,7 +914,7 @@ class BotDatabase:
                     season_dict['season_id'] if 'season_id' in season_dict else None
                 )
 
-                if self.is_season_in_seasons_table(int(season_dict['season_id'])) is False:
+                if await self.is_season_in_seasons_table(int(season_dict['season_id'])) is False:
                     new_season_parameters.append(season_tuple)
                 else:
                     existing_season_parameters.append(season_tuple)
@@ -980,7 +980,7 @@ class BotDatabase:
                 season_dict['season_quarter'] if 'season_quarter' in season_dict else None,
             )
 
-            if self.is_season_in_season_dates_table(int(season_dict['season_year']), int(season_dict['season_quarter'])) is False:
+            if await self.is_season_in_season_dates_table(int(season_dict['season_year']), int(season_dict['season_quarter'])) is False:
                 new_season_parameters.append(season_tuple)
             else:
                 existing_season_parameters.append(season_tuple)
@@ -1396,7 +1396,7 @@ class BotDatabase:
                         car_dict['car_id'] if 'car_id' in car_dict else None
                     )
 
-                    if self.is_car_class_car_in_db(car_class_dict['car_class_id'], car_dict['car_id']) is False:
+                    if await self.is_car_class_car_in_db(car_class_dict['car_class_id'], car_dict['car_id']) is False:
                         new_car_class_parameters.append(car_tuple)
                     else:
                         existing_car_class_parameters.append(car_tuple)
@@ -1553,7 +1553,7 @@ class BotDatabase:
     async def get_series_id_from_season_name(self, season_name: str, season_year: int = None, season_quarter: int = None):
 
         try:
-            series_tuples = self.get_season_basic_info(season_year=season_year, season_quarter=season_quarter)
+            series_tuples = await self.get_season_basic_info(season_year=season_year, season_quarter=season_quarter)
         except BotDatabaseError:
             raise
 
@@ -1566,7 +1566,7 @@ class BotDatabase:
     async def get_car_class_id_from_car_class_name(self, car_class_name: str, season_id: int = None, series_id: int = None, season_year: int = None, season_quarter: int = None):
 
         try:
-            car_class_tuples = self.get_season_car_classes(season_id=season_id, series_id=series_id, season_year=season_year, season_quarter=season_quarter)
+            car_class_tuples = await self.get_season_car_classes(season_id=season_id, series_id=series_id, season_year=season_year, season_quarter=season_quarter)
         except BotDatabaseError:
             raise
 
@@ -1596,7 +1596,7 @@ class BotDatabase:
             parameters = (season_id,)
         elif series_id is not None:
             if season_year is None or season_quarter is None:
-                (season_year, season_quarter) = self.get_series_last_run_season(series_id)
+                (season_year, season_quarter) = await self.get_series_last_run_season(series_id)
 
             if season_year is not None and season_quarter is not None:
                 query = """
