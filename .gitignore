@@ -1,20 +1,16 @@
-json/*.json
-!sass_talk.json
-!special_events.json
-
 __pycache__/*
 py/__pycache__/*
 py/commands/__pycache__/*
 
 *.pyc
 
-log/*
 misc/*
 
 .env
 sandbox.py
 *.sqlite
 *.sqlite-journal
+*.json
 
 *.sublime-*
 
