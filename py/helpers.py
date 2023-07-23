@@ -1,4 +1,11 @@
-import global_vars
+import constants
+import environment_variables as env
+import respobot_logging as log
+import roles
+import discord
+from discord.errors import NotFound, HTTPException
+from bot_database import BotDatabase
+from pyracing import constants as pyracingConstants
 
 
 # mAkE iT sPeAk LiKe ThIs
@@ -18,54 +25,55 @@ def spongify(message):
     return response
 
 
-def get_name_from_iracing_id(iracing_id):
-    for member in global_vars.members:
-        if 'iracingCustID' in global_vars.members[member] and 'leaderboardName' in global_vars.members[member] and global_vars.members[member]['iracingCustID'] == iracing_id:
-            return global_vars.members[member]['leaderboardName']
-    return ""
+def fetch_guild(bot: discord.Bot):
+    for guild in bot.guilds:
+        if guild.id == env.GUILD:
+            return guild
+    return None
 
 
-def is_respo_driver(iracing_id):
-    for member in global_vars.members:
-        if 'iracingCustID' in global_vars.members[member] and global_vars.members[member]['iracingCustID'] == iracing_id:
-            return True
-    return False
+def fetch_channel(bot: discord.Bot):
+    for guild in bot.guilds:
+        if guild.id == env.GUILD:
+            for channel in guild.channels:
+                if channel.id == env.CHANNEL:
+                    return channel
+    return None
 
 
-def get_member_dict_from_first_name(member_name_from_list):
-    global_vars.members_locks += 1
-    for member_key in global_vars.members:
-        if "leaderboardName" in global_vars.members[member_key]:
-            name_split = global_vars.members[member_key]["leaderboardName"].split()
-            if len(name_split) > 0 and name_split[0].lower() == member_name_from_list.lower():
-                global_vars.members_locks -= 1
-                return global_vars.members[member_key]
+async def promote_demote_members(guild: discord.Guild, db: BotDatabase):
 
-    global_vars.members_locks -= 1
+    member_dicts = await db.fetch_member_dicts()
 
-    return {}
+    if member_dicts is None or len(member_dicts) < 1:
+        return
 
+    for member_dict in member_dicts:
+        latest_road_ir_in_db = await db.get_member_ir(member_dict['iracing_custid'], category_id=pyracingConstants.Category.road.value)
+        if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
+            continue
 
-def get_member_dict_from_iracing_id(iracing_id):
-    global_vars.members_locks += 1
-    for member_key in global_vars.members:
-        if "iracingCustID" in global_vars.members[member_key] and global_vars.members[member_key]['iracingCustID'] == iracing_id:
-            return global_vars.members[member_key]
-
-    global_vars.members_locks -= 1
-
-    return {}
+        if latest_road_ir_in_db < constants.pleb_line:
+            await roles.demote_driver(guild, member_dict['discord_id'])
+        else:
+            await roles.promote_driver(guild, member_dict['discord_id'])
 
 
-def get_member_key(member_name_from_list):
-    global_vars.members_locks += 1
-    for member_key in global_vars.members:
-        if "leaderboardName" in global_vars.members[member_key]:
-            name_split = global_vars.members[member_key]["leaderboardName"].split()
-            if len(name_split) > 0 and name_split[0].lower() == member_name_from_list.lower():
-                global_vars.members_locks -= 1
-                return member_key
+async def fetch_guild_member_objects(guild: discord.Guild, db: BotDatabase):
 
-    global_vars.members_locks -= 1
+    guild_member_ids = await db.fetch_guild_member_ids()
 
-    return ""
+    member_objects = []
+
+    for member_id in guild_member_ids:
+        try:
+            new_member_object = await guild.fetch_member(member_id)
+            member_objects.append(new_member_object)
+        except NotFound:
+            log.logger_respobot.warning(f"fetch_guild_member_objects() failed due to: Member {member_id} not found in the guild.")
+        except HTTPException:
+            log.logger_respobot.warning(f"fetch_guild_member_objects() failed due to: HTTPException while fetching member {member_id}.")
+        except Exception as e:
+            log.logger_respobot.warning(f"fetch_guild_member_objects() failed due to: {e}")
+
+    return member_objects

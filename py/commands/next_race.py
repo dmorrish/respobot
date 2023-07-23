@@ -1,16 +1,16 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from discord.ext import commands
 from discord.commands import Option
 import environment_variables as env
 import slash_command_helpers as slash_helpers
-import global_vars
-from pyracing import constants as pyracingConstants
 
 
 class NextRaceCog(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot, db, ir):
         self.bot = bot
+        self.db = db
+        self.ir = ir
 
     @commands.slash_command(
         guild_ids=[env.GUILD],
@@ -30,11 +30,12 @@ class NextRaceCog(commands.Cog):
 
         timezone_name = "eastern"
 
-        global_vars.members_locks += 1
-        for member in global_vars.members:
-            if 'discordID' in global_vars.members[member] and global_vars.members[member]['discordID'] == ctx.author.id and 'timezone' in global_vars.members[member]:
-                timezone_name = global_vars.members[member]['timezone']
-        global_vars.members_locks -= 1
+        member_dicts = await self.db.fetch_member_dicts()
+
+        if member_dicts is not None and len(member_dicts) > 0:
+            for member_dict in member_dicts:
+                if 'discord_id' in member_dict and member_dict['discord_id'] == ctx.author.id and 'timezone' in member_dict:
+                    timezone_name = member_dict['timezone']
 
         if timezone_name == "eastern":
             user_time_offset += timedelta(hours=0)
@@ -48,61 +49,41 @@ class NextRaceCog(commands.Cog):
             timezone_name = 'eastern'
             user_time_offset += timedelta(hours=0)
 
-        series_id = -1
-        series_found = False
+        series_id = await self.db.get_series_id_from_season_name(series)
 
-        for series_key in global_vars.series_info:
-            if "keywords" in global_vars.series_info[series_key]:
-                for keyword in global_vars.series_info[series_key]['keywords']:
-                    if keyword == series:
-                        series_id = int(series_key)
-                        series_found = True
-
-        if series_found is False:
+        if series_id is None:
             await ctx.edit(content="I didn't find that series, just like your dignity.")
             return
 
         if series_id > 0:
-            race_guide = await global_vars.ir.race_guide()
+            race_guide = await self.ir.race_guide_new()
 
         if race_guide is None:
             await ctx.edit(content="I think I shit myself. Sorry.")
             return
 
         race_found = False
-        time_start = datetime(year=3000, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        for series in race_guide:
-            if series.series_id == series_id:
-                for schedule in series.season_schedule:
-                    for race in schedule.race:
-                        if race.event_type == pyracingConstants.EventType.race.value:
-                            if race.time_start < time_start and race.time_start + respobot_time_offset > datetime.now():
-                                # Keep the earliest race that starts after now.
-                                time_start = race.time_start + respobot_time_offset
-                                # Round minutes due to getting times just a few microseconds below the minute mark.
-                                minutes = int(time_start.minute + round((time_start.second + time_start.microsecond / 1000000) / 60, 0))
-                                time_added = timedelta(minutes=minutes)
-                                time_start = time_start.replace(microsecond=0, second=0, minute=0)
-                                time_start += time_added
-                                race_found = True
+        time_start = datetime(year=3000, month=1, day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+        for session in race_guide['sessions']:
+            if 'series_id' in session and session['series_id'] == series_id:
+                if 'start_time' in session:
+                    race_found = True
+                    session_start_time = datetime.fromisoformat(session['start_time'])
+                    if session_start_time < time_start:
+                        time_start = session_start_time
 
         if race_found is False:
-            await ctx.edit(content="There aren't any races scheduled for that series at the moment.")
+            await ctx.edit(content=f"There aren't any races scheduled for **{series}** in the next three hours which is as far ahead that iRacing will let me see.")
             return
 
-        # if time_start.date() == (datetime.now() + user_time_offset).date():
-        #     message_text = "The next race in **" + global_vars.series_info[str(series_id)]['name'] + "** is today at " + time_start.strftime("%I:%M%p") + " (" + timezone_name + ")."
-        # else:
-        #     message_text = "The next race in **" + global_vars.series_info[str(series_id)]['name'] + "** is on " + time_start.strftime("%Y-%b-%d at %I:%M%p") + " (" + timezone_name + ")."
+        message_text = f"The next race in **{series}** is scheduled for <t:{str(int(time_start.timestamp()))}>"
 
-        message_text = "The next race in **" + global_vars.series_info[str(series_id)]['name'] + "** is scheduled for <t:" + str(int(time_start.timestamp())) + ">."
-
-        time_until_next = time_start - datetime.now()
+        time_until_next = time_start - datetime.now(timezone.utc)
 
         if time_until_next.days < 1:
-            hours = int(time_until_next.seconds / (68 * 60))
+            hours = int(time_until_next.seconds / (60 * 60))
             minutes = int((time_until_next.seconds % (60 * 60)) / 60)
-            message_text += "\n(in "
+            message_text += " (in "
             if hours > 0:
                 message_text += str(hours) + " hour"
                 if hours > 1:
@@ -112,6 +93,7 @@ class NextRaceCog(commands.Cog):
             if minutes != 1:
                 message_text += "s"
             message_text += ")"
+        message_text += "."
 
         await ctx.edit(content=message_text)
         return

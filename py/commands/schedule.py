@@ -3,13 +3,14 @@ from discord.ext import commands
 from discord.commands import Option
 import environment_variables as env
 import slash_command_helpers as slash_helpers
-import global_vars
 
 
 class ScheduleCog(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot, db, ir):
         self.bot = bot
+        self.db = db
+        self.ir = ir
 
     @commands.slash_command(
         guild_ids=[env.GUILD],
@@ -19,39 +20,45 @@ class ScheduleCog(commands.Cog):
     async def schedule(
         self,
         ctx,
-        series: Option(str, "Select a series", autocomplete=slash_helpers.get_series_list)
+        series: Option(str, "Select a series", required=True, autocomplete=slash_helpers.get_series_list)
     ):
-        seasons = await global_vars.ir.current_seasons(only_active=True)
+        await ctx.respond("Working on it...")
+        season_dicts = await self.ir.current_seasons_new()
 
-        if not seasons:
-            await ctx.respond("Something went horribly wrong! There are no active seasons!")
+        if season_dicts is None:
+            await ctx.edit("Something went horribly wrong! There are no active seasons!")
             return
 
         series_found = False
+        schedule = None
+        race_week = None
 
-        for series_key in global_vars.series_info:
-            if "keywords" in global_vars.series_info[series_key]:
-                for keyword in global_vars.series_info[series_key]['keywords']:
-                    if keyword == series.lower():
-                        series_id = int(series_key)
-                        series_found = True
+        for season_dict in season_dicts:
+            if 'season_name' in season_dict and season_dict['season_name'] == series:
+                series_found = True
+                if 'schedules' in season_dict and len(season_dict['schedules']) > 1:
+                    schedule = season_dict['schedules']
+                if 'race_week' in season_dict:
+                    race_week = season_dict['race_week']
 
         if series_found is not True:
-            await ctx.respond(f"What the fuck series is \"{series}\"")
+            await ctx.edit(f"What the fuck series is \"{series}\"?")
             return
 
-        for season in seasons:
-            if season.series_id == series_id:
-                title = "Schedule for " + global_vars.series_info[str(series_id)]["name"]
-                embedVar = discord.Embed(title=title, description="", color=0xff0000)
-                # message_text = "Schedule for " + global_vars.series_info[str(series_id)]["name"] + ":\n\n"
-                for track in season.tracks:
-                    week_text = "  Week " + str(track.race_week + 1)
-                    if track.race_week + 1 == season.race_week:
-                        week_text += " (current)"
-                    track_text = " " + track.name
-                    if track.config and track.config != "N/A":
-                        track_text += " (" + track.config + ")"
-                    embedVar.add_field(name=week_text, value=track_text, inline=False)
-                await ctx.respond(embed=embedVar)
-                return
+        title = "Schedule for " + series
+        embedVar = discord.Embed(title=title, description="", color=0xff0000)
+
+        if schedule is not None and len(schedule) > 0:
+            schedule = sorted(schedule, key=lambda d: d['race_week_num'])
+            for race_week_dict in schedule:
+                week_text = "  Week " + str(race_week_dict['race_week_num'] + 1)
+                if race_week_dict['race_week_num'] == race_week:
+                    week_text += " (current)"
+                if 'track' in race_week_dict and 'track_name' in race_week_dict['track']:
+                    track_text = " " + race_week_dict['track']['track_name']
+                if 'track' in race_week_dict and 'config_name' in race_week_dict['track']:
+                    track_text += " (" + race_week_dict['track']['config_name'] + ")"
+                embedVar.add_field(name=week_text, value=track_text, inline=False)
+            await ctx.edit(embed=embedVar)
+        else:
+            await ctx.edit(f"No schedule was found for {series}")

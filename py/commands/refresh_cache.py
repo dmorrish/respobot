@@ -1,14 +1,16 @@
 from discord.ext import commands
 from discord.commands import Option
+from discord.errors import HTTPException
 import environment_variables as env
-import global_vars
 import cache_races
 
 
 class RefreshCacheCog(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot, db, ir):
         self.bot = bot
+        self.db = db
+        self.ir = ir
 
     @commands.slash_command(
         guild_ids=[env.GUILD],
@@ -19,18 +21,18 @@ class RefreshCacheCog(commands.Cog):
     async def refresh_cache(
         self,
         ctx,
-        iracing_id: Option(int, "iRacing id.", required=False)
+        iracing_custid: Option(int, "iRacing id.", required=False)
     ):
         if ctx.user.id == 173613324666273792:
             await ctx.respond("Working on it...", ephemeral=True)
-            if iracing_id is None:
-
-                global_vars.members_locks += 1
-                for member in global_vars.members:
-                    await cache_races.cache_races(global_vars.members[member]["iracingCustID"])
-                global_vars.members_locks -= 1
+            if iracing_custid is None:
+                await cache_races.cache_races(self.db, self.ir, await self.db.fetch_iracing_cust_ids())
             else:
-                await cache_races.cache_races(iracing_id)
-            await ctx.edit(content="Done!")
+                await cache_races.cache_races(self.db, self.ir, [iracing_custid])
+            try:
+                await ctx.edit(content="Done!")
+            except HTTPException:
+                # Sometimes caching takes long enough to run that the webhook expires and editing the message fails.
+                return
         else:
             await ctx.respond("Sorry, you're not nearly cool enough to do that.", ephemeral=True)

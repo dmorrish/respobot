@@ -2,7 +2,7 @@ import os
 import math
 import random
 import environment_variables as env
-import global_vars
+import constants
 import respobot_logging as log
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, date
@@ -143,7 +143,7 @@ async def generate_avatar_image(guild, discord_id, size):
             avatar.close()
             return filepath
     except NotFound:
-        log.logger_discord.warning("Could not find member: " + str(discord_id))
+        log.logger_respobot.warning(f"generate_avatar_image() failed due to: Could not find member: {discord_id} in guild {guild.id}. Using base avatar instead.")
 
     avatar = Image.open(env.BOT_DIRECTORY + "media/base_avatar.png")
     base = Image.new("RGBA", avatar.size, (0, 0, 0, 0))
@@ -178,7 +178,7 @@ async def generate_head2head_image(guild, title, racer1_info_dict, racer1_stats_
     margin_h_right = 0.15 * image_width
     margin_h_left = 0.15 * image_width
 
-    filepath = await generate_avatar_image(guild, racer1_info_dict['discordID'], avatar_size)
+    filepath = await generate_avatar_image(guild, racer1_info_dict['discord_id'], avatar_size)
     racer1_avatar = Image.open(filepath)
     if racer1_avatar is not None:
         x = int(image_width / 4 - racer1_avatar.width / 2)
@@ -186,12 +186,12 @@ async def generate_head2head_image(guild, title, racer1_info_dict, racer1_stats_
         im.paste(racer1_avatar, (x, y))
     x = int(image_width / 4)
     y += avatar_size + font_size
-    draw.text((x, y), racer1_info_dict['leaderboardName'], font=font, fill=(255, 255, 255, 255), anchor="mm")
+    draw.text((x, y), racer1_info_dict['name'], font=font, fill=(255, 255, 255, 255), anchor="mm")
     racer1_avatar.close()
     if os.path.exists(filepath):
         os.remove(filepath)
 
-    filepath = await generate_avatar_image(guild, racer2_info_dict['discordID'], avatar_size)
+    filepath = await generate_avatar_image(guild, racer2_info_dict['discord_id'], avatar_size)
     racer2_avatar = Image.open(filepath)
     if racer2_avatar is not None:
         x = int(image_width * 3 / 4 - racer1_avatar.width / 2)
@@ -199,7 +199,7 @@ async def generate_head2head_image(guild, title, racer1_info_dict, racer1_stats_
         im.paste(racer2_avatar, (int(image_width * 3 / 4 - racer1_avatar.width / 2), int(margin_v_top)))
     x = int(image_width * 3 / 4)
     y += avatar_size + font_size
-    draw.text((x, y), racer2_info_dict['leaderboardName'], font=font, fill=(255, 255, 255, 255), anchor="mm")
+    draw.text((x, y), racer2_info_dict['name'], font=font, fill=(255, 255, 255, 255), anchor="mm")
     if os.path.exists(filepath):
         os.remove(filepath)
 
@@ -534,10 +534,9 @@ def generate_champ_graph_compact(data_dict, title, weeks_to_count, highlighted_w
             weeks_counted += 1
 
         x += int(name_width + week_width / 2)
-        points = 0
         if str(highlighted_week - 1) in data_dict[member]['weeks']:
             points = data_dict[member]['weeks'][str(highlighted_week - 1)]
-        draw.text((x, y), str(points), font=font, fill=colour, anchor="mm")
+            draw.text((x, y), str(points), font=font, fill=colour, anchor="mm")
 
         x += int(week_width / 2 + total_width / 2)
         draw.text((x, y), str(data_dict[member]['total_points']), font=font, fill=(192, 0, 0, 255), anchor="mm")
@@ -613,7 +612,7 @@ def draw_head2head_bar_inverted(im, draw, font, label, v_pos, height, max_scale_
     draw.text((right + font.size / 2, bottom - bar_height / 2), str(racer2_value), font=font, fill=(255, 255, 255, 255), anchor="lm")
 
 
-def generate_ir_graph(ir_dict, title, print_legend):
+def generate_ir_graph(member_dicts, title, print_legend):
     image_width = 1000
     image_height = 320
     im = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 0))
@@ -640,8 +639,8 @@ def generate_ir_graph(ir_dict, title, print_legend):
     max_ir = 0
     min_timestamp = 10000000000000
 
-    for member in ir_dict:
-        for point in ir_dict[member]["ir_data"]:
+    for member_dict in member_dicts:
+        for point in member_dict['ir_data']:
             if point[1] > max_ir:
                 max_ir = point[1]
             if point[0] < min_timestamp:
@@ -683,7 +682,7 @@ def generate_ir_graph(ir_dict, title, print_legend):
     for i in range(1, ir_scale_maj_divisions + 1):
         x = margin_h_left
         y = image_height - margin_v_bottom - i * ir_scale_pixels / ir_scale_maj_divisions
-        if int(i * ir_scale_maj_division_size) != global_vars.pleb_line:
+        if int(i * ir_scale_maj_division_size) != constants.pleb_line:
             draw.line([(x, y), (image_width - margin_h_right, y)], fill=(255, 255, 255, 64), width=1, joint=None)
             draw.text((x - tick_length / 2, y), str(i * ir_scale_maj_division_size), font=font, fill=(255, 255, 255, 255), anchor="rm")
         else:
@@ -692,7 +691,7 @@ def generate_ir_graph(ir_dict, title, print_legend):
             pleb_line_drawn = True
     if not pleb_line_drawn:
         x = margin_h_left
-        y = image_height - margin_v_bottom - global_vars.pleb_line / (ir_scale_maj_divisions * ir_scale_maj_division_size) * ir_scale_pixels
+        y = image_height - margin_v_bottom - constants.pleb_line / (ir_scale_maj_divisions * ir_scale_maj_division_size) * ir_scale_pixels
         draw.line([(x, y), (image_width - margin_h_right, y)], fill=(255, 0, 0, 128), width=1, joint=None)
         draw.text((x - tick_length / 2, y), str("Pleb Line"), font=fontsm, fill=(255, 0, 0, 128), anchor="rm")
 
@@ -703,23 +702,23 @@ def generate_ir_graph(ir_dict, title, print_legend):
     legend_v_spacing = ir_scale_pixels / 10
     box_size = legend_v_spacing * 0.75
 
-    for member in ir_dict:
+    for member_dict in member_dicts:
         scaled_tuples.append([])
-        colour = (ir_dict[member]["colour"][0], ir_dict[member]["colour"][1], ir_dict[member]["colour"][2], ir_dict[member]["colour"][3])
+        colour = (member_dict['graph_colour'][0], member_dict['graph_colour'][1], member_dict['graph_colour'][2], member_dict['graph_colour'][3])
 
-        if len(ir_dict[member]['name']) < 16:
-            legend_name = ir_dict[member]['name']
+        if len(member_dict['name']) < 16:
+            legend_name = member_dict['name']
         else:
-            legend_name = ir_dict[member]['name'][0:11] + "..."
+            legend_name = member_dict['name'][0:11] + "..."
 
-        legend_ir_text = " (" + str(ir_dict[member]["ir_data"][-1][1]) + ")"
+        legend_ir_text = " (" + str(member_dict['ir_data'][-1][1]) + ")"
 
         for i in range(0, 22 - len(legend_name) - len(legend_ir_text)):
             legend_name += " "
 
         legend_name += legend_ir_text
 
-        for point in ir_dict[member]["ir_data"]:
+        for point in member_dict['ir_data']:
             scaled_tuples[count].append((margin_h_left + (point[0] - min_timestamp) / timestamp_range * timestamp_range_pixels, image_height - margin_v_bottom - point[1] / (ir_scale_maj_divisions * ir_scale_maj_division_size) * ir_scale_pixels))
         draw.line(scaled_tuples[count], fill=colour, width=2, joint="curve")
         x = image_width - margin_h_right + tick_length

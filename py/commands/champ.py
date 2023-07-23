@@ -8,7 +8,7 @@ import slash_command_helpers as slash_helpers
 import stats_helpers as stats
 import environment_variables as env
 import image_generators as image_gen
-import global_vars
+import constants
 
 # other imports
 import os
@@ -19,8 +19,10 @@ import asyncio
 
 class ChampCog(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot, db, ir):
         self.bot = bot
+        self.db = db
+        self.ir = ir
 
     @commands.slash_command(
         guild_ids=[env.GUILD],
@@ -30,115 +32,102 @@ class ChampCog(commands.Cog):
     async def champ(
         self,
         ctx,
+        season: Option(str, "Select a season", required=True, autocomplete=slash_helpers.get_iracing_seasons),
         series: Option(str, "Select a series", required=True, autocomplete=slash_helpers.get_series_list),
-        car: Option(str, "Select a car class", required=False, autocomplete=slash_helpers.get_series_classes),
-        season: Option(str, "Select a season", required=False, autocomplete=slash_helpers.get_iracing_seasons)
+        car: Option(str, "Select a car class", required=False, autocomplete=slash_helpers.get_series_classes)
     ):
         await ctx.respond("Working on it...")
 
-        season_name = ""
-        year = -1
-        quarter = -1
-        last_run_year = -1
-        last_run_quarter = -1
-        series_id = -1
-        car_class_id = -1
+        selected_year = None
+        selected_quarter = None
+        series_id = None
+        car_class_id = None
 
-        if series == "respo":
-            season_name = "Respo Racing Whatever the Fuck You Want Series"
-            last_run_year = global_vars.series_info['misc']['current_year']
-            last_run_quarter = global_vars.series_info['misc']['current_quarter']
+        (current_standard_year, current_standard_quarter, current_standard_race_week, current_standard_max_weeks, current_standard_season_active) = await self.db.get_current_iracing_week(series_id=139)
+
+        if current_standard_year is None:
+            await ctx.edit("Something catastrophically bad happened while trying to figure out the current iRacing season. I'm not even a little bit sorry.")
+
+        tmp = season[0:4]
+        if tmp.isnumeric():
+            selected_year = int(tmp)
         else:
-            for series_key in global_vars.series_info:
-                if 'keywords' in global_vars.series_info[series_key] and series in global_vars.series_info[series_key]['keywords']:
-                    series_id = int(series_key)
-                    last_run_year = global_vars.series_info[series_key]['last_run_year']
-                    last_run_quarter = global_vars.series_info[series_key]['last_run_quarter']
-                    season_name = global_vars.series_info[series_key]['name']
-                    if 'classes' in global_vars.series_info[series_key] and len(global_vars.series_info[series_key]['classes']) > 1:
-                        if car is None:
-                            await ctx.edit(content="You need to specify a car class for this series.")
-                            return
-                        else:
-                            for car_class_key in global_vars.series_info[series_key]['classes']:
-                                for keyword in global_vars.series_info[series_key]['classes'][car_class_key]:
-                                    if car == keyword:
-                                        car_class_id = int(car_class_key)
-                                        break
-                            if car_class_id == "":
-                                await ctx.edit(content="The provided car class is not valid for this series.")
-                                return
-                    break
-            if series_id < 0:
-                await ctx.edit(content="Series not found. Did you use the correct series keyword? Based on your track record, I would say no.")
-                return
+            await ctx.edit(content="You've entered an invalid season year: " + tmp)
 
-        if season is not None:
-            tmp = season[0:4]
-            if tmp.isnumeric():
-                year = int(tmp)
-            else:
-                await ctx.edit(content="You've entered an invalid season year: " + tmp)
+        tmp = season[-1]
+        if tmp.isnumeric():
+            selected_quarter = int(tmp)
 
-            tmp = season[-1]
-            if tmp.isnumeric():
-                quarter = int(tmp)
+        if selected_quarter > 4 or selected_quarter < 1:
+            await ctx.edit(content="Valid iRacing seasons are 1, 2, 3, or 4.")
+            return
+        if selected_year > current_standard_year or selected_year == current_standard_year and selected_quarter > current_standard_quarter:
+            await ctx.edit(content="Just like Nostradamus, I can't predict the future.")
+            return
+        if selected_year < 2008:
+            await ctx.edit(content="iRacing was launched in 2008.")
+            return
 
-            if quarter > 4 or quarter < 1:
-                await ctx.edit(content="Valid iRacing seasons are 1, 2, 3, or 4.")
-                return
-            if year > global_vars.series_info['misc']['current_year'] or year == global_vars.series_info['misc']['current_year'] and quarter > global_vars.series_info['misc']['current_quarter']:
-                await ctx.edit(content="Just like Nostradamus, I can't predict the future.")
-                return
-            if year < 2008:
-                await ctx.edit(content="iRacing was launched in 2008.")
-                return
+        if series == constants.respo_series_name:
+            series_id = -1
         else:
-            year = last_run_year
-            quarter = last_run_quarter
+            series_id = await self.db.get_series_id_from_season_name(series, season_year=selected_year, season_quarter=selected_quarter)
 
-        max_week = 12
-        week_13_active = False
+            if series_id is None:
+                await ctx.edit(content="Series not found. Make sure you select a series from the autocomplete list.")
+                return
 
-        if year == global_vars.series_info['misc']['current_year'] and quarter == global_vars.series_info['misc']['current_quarter'] and not week_13_active:
+        if car is not None:
+            season_id = await self.db.get_season_id(series_id, selected_year, selected_quarter)
+            car_class_id = await self.db.get_car_class_id_from_car_class_name(car, season_id=season_id)
+
+        if series_id > 0:
+            (current_season_year, current_season_quarter, current_season_race_week, current_season_max_weeks, current_season_active) = await self.db.get_current_iracing_week(series_id=series_id)
+            (_, _, _, _, selected_season_max_week) = await self.db.get_season_basic_info(series_id=series_id, season_year=selected_year, season_quarter=selected_quarter)[0]
+        else:
+            (current_season_year, current_season_quarter, current_season_race_week, current_season_max_weeks, current_season_active) = await self.db.get_current_iracing_week(series_id=139)
+            (_, _, _, _, selected_season_max_week) = await self.db.get_season_basic_info(series_id=139, season_year=selected_year, season_quarter=selected_quarter)[0]
+
+        if selected_year == current_season_year and selected_quarter == current_season_quarter and current_season_active:
             ongoing = True
         else:
             ongoing = False
 
         if ongoing:
-            max_week = await stats.get_current_iracing_week(series_id)
+            max_week = current_season_race_week
+        else:
+            max_week = selected_season_max_week
 
-            if max_week is None:
-                max_week = global_vars.series_info['misc']['current_race_week']
-
-            if max_week < 0:
-                max_week = 12
-                week_13_active = True
-
-        if ongoing and week_13_active:
-            ongoing = False
+        if max_week is None:
+            max_week = 12
 
         overall_leaderboard = {}
-        global_vars.members_locks += 1
-        for member in global_vars.members:
-            if 'graph_colour' in global_vars.members[member]:
-                overall_leaderboard[global_vars.members[member]['leaderboardName']] = {"data": [0], "colour": global_vars.members[member]['graph_colour']}
-            else:
-                overall_leaderboard[global_vars.members[member]['leaderboardName']] = {"data": [0], "colour": [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255]}
-        global_vars.members_locks -= 1
+        member_dicts = await self.db.fetch_member_dicts()
+
+        if member_dicts is None or len(member_dicts) < 1:
+            await ctx.edit(content="There aren't any members entered into the database yet. Go yell at Deryk.")
+            return
+
+        for member_dict in member_dicts:
+            if 'name' in member_dict:
+                if 'graph_colour' in member_dict:
+                    overall_leaderboard[member_dict['name']] = {"data": [0], "colour": member_dict['graph_colour']}
+                else:
+                    overall_leaderboard[member_dict['name']] = {"data": [0], "colour": [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255]}
 
         weeks_to_count = 8
-        if series == 'respo':
-            weeks_to_count = 6
+        if series == constants.respo_series_name:
+            weeks_to_count = constants.respo_weeks_to_count
 
         week_data = {}
-        if series_id < 0:
-            week_data = stats.get_respo_champ_points(year, quarter, max_week)
-            if week_data == {}:
-                await ctx.edit(content="You idiot. Didn't you know? No on in Respo actually races.")
-                return
-        else:
-            week_data = stats.get_champ_points(series_id, car_class_id, year, quarter, max_week, False)
+        if series_id is not None and series_id > 0:
+            week_data = await stats.get_champ_points(self.db, member_dicts, series_id, car_class_id, selected_year, selected_quarter, max_week)
+        elif series_id is not None and series_id == -1:
+            week_data = await stats.get_respo_champ_points(self.db, member_dicts, selected_year, selected_quarter, max_week)
+
+        if series_id is not None and series_id == -1 and week_data == {}:
+            await ctx.edit(content="You idiot. Didn't you know? No on in Respo actually races.")
+            return
 
         stats.calc_total_champ_points(week_data, weeks_to_count)
         stats.calc_projected_champ_points(week_data, max_week, weeks_to_count, ongoing)
@@ -150,10 +139,10 @@ class ChampCog(commands.Cog):
                 break
 
         if someone_racing:
-            title_text = "Championship Points for " + season_name
-            if car_class_id > 0:
-                title_text += " class " + global_vars.series_info[str(series_id)]['classes'][str(car_class_id)][0]
-            title_text += " for " + str(year) + "s" + str(quarter)
+            title_text = "Championship Points for " + series
+            if car_class_id is not None and car_class_id > 0:
+                title_text += " class " + car
+            title_text += " for " + str(selected_year) + "s" + str(selected_quarter)
 
             graph = image_gen.generate_champ_graph(week_data, title_text, weeks_to_count, ongoing)
 

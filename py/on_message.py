@@ -3,17 +3,16 @@ import discord
 from discord.ext import commands
 import helpers
 import environment_variables as env
-import global_vars
 
 
 class OnMessageCog(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot, db, ir):
         self.bot = bot
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author == global_vars.bot.user:
+        if message.author == self.bot.user:
             return
         elif isinstance(message.channel, discord.DMChannel):
             if message.author.id == 173613324666273792:
@@ -27,20 +26,16 @@ class OnMessageCog(commands.Cog):
                     if argument_count > 1:
                         response = message.content[14:]
                         if response != "":
-                            for guild in global_vars.bot.guilds:
-                                if guild.id == env.GUILD:
-                                    for channel in guild.channels:
-                                        if channel.id == env.CHANNEL:
-                                            await channel.send(helpers.spongify(response))
+                            channel = helpers.fetch_channel(self.bot)
+                            if channel is not None:
+                                await channel.send(helpers.spongify(response))
                 elif arguments[0].lower() == "$seriouspuppet":
                     if argument_count > 1:
                         response = message.content[15:]
                         if response != "":
-                            for guild in global_vars.bot.guilds:
-                                if guild.id == env.GUILD:
-                                    for channel in guild.channels:
-                                        if channel.id == env.CHANNEL:
-                                            await channel.send(response)
+                            channel = helpers.fetch_channel(self.bot)
+                            if channel is not None:
+                                await channel.send(response)
 
             return
         elif message.channel.guild.id != env.GUILD:
@@ -54,45 +49,45 @@ class OnMessageCog(commands.Cog):
         if random_number == 69 or random_number == 138 or random_number == 207:
             random_number_2 = random.randint(0, 19)
             if random_number_2 == 0:
-                await global_vars.bot.change_presence(activity=discord.Game(name="Daikatana"))
+                await self.bot.change_presence(activity=discord.Game(name="Daikatana"))
             elif random_number_2 == 1:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Alinity"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Alinity"))
             elif random_number_2 == 2:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Whip It by Devo"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Whip It by Devo"))
             elif random_number_2 == 3:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Ghost"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Ghost"))
             elif random_number_2 == 4:
-                await global_vars.bot.change_presence(activity=discord.Game(name="Sonic 2006"))
+                await self.bot.change_presence(activity=discord.Game(name="Sonic 2006"))
             elif random_number_2 == 5:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Amouranth"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Amouranth"))
             elif random_number_2 == 6:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Tainted Love by Soft Cell"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Tainted Love by Soft Cell"))
             elif random_number_2 == 7:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="10 Things I Hate About You"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="10 Things I Hate About You"))
             elif random_number_2 == 8:
-                await global_vars.bot.change_presence(activity=discord.Game(name="E.T. on Atari"))
+                await self.bot.change_presence(activity=discord.Game(name="E.T. on Atari"))
             elif random_number_2 == 9:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Mia Malkova"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Mia Malkova"))
             elif random_number_2 == 10:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Blue Monday by New Order"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Blue Monday by New Order"))
             elif random_number_2 == 11:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Gigli"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Gigli"))
             elif random_number_2 == 12:
-                await global_vars.bot.change_presence(activity=discord.Game(name="Shaq Fu"))
+                await self.bot.change_presence(activity=discord.Game(name="Shaq Fu"))
             elif random_number_2 == 13:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Faith"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Faith"))
             elif random_number_2 == 14:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="M.E. by Gary Numan"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="M.E. by Gary Numan"))
             elif random_number_2 == 15:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Sleepless in Seattle"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Sleepless in Seattle"))
             elif random_number_2 == 16:
-                await global_vars.bot.change_presence(activity=discord.Game(name="Superman 64"))
+                await self.bot.change_presence(activity=discord.Game(name="Superman 64"))
             elif random_number_2 == 17:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Leynainu"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Leynainu"))
             elif random_number_2 == 18:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="The Safety Dance by Men Without Hats"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="The Safety Dance by Men Without Hats"))
             elif random_number_2 == 19:
-                await global_vars.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Bridget Jones's Diary"))
+                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Bridget Jones's Diary"))
 
         if "i got wrecked" in message.content.lower() or "i was wrecked" in message.content.lower():
             await message.add_reaction('🇫')

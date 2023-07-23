@@ -1,37 +1,9 @@
-import global_vars
 import math
 from datetime import datetime
-import httpx
-import traceback
-import respobot_logging as log
+from bot_database import BotDatabase
 
 
-# Pass in -1 for the series ID to get the current week based on Rookie Mazda
-async def get_current_iracing_week(series_id):
-    try:
-        seasons = await global_vars.ir.current_seasons(only_active=True)
-
-        for season in seasons:
-            if season.series_id == series_id or (series_id < 0 and season.series_id == 139):
-                return season.race_week
-    except httpx.HTTPError:
-        print("pyracing timed out when fetching current race week in stats_helpers.get_current_iracing_week().")
-        return None
-    except RecursionError:
-        print("pyracing hit the recursion limit when fetching current race week in stats_helpers.get_current_iracing_week().")
-        return None
-    except Exception as ex:
-        print(traceback.format_exc())
-        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-        message = template.format(type(ex).__name__, ex.args)
-        # print(message)
-        log.logger_pyracing.error(message)
-        return None
-
-    return -1
-
-
-async def populate_head2head_stats(iracing_id, year=None, quarter=None, category=None, series=None, car_class=None):
+async def populate_head2head_stats(db: BotDatabase, iracing_custid, year=None, quarter=None, category=None, series=None, car_class=None):
 
     stats_dict = {
         'total_races': 0,
@@ -51,55 +23,46 @@ async def populate_head2head_stats(iracing_id, year=None, quarter=None, category
         'lowest_ir': -1
     }
 
-    global_vars.race_cache_locks += 1
-    if str(iracing_id) in global_vars.race_cache:
-        for year_key in global_vars.race_cache[str(iracing_id)]:
-            if year_key == str(year) or year is None:
-                for quarter_key in global_vars.race_cache[str(iracing_id)][year_key]:
-                    if quarter_key == str(quarter) or quarter is None:
-                        for series_key in global_vars.race_cache[str(iracing_id)][year_key][quarter_key]:
-                            if series_key == str(series) or series is None:
-                                for subsession_key in global_vars.race_cache[str(iracing_id)][year_key][quarter_key][series_key]:
-                                    if category is None or ('category' in global_vars.race_cache[str(iracing_id)][year_key][quarter_key][series_key][subsession_key] and global_vars.race_cache[str(iracing_id)][year_key][quarter_key][series_key][subsession_key]['category'] == category):
-                                        race = global_vars.race_cache[str(iracing_id)][year_key][quarter_key][series_key][subsession_key]
-                                        if 'official' in race and race['official'] == 1:
-                                            stats_dict['total_races'] += 1
-                                            stats_dict['total_champ_points'] += race['points_champ']
+    race_dicts = await db.get_member_race_results(iracing_custid, series_id=series, car_class_id=car_class, season_year=year, season_quarter=quarter, license_category_id=category, official_session=1, simsession_type=6)
 
-                                            if race['points_champ'] > stats_dict['highest_champ_points']:
-                                                stats_dict['highest_champ_points'] = race['points_champ']
+    for race_dict in race_dicts:
+        stats_dict['total_races'] += 1
+        stats_dict['total_champ_points'] += race_dict['champ_points']
 
-                                            if race['pos_finish_class'] == 1:
-                                                stats_dict['wins'] += 1
-                                            if 1 <= race['pos_finish_class'] <= 3:
-                                                stats_dict['podiums'] += 1
+        if race_dict['champ_points'] > stats_dict['highest_champ_points']:
+            stats_dict['highest_champ_points'] = race_dict['champ_points']
 
-                                            if race['pos_start_class'] == 1:
-                                                stats_dict['total_poles'] += 1
+        if race_dict['finish_position_in_class'] == 0:
+            stats_dict['wins'] += 1
+        if 0 <= race_dict['finish_position_in_class'] <= 2:
+            stats_dict['podiums'] += 1
 
-                                            stats_dict['total_incidents'] += race['incidents']
-                                            stats_dict['total_laps'] += race['laps']
-                                            stats_dict['total_laps_led'] += race['laps_led']
+        if race_dict['starting_position_in_class'] == 0:
+            stats_dict['total_poles'] += 1
 
-                                            irating_change = race['irating_new'] - race['irating_old']
-                                            stats_dict['total_ir_change'] += irating_change
+        stats_dict['total_incidents'] += race_dict['incidents']
+        stats_dict['total_laps'] += race_dict['laps_complete']
+        stats_dict['total_laps_led'] += race_dict['laps_led']
 
-                                            if irating_change > stats_dict['highest_ir_gain']:
-                                                stats_dict['highest_ir_gain'] = irating_change
+        irating_change = race_dict['newi_rating'] - race_dict['oldi_rating']
+        stats_dict['total_ir_change'] += irating_change
 
-                                            if irating_change < stats_dict['highest_ir_loss']:
-                                                stats_dict['highest_ir_loss'] = irating_change
+        if irating_change > stats_dict['highest_ir_gain']:
+            stats_dict['highest_ir_gain'] = irating_change
 
-                                            if race['pos_finish_class'] <= int(math.ceil(race['drivers_in_class'] / 2)):
-                                                stats_dict['top_half'] += 1
+        if irating_change < stats_dict['highest_ir_loss']:
+            stats_dict['highest_ir_loss'] = irating_change
 
-                                            if race['irating_new'] > stats_dict['highest_ir'] or stats_dict['highest_ir'] < 0:
-                                                stats_dict['highest_ir'] = race['irating_new']
+        drivers_in_class = await db.get_drivers_in_class(race_dict['subsession_id'], race_dict['car_class_id'], simsession_type=6)
 
-                                            if race['irating_new'] < stats_dict['lowest_ir'] and race['irating_new'] > 0 or stats_dict['lowest_ir'] < 0:
-                                                stats_dict['lowest_ir'] = race['irating_new']
+        if race_dict['finish_position_in_class'] <= int(math.ceil(drivers_in_class / 2)):
+            stats_dict['top_half'] += 1
 
-    global_vars.race_cache_locks -= 1
+        if race_dict['newi_rating'] > stats_dict['highest_ir'] or stats_dict['highest_ir'] < 0:
+            stats_dict['highest_ir'] = race_dict['newi_rating']
+
+        if race_dict['newi_rating'] < stats_dict['lowest_ir'] and race_dict['newi_rating'] > 0 or stats_dict['lowest_ir'] < 0:
+            stats_dict['lowest_ir'] = race_dict['newi_rating']
 
     if stats_dict['total_champ_points'] > 0:
         stats_dict['avg_champ_points'] = stats_dict['total_champ_points'] / stats_dict['total_races']
@@ -113,87 +76,36 @@ async def populate_head2head_stats(iracing_id, year=None, quarter=None, category
     return stats_dict
 
 
-def get_respo_champ_points(year, quarter, up_to_week):
-
-    leaderboard_best_weeks = {}
-    series_list = []
-    series_leaderboards = {}
-    # Make a list of all series Respo members ran
-    global_vars.race_cache_locks += 1
-    for member in global_vars.race_cache:
-        if str(year) in global_vars.race_cache[member]:
-            if str(quarter) in global_vars.race_cache[member][str(year)]:
-                for series in global_vars.race_cache[member][str(year)][str(quarter)]:
-                    series_list.append(int(series))
-            # NEC hard coding bullshit
-            if quarter != 2 and "2" in global_vars.race_cache[member][str(year)]:
-                if "275" in global_vars.race_cache[member][str(year)]["2"]:
-                    series_list.append(275)
-    global_vars.race_cache_locks -= 1
-
-    # Generate weekly points breakdown for each series
-    for series in series_list:
-        series_leaderboards[series] = get_champ_points(series, -1, year, quarter, up_to_week, True)
-
-    if len(series_list) < 1:
-        return leaderboard_best_weeks
-
-    for member in series_leaderboards[series]:
-        # leaderboard_best_weeks[member] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        leaderboard_best_weeks[member] = {'weeks': {}}
-
-    # Iterate through week by week and pick each member's best series for that week
-    for series in series_leaderboards:
-        for member in series_leaderboards[series]:
-            for week_key in series_leaderboards[series][member]['weeks']:
-                if week_key in leaderboard_best_weeks[member]['weeks']:
-                    if series_leaderboards[series][member]['weeks'][week_key] > leaderboard_best_weeks[member]['weeks'][week_key]:
-                        leaderboard_best_weeks[member]['weeks'][week_key] = series_leaderboards[series][member]['weeks'][week_key]
-                else:
-                    leaderboard_best_weeks[member]['weeks'][week_key] = series_leaderboards[series][member]['weeks'][week_key]
-
-    return leaderboard_best_weeks
-
-
-def get_respo_race_week(time_start_raw):
-    time_start = time_start_raw / 1000
+##################
+# TODO: VALIDATE #
+##################
+async def get_respo_race_week(db: BotDatabase, time_start):
+    start_datetime = datetime.fromisoformat(time_start)
+    season_year = -1
+    season_quarter = -1
     race_week = -1
-    start_datetime = datetime.utcfromtimestamp(time_start)
+    season_found = False
 
-    for year in global_vars.season_times_dict:
-        for quarter in global_vars.season_times_dict[year]:
-            if (global_vars.season_times_dict[year][quarter]['date_start'] <= time_start) and (global_vars.season_times_dict[year][quarter]['date_end'] > time_start):
-                season_datetime = datetime.fromtimestamp(global_vars.season_times_dict[year][quarter]['date_start'])
-                time_diff = (start_datetime - season_datetime).total_seconds()
-                race_week = int(time_diff / (7 * 24 * 60 * 60))
-                break
+    season_date_tuples = await db.get_season_dates()
 
-    if (race_week > 12) and (year == '2020') and (quarter == '3'):
-        # 2020s3 had a "leap week"
-        race_week = -1
-    elif race_week > 11:
-        race_week = -1
+    if season_date_tuples is None or len(season_date_tuples) < 1:
+        return None
 
-    return race_week
+    for season_date_tuple in season_date_tuples:
+        (_, season_year, season_quarter, str_start_time, str_end_time) = season_date_tuple
+        season_start = datetime.fromisoformat(str_start_time)
+        season_end = datetime.fromisoformat(str_end_time)
 
+        if start_datetime >= season_start and start_datetime < season_end:
+            time_diff = (start_datetime - season_start).total_seconds()
+            race_week = int(time_diff / (7 * 24 * 60 * 60))
+            season_found = True
+            break
 
-def get_ir_data_from_cache(iracing_id, category):
-    ir_tuples = []
-    iracing_id = str(iracing_id)
-    if iracing_id in global_vars.race_cache:
-        global_vars.race_cache_locks += 1
-        for year in global_vars.race_cache[iracing_id]:
-            for quarter in global_vars.race_cache[iracing_id][year]:
-                for series in global_vars.race_cache[iracing_id][year][quarter]:
-                    for subsession in global_vars.race_cache[iracing_id][year][quarter][series]:
-                        race = global_vars.race_cache[iracing_id][year][quarter][series][subsession]
-                        if race['track_cat_id'] == category and race['irating_new'] > 0:
-                            ir_tuples.append((race['time_start_raw'], race['irating_new']))
-        global_vars.race_cache_locks -= 1
-
-    ir_tuples.sort(key=lambda tup: tup[0])
-
-    return ir_tuples
+    if season_found:
+        return (season_year, season_quarter, race_week)
+    else:
+        return (None, None, None)
 
 
 def calc_total_champ_points(leaderboard_dict, weeks_to_count):
@@ -247,49 +159,69 @@ def calc_projected_champ_points(leaderboard_dict, max_week, weeks_to_count, acti
             leaderboard_dict[member]['projected_points'] = 0
 
 
-def get_champ_points(series_id, car_class_id, year, quarter, up_to_week, adjust_race_weeks):
+async def get_member_weekly_points_dict(db: BotDatabase, iracing_custid, series_id, car_class_id, season_year, season_quarter, up_to_week, adjust_race_weeks, subsession_to_ignore: int = None):
+    points = {}
+    for i in range(0, 12):
+        points[str(i)] = []
+
+    race_dicts = await db.get_member_race_results(iracing_custid, series_id=series_id, car_class_id=car_class_id, season_year=season_year, season_quarter=season_quarter, official_session=1, simsession_type=6)
+
+    for race_dict in race_dicts:
+        if subsession_to_ignore is not None and race_dict['subsession_id'] == subsession_to_ignore:
+            continue
+        race_week = None
+        if adjust_race_weeks and 'start_time' in race_dict:
+            (adjusted_season_year, adjusted_season_quarter, adjusted_race_week) = get_respo_race_week(db, race_dict['start_time'])
+
+            if adjusted_race_week is not None and adjusted_season_year == season_year and adjusted_season_quarter == season_quarter:
+                race_week = adjusted_race_week
+        elif 'race_week_num' in race_dict:
+            race_week = race_dict['race_week_num']
+
+        if race_week is None:
+            continue
+
+        if race_week <= up_to_week:
+            if 'champ_points' in race_dict and 'official_session' in race_dict and race_dict['official_session'] == 1:
+                points[str(race_week)].append(race_dict['champ_points'])
+
+    weekly_points = {}
+    for week in points:
+        num_to_grab = math.ceil(len(points[week]) / 4)
+        points[week].sort(reverse=True)
+        if points[week]:
+            points[week] = points[week][0:num_to_grab]
+            weekly_points[week] = int(sum(points[week]) / num_to_grab)
+
+    return weekly_points
+
+
+async def get_champ_points(db: BotDatabase, member_dicts, series_id, car_class_id, season_year, season_quarter, up_to_week):
     leaderboard = {}
 
-    global_vars.members_locks += 1
-    for member in global_vars.members:
-        iracing_id = global_vars.members[member]["iracingCustID"]
-        points = {}
-        for i in range(0, 12):
-            points[str(i)] = []
+    for member_dict in member_dicts:
+        weekly_points = await get_member_weekly_points_dict(db, member_dict['iracing_custid'], series_id, car_class_id, season_year, season_quarter, up_to_week, False)
+        leaderboard[member_dict['name']] = {'weeks': weekly_points}
 
-        if str(iracing_id) in global_vars.race_cache:
-            if str(year) in global_vars.race_cache[str(iracing_id)]:
-                if str(quarter) in global_vars.race_cache[str(iracing_id)][str(year)]:
-                    if str(series_id) in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)]:
-                        global_vars.race_cache_locks += 1
-                        for race in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)]:
-                            if car_class_id < 0 or 'car_class_id' in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]:
-                                if car_class_id < 0 or global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]['car_class_id'] == car_class_id:
-                                    if 'race_week' in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]:
-                                        if global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["race_week"] <= up_to_week:
-                                            if 'points_champ' in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]:
-                                                race_week = -1
-                                                if adjust_race_weeks and 'time_start_raw' in global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]:
-                                                    race_week = get_respo_race_week(global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]['time_start_raw'])
+    return leaderboard
 
-                                                if race_week == -1:
-                                                    race_week = global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["race_week"]
 
-                                                if global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["official"] == 1:
-                                                    points[str(race_week)].append(global_vars.race_cache[str(iracing_id)][str(year)][str(quarter)][str(series_id)][race]["points_champ"])
-                                                # else:
-                                                #     if race_week < 12:
-                                                #         points[str(race_week)].append(0)
-                        global_vars.race_cache_locks -= 1
+async def get_respo_champ_points(db: BotDatabase, member_dicts, season_year, season_quarter, up_to_week, subsession_to_ignore: int = None):
+    leaderboard = {}
 
-        weekly_points = {}
-        for week in points:
-            num_to_grab = math.ceil(len(points[week]) / 4)
-            points[week].sort(reverse=True)
-            if points[week]:
-                points[week] = points[week][0:num_to_grab]
-                weekly_points[week] = int(sum(points[week]) / num_to_grab)
-        leaderboard[global_vars.members[member]['leaderboardName']] = {'weeks': weekly_points}
+    for member_dict in member_dicts:
+        weekly_points_best = {}
+        series_list = await db.get_member_series_raced(member_dict['iracing_custid'], season_year=season_year, season_quarter=season_quarter, official_session=1, simsession_type=6)
 
-    global_vars.members_locks -= 1
+        for series_id in series_list:
+            weekly_points = get_member_weekly_points_dict(db, member_dict['iracing_custid'], series_id, None, season_year, season_quarter, up_to_week, True, subsession_to_ignore=subsession_to_ignore)
+
+            if weekly_points is None or len(weekly_points) < 1:
+                continue
+
+            for week in weekly_points:
+                if week not in weekly_points_best or weekly_points[week] > weekly_points_best[week]:
+                    weekly_points_best[week] = weekly_points[week]
+        leaderboard[member_dict['name']] = {'weeks': weekly_points_best}
+
     return leaderboard

@@ -1,22 +1,39 @@
 import discord
-import global_vars
+import constants
+from bot_database import BotDatabase
+
+db = None
+
+
+def init(db_: BotDatabase):
+    global db
+    db = db_
 
 
 async def get_member_list(ctx: discord.AutocompleteContext):
+    global db
     member_name_list = []
-    global_vars.members_locks += 1
-    for member in global_vars.members:
-        member_name_list.append(global_vars.members[member]['leaderboardName'].split()[0])
-    global_vars.members_locks -= 1
+
+    member_dicts = await db.fetch_member_dicts()
+
+    if member_dicts is None or len(member_dicts) < 1:
+        return []
+
+    for member_dict in member_dicts:
+        member_name_list.append(member_dict['name'].split()[0])
+
     member_name_list.sort()
 
     return [member_string for member_string in member_name_list if member_string.lower().startswith(ctx.value.lower())]
 
 
 async def get_iracing_seasons(ctx: discord.AutocompleteContext):
+    global db
     season_list = []
-    year = global_vars.series_info['misc']['current_year']
-    quarter = global_vars.series_info['misc']['current_quarter']
+    (year, quarter, _, _, _) = await db.get_current_iracing_week()
+
+    if year is None or quarter is None:
+        return []
 
     while year > 2007:
         season_string = str(year) + 's' + str(quarter)
@@ -32,35 +49,78 @@ async def get_iracing_seasons(ctx: discord.AutocompleteContext):
 
 
 async def get_series_list(ctx: discord.AutocompleteContext):
+    global db
     series_list = []
     series_keyword_list = []
 
-    if ctx.command.name == 'champ':
-        series_list.append('respo')
+    if 'season' in ctx.options:
+        season_selected = ctx.options['season']
+    else:
+        season_selected = None
 
-    for series_key in global_vars.series_info:
-        if 'keywords' in global_vars.series_info[series_key]:
-            for keyword in global_vars.series_info[series_key]['keywords']:
-                series_keyword_list.append(keyword)
+    if season_selected is None or season_selected == '':
+        if ctx.command.name == 'champ':
+            return ["Please select a season first."]
+        else:
+            (season_year, season_quarter, _, _, _) = await db.get_current_iracing_week()
+            if season_year is None or season_quarter is None:
+                return []
+    else:
+        season_year, season_quarter = parse_season_string(season_selected)
+
+    series_tuples = await db.get_season_basic_info(season_year=season_year, season_quarter=season_quarter)
+
+    if series_tuples is None or len(series_tuples) < 1:
+        return []
+
+    for series_tuple in series_tuples:
+        series_keyword_list.append(series_tuple[1])
+
     series_keyword_list.sort()
 
-    series_list.extend(series_keyword_list)
+    if ctx.command.name == 'champ':
+        series_keyword_list = [constants.respo_series_name] + series_keyword_list
 
-    return [series for series in series_list if series.startswith(ctx.value.lower())]
+    return [series for series in series_keyword_list if (series.lower().find(ctx.value.lower()) > -1 or ctx.value == '' or ctx.value is None)]
 
 
 async def get_series_classes(ctx: discord.AutocompleteContext):
-    class_list = []
-    series_selected = ctx.options["series"]
+    if 'season' in ctx.options:
+        season_selected = ctx.options['season']
+    else:
+        season_selected = None
 
-    for series_key in global_vars.series_info:
-        if 'keywords' in global_vars.series_info[series_key] and series_selected in global_vars.series_info[series_key]['keywords']:
-            if 'classes' in global_vars.series_info[series_key]:
-                for class_key in global_vars.series_info[series_key]['classes']:
-                    for class_keyword in global_vars.series_info[series_key]['classes'][class_key]:
-                        class_list.append(class_keyword)
+    if 'series' in ctx.options:
+        series_selected = ctx.options['series']
+    else:
+        series_selected = None
 
-    return [class_keyword for class_keyword in class_list if class_keyword.startswith(ctx.value.lower())]
+    if season_selected is None or season_selected == '' or series_selected is None or series_selected == '':
+        return ["Please slect a season and series first."]
+
+    season_year, season_quarter = parse_season_string(season_selected)
+
+    if season_year is None or season_quarter is None:
+        return ["Please select a season and series first."]
+
+    if series_selected == constants.respo_series_name:
+        return ["Literally any fucking car at all."]
+
+    series_id = await db.get_series_id_from_season_name(series_selected, season_year=season_year, season_quarter=season_quarter)
+    season_id = await db.get_season_id(series_id, season_year, season_quarter)
+
+    class_tuples = await db.get_season_car_classes(season_id=season_id)
+
+    if class_tuples is None or len(class_tuples) < 1:
+        return []
+
+    return [class_tuple[1] for class_tuple in class_tuples if (class_tuple[1].lower().find(ctx.value.lower()) > -1 or ctx.value == '' or ctx.value is None)]
+
+
+async def get_quote_ids(ctx: discord.AutocompleteContext):
+    global db
+    quote_ids = await db.get_quote_ids()
+    return [str(x) for x in quote_ids if (str(x).lower().find(ctx.value.lower()) > -1 or ctx.value == '' or ctx.value is None)]
 
 
 def parse_season_string(season_string):
@@ -68,59 +128,12 @@ def parse_season_string(season_string):
     if tmp.isnumeric():
         year = int(tmp)
     else:
-        return -1, -1
+        return None, None
 
     tmp = season_string[-1]
     if tmp.isnumeric():
         quarter = int(tmp)
     else:
-        return -1, -1
+        return None, None
 
     return year, quarter
-
-
-# async def get_member_dict(member: str):
-#     member_dict = {}
-
-#     if not member.isnumeric():
-#         if len(member.split()) == 1:
-#             member_name_list = []
-#             for tmp_member in global_vars.members:
-#                 member_name_list.append(global_vars.members[tmp_member]['leaderboardName'].split()[0])
-
-#             if member in member_name_list:
-#                 member_dict = get_member_dict_from_first_name(member)
-#                 if member_dict:
-#                     return member_dict
-#             else:
-#                 return {}
-
-#         driver_name = ""
-#         if (member[0] == '"' or member[0] == "“") and (member[-1] == '"' or member[-1] == '”'):
-#             # Adding by quoted name.
-#             driver_name = member[1:-1]
-#         else:
-#             # Adding by unquoted name
-#             driver_name = member
-
-#         driver_list = await global_vars.ir.driver_stats(search=driver_name)  # This returns a list of drivers, but we only want exact matches.
-#         driver_found = False
-#         for driver in driver_list:
-#             if driver.display_name.lower() == driver_name.lower():
-#                 member_dict['leaderboardName'] = driver.display_name
-#                 member_dict['iracingCustID'] = driver.cust_id
-#                 return member_dict
-#         if not driver_found:
-#             return {}
-#     else:
-#         iracing_id = int(member)
-#         races_list = await global_vars.ir.last_races_stats(iracing_id)
-#         if len(races_list) < 1:
-#             return {}
-
-#         subsession = await global_vars.ir.subsession_data(races_list[0].subsession_id)
-#         for driver in subsession.drivers:
-#             if driver.cust_id == int(member):
-#                 member_dict['leaderboardName'] = driver.display_name
-#                 member_dict['iracingCustID'] = driver.cust_id
-#                 return member_dict
