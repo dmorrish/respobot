@@ -5,6 +5,8 @@ py/commands/__pycache__/*
 *.pyc
 
 misc/*
+logutils/*
+log/*
 
 .env
 sandbox.py

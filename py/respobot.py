@@ -43,6 +43,10 @@ from commands.test_race_results import TestRaceResultsCog
 from on_message import OnMessageCog
 from on_reaction_add import OnReactionAddCog
 
+# Init data and folder if does not exist.
+if not os.path.exists(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY):
+    os.mkdir(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY)
+
 # Init Bot, IracingClient, BotDatabase, and BotState
 intents = discord.Intents.all()
 intents.message_content = True
@@ -81,6 +85,9 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name="50 Cent: Bulletproof"))
 
     print("I'm alive!")
+
+    log.logger_test.info("Oh, hi there!")
+    log.logger_test.warning("Uh oh!")
 
     season_dates = await db.get_season_dates()
     if season_dates is None:

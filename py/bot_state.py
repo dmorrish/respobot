@@ -16,8 +16,13 @@ class BotState:
             with open(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.BOT_STATE_FILENAME, "r") as f_bot_state:
                 try:
                     self.data = json.load(f_bot_state)
+                    log.logger_respobot.info(
+                        f"Successfully loaded {env.BOT_STATE_FILENAME} as "
+                        f"{self.data}"
+                    )
+
                 except JSONDecodeError:
-                    log.logger_respobot.error("bot_state.json did not contain valid JSON data, initializing as {}")
+                    log.logger_respobot.error(f"{env.BOT_STATE_FILENAME} did not contain valid JSON data, initializing as {{}}")
                     self.data = {}
         except FileNotFoundError:
             log.logger_respobot.error("bot_state.json does not exist, initializing as {}")
@@ -40,7 +45,7 @@ class BotState:
 
     def dump_state(self):
         self.write_lock = True
-        with open(env.BOT_DIRECTORY + "json/bot_state.json", "w") as f_bot_state:
+        with open(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.BOT_STATE_FILENAME, "w") as f_bot_state:
             json.dump(self.data, f_bot_state, indent=4)
         self.write_lock = False
 
