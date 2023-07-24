@@ -12,7 +12,6 @@ from pyracing.client import Client as IracingClient
 from datetime import datetime, timezone
 import httpx
 import traceback
-import logging
 
 # RespoBot modules
 import constants
@@ -82,16 +81,10 @@ bot.add_cog(OnReactionAddCog(bot, db, ir, bot_state))
 
 @bot.event
 async def on_ready():
-    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-    print(loggers)
-
     await db.init()
     await bot.change_presence(activity=discord.Game(name="50 Cent: Bulletproof"))
 
     print("I'm alive!")
-
-    log.logger_test.info("Oh, hi there!")
-    log.logger_test.warning("Uh oh!")
 
     season_dates = await db.get_season_dates()
     if season_dates is None:
