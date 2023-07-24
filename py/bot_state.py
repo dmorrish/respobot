@@ -16,11 +16,9 @@ class BotState:
             with open(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.BOT_STATE_FILENAME, "r") as f_bot_state:
                 try:
                     self.data = json.load(f_bot_state)
-                    bot_state_str = f"{self.data}"
-                    bot_state_str.replace('"', "'")
                     log.logger_respobot.info(
                         f"Successfully loaded {env.BOT_STATE_FILENAME} as "
-                        f"{bot_state_str}"
+                        f"{json.dumps(self.data)}"
                     )
 
                 except JSONDecodeError:
