@@ -16,8 +16,8 @@ from discord.commands import SlashCommandGroup
 
 class IrCommandsCog(commands.Cog):
 
-    def __init__(self, bot_, db, ir):
-        self.bot = bot_
+    def __init__(self, bot, db, ir):
+        self.bot = bot
         self.db = db
         self.ir = ir
 
@@ -165,7 +165,7 @@ class IrCommandsCog(commands.Cog):
             latest_road_ir_in_db = await self.db.get_member_ir(member_dict['iracing_custid'], category_id=irConstants.Category.road.value)
             if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
                 continue
-            ir_dict[helpers.spongify(member_dict['name'])] = member_dict['last_known_ir']
+            ir_dict[helpers.spongify(member_dict['name'])] = latest_road_ir_in_db
 
         sorted_ir_dict = dict(sorted(ir_dict.items(), key=lambda item: item[1], reverse=True))
 
