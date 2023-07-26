@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from discord.ext import commands
 from discord.commands import Option
 import environment_variables as env
-import slash_command_helpers as slash_helpers
+import helpers
 from slash_command_helpers import SlashCommandHelpers
+from irslashdata.exceptions import AuthenticationError, ServerDownError
 
 
 class NextRaceCog(commands.Cog):
@@ -25,31 +26,6 @@ class NextRaceCog(commands.Cog):
     ):
         await ctx.respond("On it...", ephemeral=False)
 
-        # Default is RespoBot's timezone.
-        respobot_time_offset = datetime.now() - datetime.utcnow()
-        user_time_offset = respobot_time_offset
-
-        timezone_name = "eastern"
-
-        member_dicts = await self.db.fetch_member_dicts()
-
-        if member_dicts is not None and len(member_dicts) > 0:
-            for member_dict in member_dicts:
-                if 'discord_id' in member_dict and member_dict['discord_id'] == ctx.author.id and 'timezone' in member_dict:
-                    timezone_name = member_dict['timezone']
-
-        if timezone_name == "eastern":
-            user_time_offset += timedelta(hours=0)
-        elif timezone_name == "central":
-            user_time_offset += timedelta(hours=-1)
-        elif timezone_name == "mountain":
-            user_time_offset += timedelta(hours=-2)
-        elif timezone_name == "pacific":
-            user_time_offset += timedelta(hours=-3)
-        else:
-            timezone_name = 'eastern'
-            user_time_offset += timedelta(hours=0)
-
         series_id = await self.db.get_series_id_from_season_name(series)
 
         if series_id is None:
@@ -57,7 +33,15 @@ class NextRaceCog(commands.Cog):
             return
 
         if series_id > 0:
-            race_guide = await self.ir.race_guide_new()
+            try:
+                race_guide = await self.ir.race_guide_new()
+            except AuthenticationError:
+                await ctx.edit(content=f"Authentication failed when trying to log in to the iRacing server. Deryk has been DMed.")
+                await helpers.send_bot_failure_dm(self.bot, "Authentication to the iRacing server failed.")
+                return
+            except ServerDownError:
+                await ctx.edit(content=f"iRacing is down for maintenance and this command relies on the stats server. Try again later.")
+                return
 
         if race_guide is None:
             await ctx.edit(content="I think I shit myself. Sorry.")
