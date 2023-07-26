@@ -19,8 +19,8 @@ class SlashCommandHelpers:
     quote_ids = []
 
     @classmethod
-    async def init(self, _db: BotDatabase):
-        self.db = _db
+    async def init(self, db: BotDatabase):
+        self.db = db
         await self.refresh_series()
         await self.refresh_quotes()
         await self.refresh_members()
