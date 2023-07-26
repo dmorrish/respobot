@@ -4,11 +4,8 @@ CREATE TABLE 'members' (
     'name'  TEXT NOT NULL,
     'iracing_custid'    INTEGER NOT NULL UNIQUE,
     'discord_id'    INTEGER NOT NULL UNIQUE,
-    'last_known_ir' INTEGER,
-    'timezone'  TEXT,
     'graph_colour'  TEXT,
     'last_race_check'   TEXT,
-    'last_hosted_check' TEXT,
     'ir_member_since'   TEXT,
     PRIMARY KEY('uid' AUTOINCREMENT)
 );

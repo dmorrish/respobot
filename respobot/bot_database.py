@@ -1110,11 +1110,8 @@ class BotDatabase:
                 name,
                 iracing_custid,
                 discord_id,
-                timezone,
                 graph_colour,
                 last_race_check,
-                last_hosted_check,
-                last_known_ir,
                 ir_member_since
             FROM members
         """
@@ -1146,18 +1143,20 @@ class BotDatabase:
 
         member_dicts = []
         for member_tuple in tuples:
-            graph_colour_list = member_tuple[4].split(',')
+            graph_colour_list = member_tuple[3].split(',')
+
+            try:
+                ir_member_since = date.fromisoformat(member_tuple[5])
+            except ValueError:
+                ir_member_since = None
 
             member_dict = {
                 'name': member_tuple[0],
                 'iracing_custid': member_tuple[1],
                 'discord_id': member_tuple[2],
-                'timezone': member_tuple[3],
                 'graph_colour': [int(graph_colour_list[0]), int(graph_colour_list[1]), int(graph_colour_list[2]), int(graph_colour_list[3])],
-                'last_race_check': member_tuple[5],
-                'last_hosted_check': member_tuple[6],
-                'last_known_ir': member_tuple[7],
-                'ir_member_since': date.fromisoformat(member_tuple[8])
+                'last_race_check': member_tuple[4],
+                'ir_member_since': ir_member_since
             }
 
             if len(tuples) == 1 and (iracing_custid is not None or discord_id is not None or first_name is not None):
@@ -1177,11 +1176,9 @@ class BotDatabase:
                 members.name,
                 members.iracing_custid,
                 members.discord_id,
-                members.timezone,
                 members.graph_colour,
                 members.last_race_check,
-                members.last_hosted_check,
-                members.last_known_ir
+                members.ir_member_since
             FROM results
             INNER JOIN members
             ON members.iracing_custid = results.cust_id
@@ -1209,18 +1206,21 @@ class BotDatabase:
 
         member_dicts = []
 
-        for result_tuple in tuples:
-            graph_colour_list = result_tuple[4].split(',')
+        for member_tuple in tuples:
+            graph_colour_list = member_tuple[3].split(',')
+
+            try:
+                ir_member_since = date.fromisoformat(member_tuple[5])
+            except ValueError:
+                ir_member_since = None
 
             member_dict = {
-                'name': result_tuple[0],
-                'iracing_custid': result_tuple[1],
-                'discord_id': result_tuple[2],
-                'timezone': result_tuple[3],
+                'name': member_tuple[0],
+                'iracing_custid': member_tuple[1],
+                'discord_id': member_tuple[2],
                 'graph_colour': [int(graph_colour_list[0]), int(graph_colour_list[1]), int(graph_colour_list[2]), int(graph_colour_list[3])],
-                'last_race_check': result_tuple[5],
-                'last_hosted_check': result_tuple[6],
-                'last_known_ir': result_tuple[7]
+                'last_race_check': member_tuple[4],
+                'ir_member_since': ir_member_since
             }
 
             member_dicts.append(member_dict)
