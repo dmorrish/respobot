@@ -27,6 +27,7 @@ from bot_database import BotDatabase, BotDatabaseError
 from bot_state import BotState
 
 # Import all bot command cogs
+from commands.admin_commands import AdminCommandsCog
 from commands.champ import ChampCog
 from commands.compass import CompassCog
 from commands.head2head import Head2HeadCog
@@ -62,6 +63,7 @@ bot_state = BotState(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.BOT_STATE_F
 first_run = True
 
 # Attach all bot command cogs
+bot.add_cog(AdminCommandsCog(bot, db, ir))
 bot.add_cog(ChampCog(bot, db, ir))
 bot.add_cog(CompassCog(bot, db, ir))
 bot.add_cog(Head2HeadCog(bot, db, ir))
@@ -281,7 +283,7 @@ async def fast_task_loop():
 
         if member_dicts is not None and len(member_dicts) > 0:
             for member_dict in member_dicts:
-                if now.day == member_dict['ir_member_since'].day and now.month == member_dict['ir_member_since'].month:
+                if member_dict['ir_member_since'] is not None and now.day == member_dict['ir_member_since'].day and now.month == member_dict['ir_member_since'].month:
                     channel = helpers.fetch_channel(bot)
                     await channel.send(f"Happy iRacing birthday, {member_dict['name']}! 🥳🎉🎊")
     elif now.hour != 16:
