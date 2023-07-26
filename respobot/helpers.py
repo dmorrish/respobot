@@ -29,6 +29,7 @@ def fetch_guild(bot: discord.Bot):
     for guild in bot.guilds:
         if guild.id == env.GUILD:
             return guild
+    logging.getLogger('respobot.discord').warning("Could not fetch RespoBot guild from the bot instance.")
     return None
 
 
@@ -38,6 +39,7 @@ def fetch_channel(bot: discord.Bot):
             for channel in guild.channels:
                 if channel.id == env.CHANNEL:
                     return channel
+    logging.getLogger('respobot.discord').warning("Could not fetch default channel from the bot instance.")
     return None
 
 
@@ -77,3 +79,19 @@ async def fetch_guild_member_objects(guild: discord.Guild, db: BotDatabase):
             logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: {e}")
 
     return member_objects
+
+
+async def send_bot_failure_dm(bot: discord.Bot, message: str):
+    guild = fetch_guild(bot)
+
+    if guild is not None:
+        try:
+            admin_object = await guild.fetch_member(env.ADMIN_ID)
+            if admin_object is not None:
+                try:
+                    await admin_object.send(message)
+                except (discord.HTTPException, discord.Forbidden, discord.InvalidArgument) as exc:
+                    logging.getLogger('respobot.discord').warning(f"Could not send failure DM to admin {admin_object.display_name}. Exception: {exc}")
+        except (discord.HTTPException, discord.Forbidden) as exc:
+            logging.getLogger('respobot.discord').warning(f"Could not fetch admin Member object to send failure DM. Exception {exc}")
+            return
