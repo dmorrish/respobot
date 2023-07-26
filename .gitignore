@@ -6,6 +6,7 @@ respobot/commands/__pycache__/*
 
 misc/*
 log/*
+data/*
 logutils/*
 !get_local_logs.bat
 !get_server_logs.bat
