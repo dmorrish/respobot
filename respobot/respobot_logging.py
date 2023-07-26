@@ -39,13 +39,13 @@ logger_discord.addHandler(file_handler_discord)
 socket_handler = SocketHandler(env.LOG_SERVER_ADDRESS, 19996)  # default listening address
 logger_discord.addHandler(socket_handler)
 
-logger_pyracing = logging.getLogger('pyracing')
-logger_pyracing.propagate = False
-logger_pyracing.setLevel(logging.DEBUG)
-file_handler_pyracing = logging.FileHandler(filename=env.BOT_DIRECTORY + env.LOG_SUBDIRECTORY + 'pyracing.log', encoding='utf-8', mode='a')
-file_handler_pyracing.setFormatter(file_handler_formatter)
-logger_pyracing.addHandler(file_handler_pyracing)
-logger_pyracing.addHandler(socket_handler)
+logger_iracing = logging.getLogger('irslashdata')
+logger_iracing.propagate = False
+logger_iracing.setLevel(logging.DEBUG)
+file_handler_iracing = logging.FileHandler(filename=env.BOT_DIRECTORY + env.LOG_SUBDIRECTORY + 'iracing.log', encoding='utf-8', mode='a')
+file_handler_iracing.setFormatter(file_handler_formatter)
+logger_iracing.addHandler(file_handler_iracing)
+logger_iracing.addHandler(socket_handler)
 
 logger_respobot = logging.getLogger('respobot')
 logger_respobot.propagate = False

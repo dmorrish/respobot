@@ -1,9 +1,7 @@
 import json
 from dotenv import load_dotenv
-from pyracing.client import Client
 from datetime import date
 from bot_database import BotDatabase
-import discord
 import environment_variables as env
 import asyncio
 

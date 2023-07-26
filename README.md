@@ -4,7 +4,7 @@ A belligerent Discord bot for iRacing themed Discord servers.
 
 ## Required Python Libraries
 
-* ir-slash-data - my fork of pyracing (https://github.com/Esterni/pyracing) that uses the new /data endpoints and returns information in the original dicts)
+* ir-slash-data - my fork of pyracing (https://github.com/Esterni/pyracing) that uses iRacing's new /Data stats endpoints and returns information in the original dicts
 * httpx - used by ir-slash-data
 * py-cord
 * python-dotenv

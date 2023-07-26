@@ -4,7 +4,7 @@ from datetime import datetime, date
 import aiosqlite
 from aiosqlite import Error
 import bot_database_queries as dbq
-from pyracing import constants as pyracingConstants
+from irslashdata import constants as irConstants
 from enum import Enum
 
 
@@ -1079,7 +1079,7 @@ class BotDatabase:
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during set_member_last_race_check() for iracing_custid = {iracing_custid}.")
 
-    async def get_member_ir(self, iracing_custid: int, category_id: int = pyracingConstants.Category.road.value):
+    async def get_member_ir(self, iracing_custid: int, category_id: int = irConstants.Category.road.value):
         query = """
             SELECT MAX(results.subsession_id), newi_rating
             FROM results
@@ -1195,9 +1195,9 @@ class BotDatabase:
             query += """
                 AND livery_car_number = ?
             """
-            parameters = (pyracingConstants.SimSessionType.race.value, subsession_id, car_number)
+            parameters = (irConstants.SimSessionType.race.value, subsession_id, car_number)
         else:
-            parameters = (pyracingConstants.SimSessionType.race.value, subsession_id)
+            parameters = (irConstants.SimSessionType.race.value, subsession_id)
 
         try:
             tuples = await self.execute_read_query(query, params=parameters)
@@ -1293,7 +1293,7 @@ class BotDatabase:
             member = "custid: " + str(iracing_custid) if iracing_custid is not None else "discord_id: " + str(discord_id)
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to update graph colour to {graph_colour} for {member}.")
 
-    async def get_latest_ir(self, iracing_custid: int = None, discord_id: int = None, first_name: str = None, category_id: int = pyracingConstants.Category.road.value):
+    async def get_latest_ir(self, iracing_custid: int = None, discord_id: int = None, first_name: str = None, category_id: int = irConstants.Category.road.value):
 
         if iracing_custid is None and discord_id is None and first_name is None:
             raise BotDatabaseError("You must provide either iracing_custid, discord_id, or first_name.", ErrorCodes.insufficient_info.value)
@@ -1315,7 +1315,7 @@ class BotDatabase:
                 results.simsession_type = ? AND
                 results.newi_rating > 0
         """
-        parameters = (member_dict['iracing_custid'], category_id, pyracingConstants.SimSessionType.race.value)
+        parameters = (member_dict['iracing_custid'], category_id, irConstants.SimSessionType.race.value)
 
         try:
             result_tuples = await self.execute_read_query(query, params=parameters)
@@ -1357,7 +1357,7 @@ class BotDatabase:
                 results.newi_rating > 0
             ORDER BY subsessions.end_time
         """
-        parameters = (member_dict['iracing_custid'], category_id, category_id, pyracingConstants.SimSessionType.race.value)
+        parameters = (member_dict['iracing_custid'], category_id, category_id, irConstants.SimSessionType.race.value)
 
         try:
             result_tuples = await self.execute_read_query(query, params=parameters)

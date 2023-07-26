@@ -9,7 +9,7 @@ import environment_variables as env
 from slash_command_helpers import SlashCommandHelpers, SeasonStringError
 import stats_helpers as stats
 import image_generators as image_gen
-from pyracing import constants as pyracingConstants
+from irslashdata import constants as irConstants
 
 
 class CompassCog(commands.Cog):
@@ -73,7 +73,7 @@ class CompassCog(commands.Cog):
         for member_dict in member_dicts:
             if 'iracing_custid' in member_dict and 'name' in member_dict and 'discord_id' in member_dict:
                 name = member_dict['name']
-                member_stats[name] = await stats.populate_head2head_stats(self.db, member_dict['iracing_custid'], year=year, quarter=quarter, category=pyracingConstants.Category.road.value, series=None, car_class=None)
+                member_stats[name] = await stats.populate_head2head_stats(self.db, member_dict['iracing_custid'], year=year, quarter=quarter, category=irConstants.Category.road.value, series=None, car_class=None)
                 if member_stats[name]['laps_per_inc'] != math.inf:
                     compass_data[name] = {}
                     compass_data[name]['point'] = (member_stats[name]['laps_per_inc'], member_stats[name]['avg_champ_points'])

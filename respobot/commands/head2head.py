@@ -8,7 +8,7 @@ import environment_variables as env
 from slash_command_helpers import SlashCommandHelpers, SeasonStringError
 import stats_helpers as stats
 import image_generators as image_gen
-from pyracing import constants as pyracingConstants
+from irslashdata import constants as irConstants
 
 
 class Head2HeadCog(commands.Cog):
@@ -75,9 +75,9 @@ class Head2HeadCog(commands.Cog):
                 await ctx.edit(content="iRacing was launched in 2008.")
                 return
 
-        racer1_stats = await stats.populate_head2head_stats(self.db, racer1_dict['iracing_custid'], year=year, quarter=quarter, category=pyracingConstants.Category.road.value, series=None, car_class=None)
+        racer1_stats = await stats.populate_head2head_stats(self.db, racer1_dict['iracing_custid'], year=year, quarter=quarter, category=irConstants.Category.road.value, series=None, car_class=None)
 
-        racer2_stats = await stats.populate_head2head_stats(self.db, racer2_dict['iracing_custid'], year=year, quarter=quarter, category=pyracingConstants.Category.road.value, series=None, car_class=None)
+        racer2_stats = await stats.populate_head2head_stats(self.db, racer2_dict['iracing_custid'], year=year, quarter=quarter, category=irConstants.Category.road.value, series=None, car_class=None)
 
         if racer1_stats['total_races'] < 1:
             await ctx.edit(content=racer1_dict['name'] + " has no races for the selected options.")

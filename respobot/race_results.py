@@ -8,8 +8,8 @@ import stats_helpers as stats
 import image_generators as image_gen
 import helpers
 from bot_database import BotDatabase, BotDatabaseError
-from pyracing.client import Client as IracingClient
-from pyracing import constants as pyracingConstants
+from irslashdata.client import Client as IracingClient
+from irslashdata import constants as irConstants
 import logging
 import asyncio
 
@@ -111,7 +111,7 @@ async def process_race_result(bot: discord.Bot, db: BotDatabase, subsession_data
 
     for results_dict in subsession_data['session_results']:
         if 'simsession_number' in results_dict and results_dict['simsession_number'] == 0:
-            if 'simsession_type' in results_dict and results_dict['simsession_type'] != pyracingConstants.SimSessionType.race.value:
+            if 'simsession_type' in results_dict and results_dict['simsession_type'] != irConstants.SimSessionType.race.value:
                 logging.getLogger('respobot.iracing').warning(f"The main event for subsession {subsession_data['subsession_id']} was not a race. Ignoring.")
                 return
             if 'results' not in results_dict or len(results_dict['results']) < 1:
@@ -200,7 +200,7 @@ async def process_race_result(bot: discord.Bot, db: BotDatabase, subsession_data
             drivers_listed += 1
 
             # Promote / demote Discord roles based on new iRating. Populate role_change_reason if they have crossed the pleb line.
-            if race_summary_dict['track_category_id'] == pyracingConstants.Category.road.value and driver_result_dict['newi_rating'] > 0 and driver_result_dict['oldi_rating'] > 0:
+            if race_summary_dict['track_category_id'] == irConstants.Category.road.value and driver_result_dict['newi_rating'] > 0 and driver_result_dict['oldi_rating'] > 0:
                 if driver_result_dict['newi_rating'] >= constants.pleb_line:
                     await roles.promote_driver(helpers.fetch_guild(bot), member['discord_id'])
                     if driver_result_dict['oldi_rating'] < constants.pleb_line:

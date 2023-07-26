@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone, timedelta
 import logging
-from pyracing.exceptions import AuthenticationError, ServerDownError
+from irslashdata.exceptions import AuthenticationError, ServerDownError
 from bot_database import BotDatabaseError
 
 

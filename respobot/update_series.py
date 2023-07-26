@@ -3,7 +3,7 @@ import httpx
 import traceback
 from datetime import datetime, timedelta, timezone
 from bot_database import BotDatabase
-from pyracing.client import Client as IracingClient
+from irslashdata.client import Client as IracingClient
 
 
 async def update_season_dates(db: BotDatabase, ir: IracingClient, season_year: int = None, season_quarter: int = None):
@@ -89,9 +89,9 @@ async def update_season_dates(db: BotDatabase, ir: IracingClient, season_year: i
         await db.update_season_dates(season_dicts)
         print("Done updating season_dates table!")
     except httpx.HTTPError:
-        logging.getLogger('respobot.bot').warning("pyracing timed out during the respobot.update_series.update_series_dates() method.")
+        logging.getLogger('respobot.bot').warning("Connection to iRacing timed out during the respobot.update_series.update_series_dates() method.")
     except RecursionError:
-        logging.getLogger('respobot.bot').warning("pyracing hit the recursion limit during the respobot.update_series.update_series_dates() method.")
+        logging.getLogger('respobot.bot').warning("iRacing client hit the recursion limit during the respobot.update_series.update_series_dates() method.")
     except Exception as ex:
         print(traceback.format_exc())
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"

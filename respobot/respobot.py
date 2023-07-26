@@ -8,8 +8,8 @@ import discord
 import discord.commands
 from discord.ext import tasks
 import math
-from pyracing.client import Client as IracingClient
-from pyracing.exceptions import AuthenticationError, ServerDownError
+from irslashdata.client import Client as IracingClient
+from irslashdata.exceptions import AuthenticationError, ServerDownError
 from datetime import datetime, timezone
 import logging
 

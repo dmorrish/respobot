@@ -5,7 +5,7 @@ import roles
 import discord
 from discord.errors import NotFound, HTTPException
 from bot_database import BotDatabase
-from pyracing import constants as pyracingConstants
+from irslashdata import constants as irConstants
 
 
 # mAkE iT sPeAk LiKe ThIs
@@ -49,7 +49,7 @@ async def promote_demote_members(guild: discord.Guild, db: BotDatabase):
         return
 
     for member_dict in member_dicts:
-        latest_road_ir_in_db = await db.get_member_ir(member_dict['iracing_custid'], category_id=pyracingConstants.Category.road.value)
+        latest_road_ir_in_db = await db.get_member_ir(member_dict['iracing_custid'], category_id=irConstants.Category.road.value)
         if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
             continue
 

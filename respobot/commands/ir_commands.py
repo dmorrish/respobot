@@ -8,10 +8,9 @@ from discord.commands import Option
 import constants
 import environment_variables as env
 import helpers
-import slash_command_helpers as slash_helpers
 from slash_command_helpers import SlashCommandHelpers
 import image_generators as image_gen
-from pyracing import constants as pyracingConstants
+from irslashdata import constants as irConstants
 from discord.commands import SlashCommandGroup
 
 
@@ -109,7 +108,7 @@ class IrCommandsCog(commands.Cog):
                     timestamp = time_point.timestamp() * 1000
                     member_dict['ir_data'].append((timestamp, point_dict['value']))
             else:
-                member_dict['ir_data'] = await self.db.get_ir_data(iracing_custid=member_dict['iracing_custid'], category_id=pyracingConstants.Category.road.value)
+                member_dict['ir_data'] = await self.db.get_ir_data(iracing_custid=member_dict['iracing_custid'], category_id=irConstants.Category.road.value)
 
         temp_member_dicts = []
 
@@ -163,7 +162,7 @@ class IrCommandsCog(commands.Cog):
             return
 
         for member_dict in member_dicts:
-            latest_road_ir_in_db = await self.db.get_member_ir(member_dict['iracing_custid'], category_id=pyracingConstants.Category.road.value)
+            latest_road_ir_in_db = await self.db.get_member_ir(member_dict['iracing_custid'], category_id=irConstants.Category.road.value)
             if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
                 continue
             ir_dict[helpers.spongify(member_dict['name'])] = member_dict['last_known_ir']
