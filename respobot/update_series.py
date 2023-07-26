@@ -1,4 +1,4 @@
-import respobot_logging as log
+import logging
 import httpx
 import traceback
 from datetime import datetime, timedelta, timezone
@@ -47,7 +47,7 @@ async def update_season_dates(db: BotDatabase, ir: IracingClient, season_year: i
         season_dicts = []
 
         while done is False:
-            print(f"Checking {year}s{quarter}")
+            logging.getLogger('respobot.bot').info(f"Updating season dates for {year}s{quarter}")
             result_dicts = await ir.search_results_new(season_year=year, season_quarter=quarter, race_week_num=0, series_id=139, official_only=True, event_types=[5])
 
             if result_dicts is not None and len(result_dicts) > 0:
@@ -89,11 +89,11 @@ async def update_season_dates(db: BotDatabase, ir: IracingClient, season_year: i
         await db.update_season_dates(season_dicts)
         print("Done updating season_dates table!")
     except httpx.HTTPError:
-        log.logger_respobot.warning("pyracing timed out during the respobot.update_series.update_series_dates() method.")
+        logging.getLogger('respobot.bot').warning("pyracing timed out during the respobot.update_series.update_series_dates() method.")
     except RecursionError:
-        log.logger_respobot.warning("pyracing hit the recursion limit during the respobot.update_series.update_series_dates() method.")
+        logging.getLogger('respobot.bot').warning("pyracing hit the recursion limit during the respobot.update_series.update_series_dates() method.")
     except Exception as ex:
         print(traceback.format_exc())
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(ex).__name__, ex.args)
-        log.logger_respobot.error(message)
+        logging.getLogger('respobot.bot').error(message)

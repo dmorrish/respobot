@@ -1,12 +1,15 @@
 __pycache__/*
-py/__pycache__/*
-py/commands/__pycache__/*
+respobot/__pycache__/*
+respobot/commands/__pycache__/*
 
 *.pyc
 
 misc/*
-logutils/*
 log/*
+logutils/*
+!get_local_logs.bat
+!get_server_logs.bat
+!parse_logs.py
 
 .env
 sandbox.py

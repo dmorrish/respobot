@@ -36,7 +36,7 @@ logger_discord.setLevel(logging.DEBUG)
 file_handler_discord = logging.FileHandler(filename=env.BOT_DIRECTORY + env.LOG_SUBDIRECTORY + 'discord.log', encoding='utf-8', mode='a')
 file_handler_discord.setFormatter(file_handler_formatter)
 logger_discord.addHandler(file_handler_discord)
-socket_handler = SocketHandler('192.168.1.43', 19996)  # default listening address
+socket_handler = SocketHandler(env.LOG_SERVER_ADDRESS, 19996)  # default listening address
 logger_discord.addHandler(socket_handler)
 
 logger_pyracing = logging.getLogger('pyracing')
