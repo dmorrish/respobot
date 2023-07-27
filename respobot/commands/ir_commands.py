@@ -172,7 +172,7 @@ class IrCommandsCog(commands.Cog):
         print(sorted_ir_dict)
 
         for key in sorted_ir_dict:
-            if pleb_line_printed is False and sorted_ir_dict[key] is not None and sorted_ir_dict[key] < constants.pleb_line:
+            if pleb_line_printed is False and sorted_ir_dict[key] is not None and sorted_ir_dict[key] < constants.PLEB_LINE:
                 response += "----------(pleb line)-----------\n"
                 pleb_line_printed = True
             response += key

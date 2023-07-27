@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone, timedelta
 import logging
 from irslashdata.exceptions import AuthenticationError, ServerDownError
 from bot_database import BotDatabaseError
+import constants
 
 
 async def cache_races(db, ir, iracing_custids):
@@ -34,7 +35,7 @@ async def cache_races(db, ir, iracing_custids):
             end_time = start_time + timedelta(days=90)
             latest_race = None
 
-            while end_time < datetime.now(timezone.utc).replace(second=0, microsecond=0):
+            while caching_done is False:
                 logging.getLogger('respobot.bot').info("Caching hosted races for " + str(start_time) + " to " + str(end_time))
                 start_range_begin = start_time.isoformat().replace("+00:00", "Z")
                 start_range_end = end_time.isoformat().replace("+00:00", "Z")
@@ -46,15 +47,21 @@ async def cache_races(db, ir, iracing_custids):
 
                 for result in hosted_race_dicts:
 
-                    new_race = await ir.subsession_data_new(result['subsession_id'])
-
-                    if new_race is None:
-                        continue
-                    race_dicts.append(new_race)
-                    if 'start_time' in new_race:
-                        new_race_start_time = datetime.fromisoformat(new_race['start_time'])
+                    if 'start_time' in result:
+                        new_race_start_time = datetime.fromisoformat(result['start_time'])
                         if latest_race is None or new_race_start_time > latest_race:
                             latest_race = new_race_start_time
+
+                    if not await db.is_subsession_in_db(result['subsession_id']):
+                        new_race = await ir.subsession_data_new(result['subsession_id'])
+
+                        if new_race is None:
+                            continue
+
+                        race_dicts.append(new_race)
+
+                    else:
+                        logging.getLogger('respobot.bot').info(f"Subsession {result['subsession_id']} already in database. Skipping.")
 
                 await db.add_subsessions(race_dicts)
 
@@ -63,6 +70,9 @@ async def cache_races(db, ir, iracing_custids):
                 if end_time > datetime.now(timezone.utc):
                     end_time = datetime.now(timezone.utc)
                 end_time = end_time.replace(second=0, microsecond=0)
+
+                if end_time - start_time < timedelta(seconds=constants.RACE_SCAN_INTERVAL):
+                    caching_done = True
 
             caching_done = False
 
@@ -75,17 +85,26 @@ async def cache_races(db, ir, iracing_custids):
                 race_dicts = []
 
                 for result in results_dicts:
-                    new_race = await ir.subsession_data_new(result['subsession_id'])
 
-                    if new_race is None:
-                        continue
-                    race_dicts.append(new_race)
-                    if 'start_time' in new_race:
-                        new_race_start_time = datetime.fromisoformat(new_race['start_time'])
+                    if 'start_time' in result:
+                        new_race_start_time = datetime.fromisoformat(result['start_time'])
                         if latest_race is None or new_race_start_time > latest_race:
                             latest_race = new_race_start_time
 
-                await db.add_subsessions(race_dicts)
+                    if not await db.is_subsession_in_db(result['subsession_id']):
+                        new_race = await ir.subsession_data_new(result['subsession_id'])
+
+                        if new_race is None:
+                            continue
+                        race_dicts.append(new_race)
+
+                    else:
+                        logging.getLogger('respobot.bot').info(f"Subsession {result['subsession_id']} already in database. Skipping.")
+
+                try:
+                    await db.add_subsessions(race_dicts)
+                except BotDatabaseError as exc:
+                    logging.getLogger('respobot.bot').warning(f"Ignoring race in cache_races(): {exc}")
 
                 quarter += 1
 
@@ -102,9 +121,6 @@ async def cache_races(db, ir, iracing_custids):
             return
         except ServerDownError:
             logging.getLogger('respobot.iracing').warning("The iRacing servers are down for maintenance. Abandoning cache_races().")
-            return
-        except BotDatabaseError as exc:
-            logging.getLogger('respobot.database').warning(f"BotDatabaseError: {exc}")
             return
 
     logging.getLogger('respobot.bot').info("Done caching races!")

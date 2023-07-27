@@ -156,7 +156,7 @@ async def process_race_result(bot: discord.Bot, db: BotDatabase, subsession_data
         current_racing_week = 12
 
     week_data_before = await stats.get_respo_champ_points(db, all_member_dicts, current_year, current_quarter, current_racing_week, subsession_to_ignore=subsession_data['subsession_id'])
-    stats.calc_total_champ_points(week_data_before, constants.respo_weeks_to_count)
+    stats.calc_total_champ_points(week_data_before, constants.RESPO_WEEKS_TO_COUNT)
     week_data_before = dict(sorted(week_data_before.items(), key=lambda item: item[1]['total_points'], reverse=True))
     to_remove = []
     for inner_member in week_data_before:
@@ -201,13 +201,13 @@ async def process_race_result(bot: discord.Bot, db: BotDatabase, subsession_data
 
             # Promote / demote Discord roles based on new iRating. Populate role_change_reason if they have crossed the pleb line.
             if race_summary_dict['track_category_id'] == irConstants.Category.road.value and driver_result_dict['newi_rating'] > 0 and driver_result_dict['oldi_rating'] > 0:
-                if driver_result_dict['newi_rating'] >= constants.pleb_line:
+                if driver_result_dict['newi_rating'] >= constants.PLEB_LINE:
                     await roles.promote_driver(helpers.fetch_guild(bot), member['discord_id'])
-                    if driver_result_dict['oldi_rating'] < constants.pleb_line:
+                    if driver_result_dict['oldi_rating'] < constants.PLEB_LINE:
                         role_change_reason = member['name'] + " has risen above the pleb line and proven themself worthy of the title God Amongst Men."
                 else:
                     await roles.demote_driver(helpers.fetch_guild(bot), member['discord_id'])
-                    if driver_result_dict['oldi_rating'] >= constants.pleb_line:
+                    if driver_result_dict['oldi_rating'] >= constants.PLEB_LINE:
                         role_change_reason = member['name'] + " has dropped below the pleb line and has been banished from Mount Olypmus to carry out the rest of their days among the peasants."
 
             ###################################################
@@ -242,7 +242,7 @@ async def process_race_result(bot: discord.Bot, db: BotDatabase, subsession_data
 
     # 7. Calculate Respo champ points for race reports. This section calculates points after the new race is accounted for.
     week_data_after = await stats.get_respo_champ_points(db, all_member_dicts, current_year, current_quarter, current_racing_week)
-    stats.calc_total_champ_points(week_data_after, constants.respo_weeks_to_count)
+    stats.calc_total_champ_points(week_data_after, constants.RESPO_WEEKS_TO_COUNT)
 
     week_data_after = dict(sorted(week_data_after.items(), key=lambda item: item[1]['total_points'], reverse=True))
     to_remove = []

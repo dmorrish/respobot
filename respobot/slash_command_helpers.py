@@ -1,6 +1,7 @@
+import logging
 import discord
 import constants
-from bot_database import BotDatabase
+from bot_database import BotDatabase, BotDatabaseError
 
 
 class SeasonStringError(Exception):
@@ -52,7 +53,7 @@ class SlashCommandHelpers:
         (year, quarter, _, _, _) = await self.db.get_current_iracing_week()
         new_current_season_string = str(year) + 's' + str(quarter)
         if year is not None and quarter is not None:
-            while year > constants.iracing_first_year or year == constants.iracing_first_year and quarter >= constants.iracing_first_quarter:
+            while year > constants.IRACING_FIRST_YEAR or year == constants.IRACING_FIRST_YEAR and quarter >= constants.IRACING_FIRST_QUARTER:
                 season_string = str(year) + 's' + str(quarter)
                 new_iracing_season_strings.append(season_string)
 
@@ -119,8 +120,8 @@ class SlashCommandHelpers:
             raise SeasonStringError("Valid quarters are 1, 2, 3, or 4.")
         if current_year is not None and current_quarter is not None and (selected_year > current_year or (selected_year == current_year and selected_quarter > current_quarter)):
             raise SeasonStringError("Selected season is in the future.")
-        if selected_year < constants.iracing_first_year or (selected_year == constants.iracing_first_year and selected_quarter < constants.iracing_first_quarter):
-            raise SeasonStringError(f"Selected season is before the very first iRacing season, {constants.iracing_first_year}s{constants.iracing_first_quarter}.")
+        if selected_year < constants.IRACING_FIRST_YEAR or (selected_year == constants.IRACING_FIRST_YEAR and selected_quarter < constants.IRACING_FIRST_QUARTER):
+            raise SeasonStringError(f"Selected season is before the very first iRacing season, {constants.IRACING_FIRST_YEAR}s{constants.IRACING_FIRST_QUARTER}.")
 
         return (selected_year, selected_quarter)
 
@@ -150,7 +151,7 @@ class SlashCommandHelpers:
         series_keyword_list = self.iracing_series_dict[season_selected]['season_name_strings']
 
         if ctx.command.name == 'champ':
-            series_keyword_list = [constants.respo_series_name] + series_keyword_list
+            series_keyword_list = [constants.RESPO_SERIES_NAME] + series_keyword_list
 
         return [series for series in series_keyword_list if (series.lower().find(ctx.value.lower()) > -1 or ctx.value == '' or ctx.value is None)]
 
@@ -172,7 +173,7 @@ class SlashCommandHelpers:
         if season_selected not in self.iracing_series_dict:
             return ["Selected season not found in the series list. Let Deryk know because it means he sucks."]
 
-        if series_selected == constants.respo_series_name:
+        if series_selected == constants.RESPO_SERIES_NAME:
             return ["Literally any fucking car at all."]
 
         return [class_name for class_name in self.iracing_series_dict[season_selected]['season_class_dict'][series_selected] if (class_name.lower().find(ctx.value.lower()) > -1 or ctx.value == '' or ctx.value is None)]
@@ -180,3 +181,21 @@ class SlashCommandHelpers:
     @classmethod
     async def get_quote_ids(self, ctx: discord.AutocompleteContext):
         return [x for x in self.quote_ids if (x.lower().find(ctx.value.lower()) > -1 or ctx.value == '' or ctx.value is None)]
+
+    @classmethod
+    async def get_special_events(self, ctx: discord.AutocompleteContext):
+        try:
+            event_dicts = await self.db.get_special_events()
+
+            if event_dicts is None or len(event_dicts) < 1:
+                return ["No special events found in the database."]
+
+            event_list = []
+            for event_dict in event_dicts:
+                if 'uid' in event_dict and 'name' in event_dict and 'start_date' in event_dict:
+                    event_list.append(f"{event_dict['uid']} : {event_dict['start_date']} - {event_dict['name']}")
+            return [event_name for event_name in event_list if (event_name.lower().find(ctx.value.lower()) > -1 or ctx.value == '' or ctx.value is None)]
+
+        except BotDatabaseError as exc:
+            logging.getLogger('respobot.database').warning(f"The following error occured when trying to add the special event to the database: {exc}")
+            return ["Database error when fetching special events."]

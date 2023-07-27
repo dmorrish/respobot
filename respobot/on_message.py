@@ -46,49 +46,6 @@ class OnMessageCog(commands.Cog):
         if random_number == 34:
             await message.add_reaction(random.choice(message.channel.guild.emojis))
 
-        if random_number == 69 or random_number == 138 or random_number == 207:
-            random_number_2 = random.randint(0, 19)
-            if random_number_2 == 0:
-                await self.bot.change_presence(activity=discord.Game(name="Daikatana"))
-            elif random_number_2 == 1:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Alinity"))
-            elif random_number_2 == 2:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Whip It by Devo"))
-            elif random_number_2 == 3:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Ghost"))
-            elif random_number_2 == 4:
-                await self.bot.change_presence(activity=discord.Game(name="Sonic 2006"))
-            elif random_number_2 == 5:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Amouranth"))
-            elif random_number_2 == 6:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Tainted Love by Soft Cell"))
-            elif random_number_2 == 7:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="10 Things I Hate About You"))
-            elif random_number_2 == 8:
-                await self.bot.change_presence(activity=discord.Game(name="E.T. on Atari"))
-            elif random_number_2 == 9:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Mia Malkova"))
-            elif random_number_2 == 10:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Blue Monday by New Order"))
-            elif random_number_2 == 11:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Gigli"))
-            elif random_number_2 == 12:
-                await self.bot.change_presence(activity=discord.Game(name="Shaq Fu"))
-            elif random_number_2 == 13:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Faith"))
-            elif random_number_2 == 14:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="M.E. by Gary Numan"))
-            elif random_number_2 == 15:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Sleepless in Seattle"))
-            elif random_number_2 == 16:
-                await self.bot.change_presence(activity=discord.Game(name="Superman 64"))
-            elif random_number_2 == 17:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Leynainu"))
-            elif random_number_2 == 18:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="The Safety Dance by Men Without Hats"))
-            elif random_number_2 == 19:
-                await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Bridget Jones's Diary"))
-
         if "i got wrecked" in message.content.lower() or "i was wrecked" in message.content.lower():
             await message.add_reaction('🇫')
 

@@ -1,7 +1,8 @@
 # RespoBot constants
 
-pleb_line = 2500
-respo_weeks_to_count = 6
-respo_series_name = 'Respo Racing Whatever the Fuck You Want Series'
-iracing_first_year = 2008
-iracing_first_quarter = 1
+PLEB_LINE = 2500
+RESPO_WEEKS_TO_COUNT = 6
+RESPO_SERIES_NAME = 'Respo Racing Whatever the Fuck You Want Series'
+IRACING_FIRST_YEAR = 2008
+IRACING_FIRST_QUARTER = 1
+RACE_SCAN_INTERVAL = 120

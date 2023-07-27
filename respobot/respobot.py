@@ -7,6 +7,7 @@ import asyncio
 import discord
 import discord.commands
 from discord.ext import tasks
+import random
 import math
 from irslashdata.client import Client as IracingClient
 from irslashdata.exceptions import AuthenticationError, ServerDownError
@@ -87,7 +88,7 @@ async def on_ready():
     print("I'm alive!")
 
     await db.init()
-    await bot.change_presence(activity=discord.Game(name="50 Cent: Bulletproof"))
+    await helpers.change_bot_presence(bot)
 
     try:
         season_dates = await db.get_season_dates()
@@ -190,7 +191,7 @@ async def slow_task_loop():
         await SlashCommandHelpers.refresh_series()
 
 
-@tasks.loop(seconds=120)
+@tasks.loop(seconds=constants.RACE_SCAN_INTERVAL)
 async def fast_task_loop():
     (current_year, current_quarter, current_race_week, current_season_max_weeks, current_season_active) = await db.get_current_iracing_week()
 
@@ -212,6 +213,10 @@ async def fast_task_loop():
             new_colour = [member_obj.colour.r, member_obj.colour.g, member_obj.colour.b, 255]
 
         await db.set_graph_colour(new_colour, discord_id=member_obj.id)
+
+    # Potentiall update bot presence
+    if random.randint(0, 19) == 0:
+        await helpers.change_bot_presence(bot)
 
     if 'last_weekly_report_week' not in bot_state.data:
         bot_state.data['last_weekly_report_week'] = -1
@@ -243,8 +248,8 @@ async def fast_task_loop():
             channel = helpers.fetch_channel(bot)
             member_dicts = await db.fetch_member_dicts()
             week_data = await stats.get_respo_champ_points(db, member_dicts, current_year, current_quarter, report_up_to)
-            stats.calc_total_champ_points(week_data, constants.respo_weeks_to_count)
-            stats.calc_projected_champ_points(week_data, current_race_week, constants.respo_weeks_to_count, False)
+            stats.calc_total_champ_points(week_data, constants.RESPO_WEEKS_TO_COUNT)
+            stats.calc_projected_champ_points(week_data, current_race_week, constants.RESPO_WEEKS_TO_COUNT, False)
 
             someone_racing = False
             for member in week_data:
@@ -258,9 +263,9 @@ async def fast_task_loop():
                 title_text += " for " + str(current_year) + "s" + str(current_quarter)
 
                 if current_season_active == 1:
-                    graph = image_gen.generate_champ_graph_compact(week_data, title_text, constants.respo_weeks_to_count, current_race_week)
+                    graph = image_gen.generate_champ_graph_compact(week_data, title_text, constants.RESPO_WEEKS_TO_COUNT, current_race_week)
                 else:
-                    graph = image_gen.generate_champ_graph(week_data, title_text, constants.respo_weeks_to_count, False)
+                    graph = image_gen.generate_champ_graph(week_data, title_text, constants.RESPO_WEEKS_TO_COUNT, False)
 
                 filepath = env.BOT_DIRECTORY + "media/tmp_champ_" + str(datetime.now().strftime("%Y%m%d%H%M%S%f")) + ".png"
 

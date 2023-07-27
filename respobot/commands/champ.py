@@ -56,7 +56,7 @@ class ChampCog(commands.Cog):
             await ctx.edit(content=f"Error: {e}")
             return
 
-        if series == constants.respo_series_name:
+        if series == constants.RESPO_SERIES_NAME:
             series_id = -1
         else:
             series_id = await self.db.get_series_id_from_season_name(series, season_year=selected_year, season_quarter=selected_quarter)
@@ -106,8 +106,8 @@ class ChampCog(commands.Cog):
                     overall_leaderboard[member_dict['name']] = {"data": [0], "colour": [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255]}
 
         weeks_to_count = 8
-        if series == constants.respo_series_name:
-            weeks_to_count = constants.respo_weeks_to_count
+        if series == constants.RESPO_SERIES_NAME:
+            weeks_to_count = constants.RESPO_WEEKS_TO_COUNT
 
         week_data = {}
         if series_id is not None and series_id > 0:

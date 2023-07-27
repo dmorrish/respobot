@@ -682,7 +682,7 @@ def generate_ir_graph(member_dicts, title, print_legend):
     for i in range(1, ir_scale_maj_divisions + 1):
         x = margin_h_left
         y = image_height - margin_v_bottom - i * ir_scale_pixels / ir_scale_maj_divisions
-        if int(i * ir_scale_maj_division_size) != constants.pleb_line:
+        if int(i * ir_scale_maj_division_size) != constants.PLEB_LINE:
             draw.line([(x, y), (image_width - margin_h_right, y)], fill=(255, 255, 255, 64), width=1, joint=None)
             draw.text((x - tick_length / 2, y), str(i * ir_scale_maj_division_size), font=font, fill=(255, 255, 255, 255), anchor="rm")
         else:
@@ -691,7 +691,7 @@ def generate_ir_graph(member_dicts, title, print_legend):
             pleb_line_drawn = True
     if not pleb_line_drawn:
         x = margin_h_left
-        y = image_height - margin_v_bottom - constants.pleb_line / (ir_scale_maj_divisions * ir_scale_maj_division_size) * ir_scale_pixels
+        y = image_height - margin_v_bottom - constants.PLEB_LINE / (ir_scale_maj_divisions * ir_scale_maj_division_size) * ir_scale_pixels
         draw.line([(x, y), (image_width - margin_h_right, y)], fill=(255, 0, 0, 128), width=1, joint=None)
         draw.text((x - tick_length / 2, y), str("Pleb Line"), font=fontsm, fill=(255, 0, 0, 128), anchor="rm")
 

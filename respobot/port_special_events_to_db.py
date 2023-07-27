@@ -16,7 +16,7 @@ async def main():
     load_dotenv()
 
     special_events = {}
-    db = await BotDatabase.init(env.BOT_DIRECTORY + env.DATABASE_FILENAME)
+    db = await BotDatabase.init(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.DATABASE_FILENAME)
     load_json()
 
     query = f"""

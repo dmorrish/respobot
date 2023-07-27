@@ -45,7 +45,7 @@ class SpecialEventsCog(commands.Cog):
 
         embedVar = discord.Embed(title=title_text, description="", color=0xff0000)
 
-        event_dicts = await self.db.get_special_events(earliest_date.isoformat())
+        event_dicts = await self.db.get_special_events(earliest_date=earliest_date.isoformat())
 
         if event_dicts is None or len(event_dicts) < 1:
             await ctx.respond(f"Deryk hasn't entered any special event dates after {earliest_date} yet. Go tell him to get off his lazy ass and fix it.")
