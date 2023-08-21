@@ -44,42 +44,51 @@ def fetch_channel(bot: discord.Bot):
     return None
 
 
-async def promote_demote_members(guild: discord.Guild, db: BotDatabase):
+async def promote_demote_members(bot: discord.Bot, db: BotDatabase):
 
-    member_dicts = await db.fetch_member_dicts()
+    guild = fetch_guild(bot)
 
-    if member_dicts is None or len(member_dicts) < 1:
-        return
+    try:
+        member_dicts = await db.fetch_member_dicts()
 
-    for member_dict in member_dicts:
-        latest_road_ir_in_db = await db.get_member_ir(member_dict['iracing_custid'], category_id=irConstants.Category.road.value)
-        if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
-            continue
+        if member_dicts is None or len(member_dicts) < 1:
+            return
 
-        if latest_road_ir_in_db < constants.PLEB_LINE:
-            await roles.demote_driver(guild, member_dict['discord_id'])
-        else:
-            await roles.promote_driver(guild, member_dict['discord_id'])
+        for member_dict in member_dicts:
+            latest_road_ir_in_db = await db.get_member_ir(member_dict['iracing_custid'], category_id=irConstants.Category.road.value)
+            if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
+                continue
+
+            if latest_road_ir_in_db < constants.PLEB_LINE:
+                await roles.demote_driver(guild, member_dict['discord_id'])
+            else:
+                await roles.promote_driver(guild, member_dict['discord_id'])
+    except Exception as exc:
+        await send_bot_failure_dm(bot, f"During promote_demote_members() the following exception was encountered: {exc}")
 
 
-async def fetch_guild_member_objects(guild: discord.Guild, db: BotDatabase):
+async def fetch_guild_member_objects(bot: discord.Bot, guild: discord.Guild, db: BotDatabase):
 
-    guild_member_ids = await db.fetch_guild_member_ids()
+    try:
+        guild_member_ids = await db.fetch_guild_member_ids()
 
-    member_objects = []
+        member_objects = []
 
-    for member_id in guild_member_ids:
-        try:
-            new_member_object = await guild.fetch_member(member_id)
-            member_objects.append(new_member_object)
-        except NotFound:
-            logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: Member {member_id} not found in the guild.")
-        except HTTPException:
-            logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: HTTPException while fetching member {member_id}.")
-        except Exception as e:
-            logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: {e}")
+        for member_id in guild_member_ids:
+            try:
+                new_member_object = await guild.fetch_member(member_id)
+                member_objects.append(new_member_object)
+            except NotFound:
+                logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: Member {member_id} not found in the guild.")
+            except HTTPException:
+                logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: HTTPException while fetching member {member_id}.")
+            except Exception as e:
+                logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: {e}")
 
-    return member_objects
+        return member_objects
+    except Exception as exc:
+        await send_bot_failure_dm(bot, f"During fetch_guild_member_objects() the following exception was encountered: {exc}")
+        return None
 
 
 async def send_bot_failure_dm(bot: discord.Bot, message: str):
@@ -159,5 +168,22 @@ async def change_bot_presence(bot: discord.Bot):
         discord.Activity(type=discord.ActivityType.watching, name="When Harry Met Sally")
     ]
 
-    index = random.randint(0, len(presence_list))
+    index = random.randint(0, len(presence_list) - 1)
     await bot.change_presence(activity=presence_list[index])
+
+
+def format_grammar_for_item_list(items: list):
+    if len(items) < 1:
+        return ""
+    elif len(items) == 1:
+        return f"{items[0]}"
+    elif len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    else:
+        item_list = f"{items[0]}, {items[1]}, "
+        count = 2
+        while count < len(items) - 1:
+            item_list += f"{items[count]}, "
+            count += 1
+        item_list += f"and {items[count]}"
+        return item_list
