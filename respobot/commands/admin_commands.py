@@ -7,6 +7,8 @@ from discord.commands import SlashCommandGroup
 from irslashdata.exceptions import AuthenticationError, ServerDownError
 from bot_database import BotDatabaseError
 
+import asyncio
+
 
 class AdminCommandsCog(commands.Cog):
 
@@ -26,7 +28,8 @@ class AdminCommandsCog(commands.Cog):
         ctx,
         name: Option(str, "Member's full name as it will appear in command results. Do not surround in quotes.", required=True),
         iracing_custid: Option(int, "iRacing customer id.", required=True),
-        discord_id: Option(str, "Discord id.", required=True)
+        discord_id: Option(str, "Discord id.", required=True),
+        pronoun_type: Option(str, "male, female, or neutral.", required=True, choices=['male', 'female', 'neutral'])
     ):
         if not self.is_admin(ctx.user.id):
             await ctx.respond("https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607")
@@ -68,7 +71,7 @@ class AdminCommandsCog(commands.Cog):
 
         # We have finally passed all the checks. Add the member to the db.
         try:
-            await self.db.add_member(name, iracing_custid, discord_id, ir_member_since)
+            await self.db.add_member(name, iracing_custid, discord_id, ir_member_since, pronoun_type)
         except BotDatabaseError as exc:
             await ctx.edit(content=f"The following error occured when trying to add the member to the database: {exc}")
             return
@@ -77,15 +80,18 @@ class AdminCommandsCog(commands.Cog):
             await ctx.edit(content="Success.")
 
     @admin_command_group.command(
-        name='remove_member',
-        description="Used by Deryk to remove a member from the bot."
+        name='edit_member',
+        description="Used by Deryk to edit/remove a member from the bot."
     )
-    async def admin_remove_member(
+    async def admin_edit_member(
         self,
         ctx,
-        name: Option(str, "Member's full name as it will appear in command results. Do not surround in quotes.", required=False, autocomplete=SlashCommandHelpers.get_member_list),
-        iracing_custid: Option(int, "iRacing customer id.", required=False),
-        discord_id: Option(str, "Discord id.", required=False)
+        member: Option(str, "Member name.", required=True, autocomplete=SlashCommandHelpers.get_admin_member_list),
+        remove: Option(bool, "Set to true to remove the event completely.", required=False),
+        name: Option(str, "New name.", required=False),
+        iracing_custid: Option(int, "New iRacing customer id.", required=False),
+        discord_id: Option(str, "New Discord id.", required=False),
+        pronoun_type: Option(str, "male, female, or neutral.", required=False, choices=['male', 'female', 'neutral'])
     ):
         if not self.is_admin(ctx.user.id):
             await ctx.respond("https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607")
@@ -93,36 +99,71 @@ class AdminCommandsCog(commands.Cog):
 
         await ctx.respond("Working on it...")
 
-        if name is None and iracing_custid is None and discord_id is None:
-            await ctx.respond("You need to provide at least *one* of the optional parameters.")
+        member_split = member.split()
+        if member_split[0].isnumeric():
+            uid = int(member_split[0])
+        else:
+            await ctx.edit(content="Failed to parse the member uid from the member string.")
             return
 
-        try:
-            member_dict = await self.db.fetch_member_dict(iracing_custid=iracing_custid, discord_id=discord_id, first_name=name)
-
-            if member_dict is None or len(member_dict) < 1:
-                await ctx.edit(content="No member found with those parameters.")
+        if remove is True:
+            try:
+                await self.db.remove_member(uid)
+                await ctx.edit(content=f"{member} successfully removed from the database.")
+            except BotDatabaseError as exc:
+                await ctx.edit(content=f"The following error occured when trying to remove {member} from the database: {exc}")
                 return
+        else:
 
-            if isinstance(member_dict, list):
-                await ctx.edit(content="More than one member found with those parameters. Try again.")
-                return
+            try:
+                # Get existing member info
+                existing_member_dict = await self.db.fetch_member_dict(uid=uid)
 
-            if 'iracing_custid' in member_dict:
-                await self.db.remove_member(member_dict['iracing_custid'])
-                if 'name' in member_dict:
-                    member_label = member_dict['name']
+                refresh_ir_info = iracing_custid is not None and iracing_custid != existing_member_dict['iracing_custid']
+                ir_member_since = None
+
+                if refresh_ir_info:
+                    try:
+                        ir_member_dicts = await self.ir.get_member_info_new([iracing_custid])
+                    except AuthenticationError:
+                        await ctx.edit(content="Auth error. Fix yo shit!")
+                        return
+                    except ServerDownError:
+                        await ctx.edit(content="iRacing is down for maintenance. Try again later.")
+                        return
+
+                    if ir_member_dicts is None or len(ir_member_dicts) < 1:
+                        await ctx.edit(content="Not a valid iRacing cust_id. Member not edited.")
+                        return
+
+                    if len(ir_member_dicts) > 1:
+                        await ctx.edit(content="More than one member dict was returned for some unknown reason. Member not edited.")
+                        return
+
+                    ir_member_since = ""
+                    if 'member_since' in ir_member_dicts[0]:
+                        ir_member_since = ir_member_dicts[0]['member_since']
+
+                try:
+                    await self.db.edit_member(uid, name=name, iracing_custid=iracing_custid, discord_id=discord_id, ir_member_since=ir_member_since, pronoun_type=pronoun_type)
+                except BotDatabaseError as exc:
+                    await ctx.edit(content=f"The following error occured when trying to edit {member} in the database: {exc}")
+                    return
                 else:
-                    member_label = f"Member with iRacing cust_id = {member_dict['iracing_custid']} "
-                await ctx.edit(content=f"{member_label} was removed from the members table.")
-                await SlashCommandHelpers.refresh_members()
-            else:
-                await ctx.edit(content="Error. For some reason there was no 'iracing_custid' in the member dict returned from the database.")
-                return
+                    if refresh_ir_info:
+                        try:
+                            await self.db.set_member_latest_session_found(iracing_custid, None)
+                        except BotDatabaseError as exc:
+                            await ctx.edit(content=f"The following error occured when trying to clear latest_session_foun for {member} in the database: {exc}")
+                            return
 
-        except BotDatabaseError as exc:
-            await ctx.edit(content=f"The following error occured when trying to remove the member from the database: {exc}")
-            return
+                    if name is not None:
+                        await SlashCommandHelpers.refresh_members()
+
+                await ctx.edit(content=f"{member} successfully edited in the database.")
+            except BotDatabaseError as exc:
+                await ctx.edit(content=f"The following error occured when trying to edit {member} in the database: {exc}")
+                return
 
     @admin_command_group.command(
         name='add_special_event',
@@ -183,7 +224,7 @@ class AdminCommandsCog(commands.Cog):
         if remove is True:
             try:
                 await self.db.remove_special_event(uid)
-                await ctx.edit(f"{event} successfully removed from the database.")
+                await ctx.edit(content=f"{event} successfully removed from the database.")
             except BotDatabaseError as exc:
                 await ctx.edit(content=f"The following error occured when trying to remove the special event {event} from the database: {exc}")
                 return
