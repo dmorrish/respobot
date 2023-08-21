@@ -1,12 +1,13 @@
 CREATE_TABLE_MEMBERS = """
 CREATE TABLE 'members' (
     'uid'   INTEGER NOT NULL UNIQUE,
-    'name'  TEXT NOT NULL,
+    'name'  TEXT NOT NULL UNIQUE,
     'iracing_custid'    INTEGER NOT NULL UNIQUE,
     'discord_id'    INTEGER NOT NULL UNIQUE,
     'graph_colour'  TEXT,
-    'last_race_check'   TEXT,
+    'latest_session_found'   TEXT,
     'ir_member_since'   TEXT,
+    'pronoun_type' TEXT,
     PRIMARY KEY('uid' AUTOINCREMENT)
 );
 """
@@ -105,8 +106,9 @@ CREATE TABLE 'subsessions' (
 );
 """
 
-CREATE_INDEX_SUBSESSIONS_ID = """
-CREATE INDEX 'index_subsessions_id' ON 'subsessions' (
+CREATE_INDEX_SUBSESSIONS_EVENTTYPE_ID = """
+CREATE INDEX 'index_subsessions_eventtype_id' ON 'subsessions' (
+    'event_type' ASC,
     'subsession_id' ASC
 );
 """
@@ -304,8 +306,16 @@ CREATE TABLE 'results' (
 );
 """
 
+INDEX_RESULTS_SUBID_SESNUM = """
+CREATE INDEX 'index_results_subid_sesnum' ON 'results' (
+    'subsession_id' ASC,
+    'simsession_number' DESC
+);
+"""
+
 INDEX_RESULTS_SESNUM_SUBID_CUSTID = """
 CREATE INDEX 'index_results_sesnum_subid_custid' ON 'results' (
+    'simsession_type' ASC,
     'simsession_number' DESC,
     'subsession_id' ASC,
     'cust_id'   ASC
@@ -413,6 +423,105 @@ INSERT INTO 'results' (
 VALUES (
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+)
+"""
+
+CREATE_TABLE_SUBSESSION_CAR_CLASSES = """
+CREATE TABLE 'subsession_car_classes' (
+    'uid' INTEGER NOT NULL UNIQUE,
+    'subsession_id' INTEGER NOT NULL,
+    'car_class_id' INTEGER,
+    'car_id' INTEGER NOT NULL,
+    'car_class_name' TEXT,
+    'car_class_short_name' TEXT,
+    PRIMARY KEY('uid')
+);
+"""
+
+INDEX_SUBSESSION_CAR_CLASSES_SUBID_CLASSID = """
+CREATE INDEX 'index_subsession_car_classes_subid_classid' ON 'subsession_car_classes' (
+    'subsession_id' ASC,
+    'car_class_id' ASC
+);
+"""
+
+INSERT_SUBSESSION_CAR_CLASSES = """
+INSERT INTO 'subsession_car_classes' (
+    'subsession_id',
+    'car_class_id',
+    'car_id',
+    'car_class_name',
+    'car_class_short_name'
+)
+VALUES (
+    ?, ?, ?, ?, ?
+);
+"""
+
+CREATE_TABLE_LAPS = """
+CREATE TABLE 'laps' (
+    'uid' INTEGER NOT NULL UNIQUE,
+    'subsession_id' INTEGER NOT NULL,
+    'simsession_number' INTEGER NOT NULL,
+    'group_id' INTEGER,
+    'name' TEXT,
+    'cust_id' INTEGER NOT NULL,
+    'display_name' TEXT,
+    'lap_number' INTEGER NOT NULL,
+    'flags' INTEGER,
+    'incident' INTEGER,
+    'session_time' INTEGER,
+    'session_start_time' INTEGER,
+    'lap_time' INTEGER,
+    'team_fastest_lap' INTEGER,
+    'personal_best_lap' INTEGER,
+    'license_level' INTEGER,
+    'car_number' TEXT,
+    'lap_events' TEXT,
+    'lap_position' INTEGER,
+    'interval' INTEGER,
+    'interval_units' TEXT,
+    'fastest_lap' INTEGER,
+    'ai' INTEGER,
+    PRIMARY KEY('uid')
+);
+"""
+
+INDEX_LAPS_SUBID_SESSNUM_CUSTID = """
+CREATE INDEX 'index_laps_subid_sessnum_custid' ON 'laps' (
+    'subsession_id' ASC,
+    'simsession_number' ASC,
+    'cust_id' ASC
+);
+"""
+
+INSERT_LAPS = """
+INSERT INTO 'laps' (
+    'subsession_id',
+    'simsession_number',
+    'group_id',
+    'name',
+    'cust_id',
+    'display_name',
+    'lap_number',
+    'flags',
+    'incident',
+    'session_time',
+    'session_start_time',
+    'lap_time',
+    'team_fastest_lap',
+    'personal_best_lap',
+    'license_level',
+    'car_number',
+    'lap_events',
+    'lap_position',
+    'interval',
+    'interval_units',
+    'fastest_lap',
+    'ai'
+)
+VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 )
 """
 
