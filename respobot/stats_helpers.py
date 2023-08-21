@@ -79,7 +79,7 @@ async def populate_head2head_stats(db: BotDatabase, iracing_custid, year=None, q
 ##################
 # TODO: VALIDATE #
 ##################
-async def get_respo_race_week(db: BotDatabase, time_start):
+async def get_respo_race_week(db: BotDatabase, time_start: str):
     start_datetime = datetime.fromisoformat(time_start)
     season_year = -1
     season_quarter = -1
@@ -106,6 +106,35 @@ async def get_respo_race_week(db: BotDatabase, time_start):
         return (season_year, season_quarter, race_week)
     else:
         return (None, None, None)
+
+
+async def get_number_of_race_weeks(db: BotDatabase, time_start: str):
+    start_datetime = datetime.fromisoformat(time_start)
+    season_year = -1
+    season_quarter = -1
+    race_weeks = -1
+    season_found = False
+
+    season_date_tuples = await db.get_season_dates()
+
+    if season_date_tuples is None or len(season_date_tuples) < 1:
+        return None
+
+    for season_date_tuple in season_date_tuples:
+        (_, season_year, season_quarter, str_start_time, str_end_time) = season_date_tuple
+        season_start = datetime.fromisoformat(str_start_time)
+        season_end = datetime.fromisoformat(str_end_time)
+
+        if start_datetime >= season_start:
+            time_diff = (season_end - season_start).total_seconds()
+            race_weeks = int(time_diff / (7 * 24 * 60 * 60))
+            season_found = True
+            break
+
+    if season_found:
+        return race_weeks
+    else:
+        return None
 
 
 def calc_total_champ_points(leaderboard_dict, weeks_to_count):
