@@ -26,7 +26,9 @@ class NextRaceCog(commands.Cog):
     ):
         await ctx.respond("On it...", ephemeral=False)
 
-        series_id = await self.db.get_series_id_from_season_name(series)
+        (season_year, season_quarter) = SlashCommandHelpers.get_current_season()
+
+        series_id = await self.db.get_series_id_from_season_name(series, season_year=season_year, season_quarter=season_quarter)
 
         if series_id is None:
             await ctx.edit(content="I didn't find that series, just like your dignity.")
