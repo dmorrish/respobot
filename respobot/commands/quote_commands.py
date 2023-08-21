@@ -91,7 +91,7 @@ class QuoteCommandsCog(commands.Cog):
 
         message_chunk = ""
 
-        member_dict = await self.db.fetch_member_dict(first_name=member)
+        member_dict = await self.db.fetch_member_dict(name=member)
 
         if member_dict is None:
             await ctx.edit(content="Who the fuck is " + member + "?")
@@ -154,7 +154,7 @@ class QuoteCommandsCog(commands.Cog):
 
         else:
             if member is not None:
-                member_dict = await self.db.fetch_member_dict(first_name=member)
+                member_dict = await self.db.fetch_member_dict(name=member)
                 if 'discord_id' in member_dict:
                     id_to_quote = member_dict['discord_id']
                 else:
