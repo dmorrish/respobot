@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, date
 import aiosqlite
 from aiosqlite import Error, OperationalError
-import bot_database_queries as dbq
+import _queries as dbq
 from irslashdata import constants as irConstants
 from enum import Enum
 
