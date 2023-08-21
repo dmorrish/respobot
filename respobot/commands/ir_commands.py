@@ -34,7 +34,7 @@ class IrCommandsCog(commands.Cog):
     ):
         member_dicts = []
         if member is not None:
-            member_dict = await self.db.fetch_member_dict(first_name=member)
+            member_dict = await self.db.fetch_member_dict(name=member)
 
             if member_dict:
                 await ctx.respond("Plotting iRating for " + member)
@@ -168,8 +168,6 @@ class IrCommandsCog(commands.Cog):
             ir_dict[helpers.spongify(member_dict['name'])] = latest_road_ir_in_db
 
         sorted_ir_dict = dict(sorted(ir_dict.items(), key=lambda item: item[1], reverse=True))
-
-        print(sorted_ir_dict)
 
         for key in sorted_ir_dict:
             if pleb_line_printed is False and sorted_ir_dict[key] is not None and sorted_ir_dict[key] < constants.PLEB_LINE:
