@@ -14,7 +14,7 @@ import constants
 # other imports
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 
@@ -72,11 +72,11 @@ class ChampCog(commands.Cog):
         if series_id > 0:
             (current_season_year, current_season_quarter, current_season_race_week, current_season_max_weeks, current_season_active) = await self.db.get_current_iracing_week(series_id=series_id)
             season_tuples = await self.db.get_season_basic_info(series_id=series_id, season_year=selected_year, season_quarter=selected_quarter)
-            (_, _, _, _, _, selected_season_max_week) = season_tuples[0]
+            (_, _, _, _, _, _, selected_season_max_week) = season_tuples[0]
         else:
             (current_season_year, current_season_quarter, current_season_race_week, current_season_max_weeks, current_season_active) = await self.db.get_current_iracing_week(series_id=139)
             season_tuples = await self.db.get_season_basic_info(series_id=139, season_year=selected_year, season_quarter=selected_quarter)
-            (_, _, _, _, _, selected_season_max_week) = season_tuples[0]
+            (_, _, _, _, _, _, selected_season_max_week) = season_tuples[0]
 
         if selected_year == current_season_year and selected_quarter == current_season_quarter and current_season_active:
             ongoing = True
@@ -89,7 +89,7 @@ class ChampCog(commands.Cog):
             max_week = selected_season_max_week
 
         if max_week is None:
-            max_week = 12
+            max_week = await stats.get_number_of_race_weeks(datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
 
         overall_leaderboard = {}
         member_dicts = await self.db.fetch_member_dicts()
