@@ -218,12 +218,12 @@ async def generate_head2head_image(guild, title, racer1_info_dict, racer1_stats_
     if stat_bar_height < 3:
         stat_bar_height = 3
 
-    if 'graph_colour' in racer1_info_dict and len(racer1_info_dict['graph_colour']) >= 4:
+    if 'graph_colour' in racer1_info_dict and racer1_info_dict['graph_colour'] is not None and len(racer1_info_dict['graph_colour']) >= 4:
         racer1_colour = (racer1_info_dict['graph_colour'][0], racer1_info_dict['graph_colour'][1], racer1_info_dict['graph_colour'][2], racer1_info_dict['graph_colour'][3])
     else:
         racer1_colour = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255)
 
-    if 'graph_colour' in racer2_info_dict and len(racer2_info_dict['graph_colour']) >= 4:
+    if 'graph_colour' in racer2_info_dict and racer2_info_dict['graph_colour'] is not None and len(racer2_info_dict['graph_colour']) >= 4:
         racer2_colour = (racer2_info_dict['graph_colour'][0], racer2_info_dict['graph_colour'][1], racer2_info_dict['graph_colour'][2], racer2_info_dict['graph_colour'][3])
     else:
         racer2_colour = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255)
@@ -546,18 +546,6 @@ def generate_champ_graph_compact(data_dict, title, weeks_to_count, highlighted_w
     return im
 
 
-def get_max_scale(value1, value2):
-    max_value = abs(value1)
-    if abs(value2) > abs(value1):
-        max_value = abs(value2)
-
-    possible_max_scales = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000]
-
-    for scale in possible_max_scales:
-        if scale >= max_value:
-            return scale
-
-
 def draw_head2head_bar(im, draw, font, label, v_pos, height, max_scale_pixels, max_scale_value, racer1_value, racer2_value, racer1_colour, racer2_colour):
     draw.text((im.width * 0.5, v_pos + 2 * font.size), label, font=font, fill=(255, 255, 255, 255), anchor="mm")
 
@@ -704,7 +692,10 @@ def generate_ir_graph(member_dicts, title, print_legend):
 
     for member_dict in member_dicts:
         scaled_tuples.append([])
-        colour = (member_dict['graph_colour'][0], member_dict['graph_colour'][1], member_dict['graph_colour'][2], member_dict['graph_colour'][3])
+        if 'graph_colour' in member_dict and member_dict['graph_colour'] is not None and len(member_dict['graph_colour']) >= 4:
+            colour = (member_dict['graph_colour'][0], member_dict['graph_colour'][1], member_dict['graph_colour'][2], member_dict['graph_colour'][3])
+        else:
+            colour = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255)
 
         if len(member_dict['name']) < 16:
             legend_name = member_dict['name']
@@ -736,3 +727,183 @@ def generate_ir_graph(member_dicts, title, print_legend):
 
     im = Image.alpha_composite(bg, im)
     return im
+
+
+def generate_cpi_graph(member_dicts, title, print_legend):
+    image_width = 1000
+    image_height = 420
+    im = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 0))
+    bg = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 255))
+    draw = ImageDraw.Draw(im)
+    font = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", int(18))
+    fontsm = ImageFont.truetype(env.BOT_DIRECTORY + "media/lucon.ttf", int(12))
+
+    margin_v_top = 0.2 * image_height
+    margin_v_bottom = 0.2 * image_height
+
+    if print_legend:
+        margin_h_right = 0.27 * image_width
+    else:
+        margin_h_right = 0.15 * image_height
+
+    margin_h_left = 0.1 * image_width
+
+    tick_length = 0.05 * image_height
+
+    # Draw the title
+    title_lines = title.split("\n")
+    if len(title_lines) > 0:
+        draw.text((image_width * 0.5, margin_v_top * 0.33), title_lines[0], font=font, fill=(255, 255, 255, 255), anchor="mm")
+    if len(title_lines) > 1:
+        draw.text((image_width * 0.5, margin_v_top * 0.66), title_lines[1], font=font, fill=(255, 255, 255, 255), anchor="mm")
+
+    max_cpi = 0
+    max_corners = 0
+    min_timestamp = 10000000000000
+
+    for member_dict in member_dicts:
+        for point in member_dict['cpi_data']:
+            if point[2] > max_cpi:
+                max_cpi = point[2]
+            if point[0] < min_timestamp:
+                min_timestamp = point[0]
+            if point[1] > max_corners:
+                max_corners = point[1]
+
+    cpi_scale_maj_divisions = 5
+    cpi_scale_maj_division_size = round_up_to_nearest_125(max_cpi / cpi_scale_maj_divisions)
+    cpi_scale_pixels = (image_height - margin_v_bottom - margin_v_top)
+
+    max_timestamp = int(datetime.now().timestamp() * 1000)
+
+    timestamp_range = max_timestamp - min_timestamp
+    timestamp_range_pixels = image_width - margin_h_right - margin_h_left
+
+    total_corners_scale_maj_divisions = 8
+    total_corners_scale_maj_division_size = round_up_to_nearest_125(max_corners / total_corners_scale_maj_divisions)
+    total_corners_scale_pixels = image_width - margin_h_right - margin_h_left
+    total_corners_scale_maj_divisions = math.ceil(max_corners / total_corners_scale_maj_division_size)
+
+    earliest_datetime = date.fromtimestamp(min_timestamp / 1000)
+    latest_datetime = date.fromtimestamp(max_timestamp / 1000)
+
+    earliest_year = earliest_datetime.year
+    latest_year = latest_datetime.year
+
+    dates = []
+
+    for i in range(earliest_year + 1, latest_year + 1):
+        dates.append(datetime(i, 1, 1))
+
+    for i in range(1, total_corners_scale_maj_divisions + 1):
+        x = margin_h_left + i * total_corners_scale_pixels / total_corners_scale_maj_divisions
+        y = image_height - margin_v_bottom
+        draw.line([(x, y + tick_length / 2), (x, y)], fill=(255, 255, 255, 255), width=1, joint=None)
+        draw.text((x, y + tick_length), str(int(i * total_corners_scale_maj_division_size)), font=font, fill=(255, 255, 255, 255), anchor="mt")
+
+    # for day in dates:
+    #     year_timestamp = int(day.timestamp()) * 1000
+    #     x = margin_h_left + (year_timestamp - min_timestamp) / timestamp_range * timestamp_range_pixels
+    #     y = image_height - margin_v_bottom
+    #     draw.line([(x, y + tick_length / 2), (x, y)], fill=(255, 255, 255, 255), width=1, joint=None)
+    #     if len(dates) < 6:
+    #         draw.text((x, y + tick_length), str(day.year) + "-1-1", font=font, fill=(255, 255, 255, 255), anchor="mt")
+    #     else:
+    #         draw.text((x, y + tick_length), str(day.year), font=font, fill=(255, 255, 255, 255), anchor="mt")
+
+    for i in range(1, cpi_scale_maj_divisions + 1):
+        x = margin_h_left
+        y = image_height - margin_v_bottom - i * cpi_scale_pixels / cpi_scale_maj_divisions
+        draw.line([(x, y), (image_width - margin_h_right, y)], fill=(255, 255, 255, 64), width=1, joint=None)
+        draw.text((x - tick_length / 2, y), str(i * cpi_scale_maj_division_size), font=font, fill=(255, 255, 255, 255), anchor="rm")
+
+    scaled_tuples = []
+
+    count = 0
+
+    legend_v_spacing = cpi_scale_pixels / 10
+    box_size = legend_v_spacing * 0.75
+
+    for member_dict in member_dicts:
+        scaled_tuples.append([])
+        if 'graph_colour' in member_dict and member_dict['graph_colour'] is not None and len(member_dict['graph_colour']) >= 4:
+            colour = (member_dict['graph_colour'][0], member_dict['graph_colour'][1], member_dict['graph_colour'][2], member_dict['graph_colour'][3])
+        else:
+            colour = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255)
+
+        if len(member_dict['name']) < 16:
+            legend_name = member_dict['name']
+        else:
+            legend_name = member_dict['name'][0:11] + "..."
+
+        legend_cpi_text = f" ({member_dict['cpi_data'][-1][2]:.1f})"
+
+        for i in range(0, 22 - len(legend_name) - len(legend_cpi_text)):
+            legend_name += " "
+
+        legend_name += legend_cpi_text
+
+        for point in member_dict['cpi_data']:
+            scaled_tuples[count].append((margin_h_left + point[1] / (total_corners_scale_maj_divisions * total_corners_scale_maj_division_size) * total_corners_scale_pixels, image_height - margin_v_bottom - point[2] / (cpi_scale_maj_divisions * cpi_scale_maj_division_size) * cpi_scale_pixels))
+        draw.line(scaled_tuples[count], fill=colour, width=2, joint="curve")
+        x = image_width - margin_h_right + tick_length
+        y = margin_v_top + legend_v_spacing * 0.5 - box_size / 2 + count * legend_v_spacing
+
+        if print_legend:
+            draw.rectangle([(x, y), (x + box_size, y + box_size)], fill=colour, outline=(255, 255, 255, 255), width=1)
+            draw.text((x + box_size * 1.5, y + box_size / 2), legend_name, font=font, fill=(255, 255, 255, 255), anchor="lm")
+
+        count += 1
+
+    # Draw the axes
+    draw.line([(margin_h_left, image_height - margin_v_bottom), (image_width - margin_h_right, image_height - margin_v_bottom)], fill=(255, 255, 255, 255), width=2, joint=None)
+    draw.line([(margin_h_left, image_height - margin_v_bottom), (margin_h_left, margin_v_top)], fill=(255, 255, 255, 255), width=2, joint=None)
+
+    im = Image.alpha_composite(bg, im)
+    return im
+
+
+def round_up_to_nearest_125(value):
+
+    if value is None:
+        return None
+
+    if value == 0:
+        return 1
+
+    tmp_value = value
+    order = 0
+    if tmp_value >= 1:
+        tmp_value = tmp_value / 10
+
+        while tmp_value > 1:
+            tmp_value /= 10
+            order += 1
+        tmp_value *= 10
+    else:
+        tmp_value = tmp_value
+
+        while tmp_value < 1:
+            tmp_value *= 10
+            order -= 1
+
+    if tmp_value <= 2:
+        tmp_value = 2
+    elif tmp_value <= 5:
+        tmp_value = 5
+    else:
+        tmp_value = 10
+
+    rounded_value = tmp_value * math.pow(10, order)
+
+    # print(f"Value: {value}, Order = {order}, rounded_value = {rounded_value}")
+
+    return rounded_value
+
+
+def get_max_scale(value1, value2):
+    max_value = abs(value1)
+    if abs(value2) > abs(value1):
+        max_value = abs(value2)
+
+    return round_up_to_nearest_125(max_value)
