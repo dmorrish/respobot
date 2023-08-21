@@ -1,5 +1,8 @@
 import random
+import discord
 from discord.ext import commands
+import helpers
+from bot_database import BotDatabaseError
 
 
 class OnReactionAddCog(commands.Cog):
@@ -10,10 +13,34 @@ class OnReactionAddCog(commands.Cog):
         self.ir = ir
         self.bot_state = bot_state
 
-    @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
+    async def get_reaction(self, payload: discord.RawReactionActionEvent):
+        try:
+            guild = helpers.fetch_guild(self.bot)
+            channel = await guild.fetch_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
 
-        if str(reaction.message.id) in self.bot_state.data['pending_quotes'] and reaction.emoji == '👍' and reaction.count >= 2:
+            for reaction in message.reactions:
+                if str(reaction.emoji) == str(payload.emoji):
+                    return reaction
+            return None
+        except discord.HTTPException:
+            return None
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, payload):
+
+        reaction = await self.get_reaction(payload)
+        if reaction is None:
+            return
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+
+        reaction = await self.get_reaction(payload)
+        if reaction is None:
+            return
+
+        if str(reaction.message.id) in self.bot_state.data['pending_quotes'] and reaction.emoji == '👍' and reaction.count > 2:
             quote_dict = {}
 
             quoted_message = await reaction.message.channel.fetch_message(self.bot_state.data['pending_quotes'][str(reaction.message.id)])
@@ -38,7 +65,10 @@ class OnReactionAddCog(commands.Cog):
                 quote_dict['replied_to_quote'] = replied_message.content
                 quote_dict['replied_to_message_id'] = replied_message.id
 
-            await self.db.add_quote(quote_dict)
+            try:
+                await self.db.add_quote(quote_dict)
+            except BotDatabaseError as exc:
+                await helpers.send_bot_failure_dm(self.bot, f"During on_reaction_add() the following exception was encountered: {exc}")
 
             del self.bot_state.data['pending_quotes'][str(reaction.message.id)]
             self.bot_state.dump_state()
