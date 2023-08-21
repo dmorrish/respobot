@@ -35,7 +35,7 @@ class TestRaceResultsCog(commands.Cog):
         if not embed_type:
             embed_type = 'auto'
 
-        await race_results.process_race_result(self.bot, self.db, subsession_data, embed_type=embed_type)
+        await race_results.generate_race_report(self.bot, self.db, subsession_id, embed_type=embed_type)
 
         await ctx.edit(content='Done!')
 
