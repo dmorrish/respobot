@@ -2,7 +2,7 @@
 import logging
 from datetime import datetime, date
 import aiosqlite
-from aiosqlite import Error
+from aiosqlite import Error, OperationalError
 import bot_database_queries as dbq
 from irslashdata import constants as irConstants
 from enum import Enum
@@ -13,6 +13,7 @@ class ErrorCodes(Enum):
     insufficient_info = 101
     general_failure = 102
     value_error = 103
+    max_retries_exceeded = 104
 
 
 class BotDatabaseError(Exception):
@@ -26,8 +27,9 @@ class BotDatabaseError(Exception):
 
 
 class BotDatabase:
-    def __init__(self, filename):
+    def __init__(self, filename, max_retries: int = 0):
         self.filename = filename
+        self.max_retries = max_retries
 
     async def init(self):
         try:
@@ -43,13 +45,24 @@ class BotDatabase:
             if not await self._table_exists('subsessions'):
                 logging.getLogger('respobot.database').info("creating table: subsessions")
                 await self.execute_query(dbq.CREATE_TABLE_SUBSESSIONS)
-                await self.execute_query(dbq.CREATE_INDEX_SUBSESSIONS_ID)
+                await self.execute_query(dbq.CREATE_INDEX_SUBSESSIONS_EVENTTYPE_ID)
 
             if not await self._table_exists('results'):
                 logging.getLogger('respobot.database').info("creating table: results")
                 await self.execute_query(dbq.CREATE_TABLE_RESULTS)
+                await self.execute_query(dbq.INDEX_RESULTS_SUBID_SESNUM)
                 await self.execute_query(dbq.INDEX_RESULTS_SESNUM_SUBID_CUSTID)
                 await self.execute_query(dbq.INDEX_RESULTS_IRATING_GRAPH)
+
+            if not await self._table_exists('subsession_car_classes'):
+                logging.getLogger('respobot.database').info("creating table: subsession_car_classes")
+                await self.execute_query(dbq.CREATE_TABLE_SUBSESSION_CAR_CLASSES)
+                await self.execute_query(dbq.INDEX_SUBSESSION_CAR_CLASSES_SUBID_CLASSID)
+
+            if not await self._table_exists('laps'):
+                logging.getLogger('respobot.database').info("creating table: laps")
+                await self.execute_query(dbq.CREATE_TABLE_LAPS)
+                await self.execute_query(dbq.INDEX_LAPS_SUBID_SESSNUM_CUSTID)
 
             if not await self._table_exists('current_seasons'):
                 logging.getLogger('respobot.database').info("creating table: current_seasons")
@@ -82,6 +95,7 @@ class BotDatabase:
                 logging.getLogger('respobot.database').info("Done initializing database.")
         except Error:
             logging.getLogger('respobot.database').error("Error initializing database.")
+            raise
         else:
             logging.getLogger('respobot.database').info("Successfully initialized the database.")
 
@@ -99,46 +113,107 @@ class BotDatabase:
                     logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when running _table_exists() with query:\n{query}\nwith params:\n{parameters}")
 
     async def execute_query(self, query, params=None):
-        try:
-            async with aiosqlite.connect(self.filename) as connection:
-                async with connection.cursor() as cursor:
-                    if params is None:
-                        await cursor.execute(query)
-                    elif isinstance(params, tuple):
-                        await cursor.execute(query, params)
-                    elif isinstance(params, list):
-                        await cursor.executemany(query, params)
-                    else:
-                        raise Error("If you pass params into execute_query() they must be a tuple or a list of tuples")
-                    await connection.commit()
-        except Error as e:
-            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when running execute_query() with query:\n{query}\nwith params:\n{params}")
-            raise e
+        retry_count = 0
+
+        while retry_count <= self.max_retries:
+            retry_count += 1
+
+            try:
+                async with aiosqlite.connect(self.filename) as connection:
+                    async with connection.cursor() as cursor:
+                        if params is None:
+                            await cursor.execute(query)
+                        elif isinstance(params, tuple):
+                            await cursor.execute(query, params)
+                        elif isinstance(params, list):
+                            await cursor.executemany(query, params)
+                        else:
+                            raise Error("If you pass params into execute_query() they must be a tuple or a list of tuples")
+                        await connection.commit()
+                        return
+            except OperationalError as exc:
+                if exc.sqlite_errorcode == 5 or exc.sqlite_errorcode == 6:
+                    logging.getLogger('respobot.database').warning(f"sqlite query failed due to sqlite error code {exc.sqlite_errorcode}: {exc.sqlite_errorname}")
+                else:
+                    logging.getLogger('respobot.database').error(f"The sqlite3 error '{exc}' occurred with code {exc.sqlite_errorcode} when running execute_query() with query:\n{query}\nwith params:\n{params}")
+                    raise exc
+            except Error as exc:
+                logging.getLogger('respobot.database').error(f"The sqlite3 error '{exc}' occurred with code {exc.sqlite_errorcode} when running execute_query() with query:\n{query}\nwith params:\n{params}")
+                raise exc
+        raise BotDatabaseError("execute_query() hit the max_retries count. Query abandoned.", ErrorCodes.max_retries_exceeded.value)
 
     async def execute_read_query(self, query, params=None):
+        retry_count = 0
+
+        while retry_count <= self.max_retries:
+            retry_count += 1
+            try:
+                async with aiosqlite.connect(self.filename) as connection:
+                    async with connection.cursor() as cursor:
+                        result = None
+                        if params is None:
+                            await cursor.execute(query)
+                        elif isinstance(params, tuple):
+                            await cursor.execute(query, params)
+                        elif isinstance(params, list):
+                            await cursor.executemany(query, params)
+                        else:
+                            raise Error("If you pass params into execute_read_query() they must be a tuple or a list of tuples")
+                        result = await cursor.fetchall()
+                        return result
+            except OperationalError as exc:
+                if exc.sqlite_errorcode == 5 or exc.sqlite_errorcode == 6:
+                    logging.getLogger('respobot.database').warning(f"sqlite query failed due to sqlite error code {exc.sqlite_errorcode}: {exc.sqlite_errorname}")
+                else:
+                    logging.getLogger('respobot.database').error(f"The sqlite3 error '{exc}' occurred with code {exc.sqlite_errorcode} when running execute_read_query() with query:\n{query}\nwith params:\n{params}")
+                    raise exc
+            except Error as e:
+                logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when running execute_read_query() with query:\n{query}\nwith params:\n{params}")
+                raise e
+        raise BotDatabaseError("execute_read_query() hit the max_retries count. Query abandoned.", ErrorCodes.max_retries_exceeded.value)
+
+    async def _map_tuples_to_dicts(self, query_result_tuples: list, table_name: str):
+        """ Note: This will only work if the tuples are a result of selecting ALL columns in the table: SELECT * FROM table_name ... """
+        query = f"PRAGMA table_info({table_name})"
+
+        if query_result_tuples is None or len(query_result_tuples) < 1:
+            return None
+
         try:
-            async with aiosqlite.connect(self.filename) as connection:
-                async with connection.cursor() as cursor:
-                    result = None
-                    if params is None:
-                        await cursor.execute(query)
-                    elif isinstance(params, tuple):
-                        await cursor.execute(query, params)
-                    elif isinstance(params, list):
-                        await cursor.executemany(query, params)
-                    else:
-                        raise Error("If you pass params into execute_read_query() they must be a tuple or a list of tuples")
-                    result = await cursor.fetchall()
-                    return result
+            table_column_tuples = await self.execute_read_query(query)
         except Error as e:
-            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when running execute_read_query() with query:\n{query}\nwith params:\n{params}")
-            raise e
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to "
+                f"get the table info for {table_name} during map_tuples_to_dict()"
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to "
+                f"get the table info for {table_name} during map_tuples_to_dict()"
+            )
+
+        query_result_dicts = []
+        for query_result_tuple in query_result_tuples:
+            if len(table_column_tuples) != len(query_result_tuple):
+                raise BotDatabaseError(
+                    f"Error mapping tuple to dict, tuple length does not match number of columns in {table_name}."
+                )
+
+            new_query_result_dict = {}
+            columns_mapped = 0
+            for table_column_tuple in table_column_tuples:
+                index = table_column_tuple[1]
+                new_query_result_dict[index] = query_result_tuple[columns_mapped]
+                columns_mapped += 1
+            query_result_dicts.append(new_query_result_dict)
+
+        return query_result_dicts
 
     async def add_subsessions(self, subsession_dicts):
         for subsession_dict in subsession_dicts:
 
             subsession_parameters = []
             result_parameters = []
+            car_class_parameters = []
 
             subsession_parameters.append((
                 subsession_dict['subsession_id'] if 'subsession_id' in subsession_dict else None,
@@ -417,6 +492,19 @@ class BotDatabase:
                                 driver_result['ai'] if 'ai' in driver_result else None
                             ))
 
+            if 'car_classes' in subsession_dict:
+                for car_class_dict in subsession_dict['car_classes']:
+                    if 'cars_in_class' not in car_class_dict:
+                        continue
+                    for car_dict in car_class_dict['cars_in_class']:
+                        car_class_parameters.append((
+                            subsession_dict['subsession_id'] if 'subsession_id' in subsession_dict else None,
+                            car_class_dict['car_class_id'] if 'car_class_id' in car_class_dict else None,
+                            car_dict['car_id'] if 'car_id' in car_dict else None,
+                            car_class_dict['name'] if 'name' in car_class_dict else None,
+                            car_class_dict['short_name'] if 'short_name' in car_class_dict else None
+                        ))
+
             try:
                 await self.execute_query(dbq.INSERT_SUBSESSIONS, params=subsession_parameters)
             except Error as e:
@@ -436,135 +524,236 @@ class BotDatabase:
                 subsessions = []
                 for subsession_dict in subsession_dicts:
                     subsessions.append(subsession_dict['subsession_id'])
-                logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add a result from subsession(s) {subsessions} to the results table.")
-                raise BotDatabaseError(f"Error inserting results data for subsession(s) {subsessions} to the results table.", ErrorCodes.general_failure.value)
+                logging.getLogger('respobot.database').error(
+                    f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to "
+                    "add a result from subsession(s) {subsessions} to the results table."
+                )
+                raise BotDatabaseError(
+                    f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to "
+                    "add a result from subsession(s) {subsessions} to the results table.",
+                    ErrorCodes.general_failure.value)
 
-    async def get_race_summary(self, subsession_id: int):
+            try:
+                await self.execute_query(dbq.INSERT_SUBSESSION_CAR_CLASSES, params=car_class_parameters)
+            except Error as e:
+                subsessions = []
+                for subsession_dict in subsession_dicts:
+                    subsessions.append(subsession_dict['subsession_id'])
+                logging.getLogger('respobot.database').error(
+                    f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to "
+                    f"add a car class from subsession(s) {subsessions} to the subsession_car_classes table."
+                )
+                raise BotDatabaseError(
+                    f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to "
+                    f"add a car class from subsession(s) {subsessions} to the subsession_car_classes table.",
+                    ErrorCodes.general_failure.value
+                )
+
+    async def get_subsession_data(self, subsession_id: int):
+        if not isinstance(subsession_id, int):
+            assert BotDatabaseError("subsession_id must be an integer type.", ErrorCodes.value_error.value)
+
+        query = f"SELECT * FROM subsessions WHERE subsession_id = {subsession_id}"
+        parameters = (subsession_id,)
+        parameters = ()
+
+        try:
+            subsession_tuples = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_subsession_data() for subsession {subsession_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_subsession_data() for subsession {subsession_id}.")
+
+        subsession_dicts = await self._map_tuples_to_dicts(subsession_tuples, 'subsessions')
+
+        if len(subsession_dicts) > 1:
+            logging.getLogger('respobot.database').warning(f"More than one tuple returned when selecting subsession_id {subsession_id} from the subsession table.")
+
+        return subsession_dicts[0]
+
+    async def add_laps(self, lap_dicts, subsession_id, simsession_number):
+        lap_parameters = []
+        for lap_dict in lap_dicts:
+
+            lap_events = ""
+
+            if 'lap_events' in lap_dict and lap_dict['lap_events'] is not None and len(lap_dict['lap_events']) > 0:
+                for lap_event in lap_dict['lap_events']:
+                    lap_events += lap_event + ","
+                lap_events = lap_events[:-1]
+
+            lap_parameters.append((
+                subsession_id,
+                simsession_number,
+                lap_dict['group_id'] if 'group_id' in lap_dict else None,
+                lap_dict['name'] if 'name' in lap_dict else None,
+                lap_dict['cust_id'] if 'cust_id' in lap_dict else None,
+                lap_dict['display_name'] if 'display_name' in lap_dict else None,
+                lap_dict['lap_number'] if 'lap_number' in lap_dict else None,
+                lap_dict['flags'] if 'flags' in lap_dict else None,
+                lap_dict['incident'] if 'incident' in lap_dict else None,
+                lap_dict['session_time'] if 'session_time' in lap_dict else None,
+                lap_dict['session_start_time'] if 'session_start_time' in lap_dict else None,
+                lap_dict['lap_time'] if 'lap_time' in lap_dict else None,
+                lap_dict['team_fastest_lap'] if 'team_fastest_lap' in lap_dict else None,
+                lap_dict['personal_best_lap'] if 'personal_best_lap' in lap_dict else None,
+                lap_dict['license_level'] if 'license_level' in lap_dict else None,
+                lap_dict['car_number'] if 'car_number' in lap_dict else None,
+                lap_events,
+                lap_dict['lap_position'] if 'lap_position' in lap_dict else None,
+                lap_dict['interval'] if 'interval' in lap_dict else None,
+                lap_dict['interval_units'] if 'interval_units' in lap_dict else None,
+                lap_dict['fastest_lap'] if 'fastest_lap' in lap_dict else None,
+                lap_dict['ai'] if 'ai' in lap_dict else None
+            ))
+
+        try:
+            await self.execute_query(dbq.INSERT_LAPS, params=lap_parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add laps(s) from "
+                f"subsession {subsession_id}, simsession {simsession_number} to the laps table."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add laps(s) from "
+                f"subsession {subsession_id}, simsession {simsession_number} to the laps table."
+            )
+
+    async def get_laps(self, subsession_id: int, car_number: str = None, iracing_custid: int = None, simsession_number: int = None):
         query = """
-            SELECT
-                subsessions.subsession_id,
-                subsessions.season_id,
-                subsessions.track_category_id,
-                subsessions.start_time,
-                subsessions.official_session,
-                subsessions.track_name,
-                subsessions.track_config_name,
-                subsessions.series_id,
-                subsessions.series_name,
-                subsessions.event_strength_of_field,
-                subsessions.max_team_drivers,
-                subsessions.league_name,
-                subsessions.session_name
-            FROM subsessions
+            SELECT *
+            FROM laps
             WHERE
-                subsession_id = ?
+                subsession_id = ? AND
+        """
+
+        parameters = (subsession_id,)
+
+        if car_number is not None:
+            query += " car_number = ? AND"
+            parameters += (car_number,)
+
+        if iracing_custid is not None:
+            query += " cust_id = ? AND"
+            parameters += (iracing_custid,)
+
+        if simsession_number is not None:
+            query += " simsession_number = ? AND"
+            parameters += (simsession_number, )
+
+        query = query[0:-4]
+
+        try:
+            lap_tuples = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_laps() for "
+                f"subsession {subsession_id}, iracing_custid {iracing_custid}, and simsession_number {simsession_number}."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_laps() for "
+                f"subsession {subsession_id}, iracing_custid {iracing_custid}, and simsession_number {simsession_number}."
+            )
+
+        lap_dicts = await self._map_tuples_to_dicts(lap_tuples, 'laps')
+
+        return lap_dicts
+
+    async def is_subsession_multiclass(self, subsession_id: int):
+
+        query = """
+            SELECT car_class_id
+            FROM subsession_car_classes
+            WHERE subsession_id = ?
+            GROUP BY car_class_id
         """
 
         parameters = (subsession_id,)
 
         try:
-            results = await self.execute_read_query(query, params=parameters)
+            result_tuples = await self.execute_read_query(query, params=parameters)
         except Error as e:
-            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_race_summary() for subsession {subsession_id}.")
-            raise BotDatabaseError(f"Error getting race summary for subsession_id {subsession_id}.", ErrorCodes.general_failure.value)
-        if results is None or len(results) < 1:
-            return {}
+            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_subsession_multiclass() for subsession {subsession_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_subsession_multiclass() for subsession {subsession_id}.")
 
-        race_summary_dict = {
-            'subsession_id': results[0][0],
-            'season_id': results[0][1],
-            'track_category_id': results[0][2],
-            'start_time': datetime.fromisoformat(results[0][3]),
-            'official_session': results[0][4],
-            'track_name': results[0][5],
-            'track_config_name': results[0][6],
-            'series_id': results[0][7],
-            'series_name': results[0][8],
-            'event_strength_of_field': results[0][9],
-            'max_team_drivers': results[0][10],
-            'league_name': results[0][11],
-            'session_name': results[0][12]
-        }
+        return len(result_tuples) > 1
 
+    async def get_results(self, subsession_id: int, iracing_custid: int = None, team_id: int = None, simsession_number: int = None, simsession_type: int = None):
         query = """
-            SELECT car_class_id
-            FROM season_car_classes
-            WHERE season_id = ?
-        """
-
-        parameters = (race_summary_dict['season_id'],)
-
-        try:
-            results = await self.execute_read_query(query, params=parameters)
-        except Error as e:
-            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_race_summary() when determining if subsession {subsession_id} was multiclass.")
-
-        if len(results) > 1:
-            race_summary_dict['is_multiclass'] = True
-        else:
-            race_summary_dict['is_multiclass'] = False
-
-        return race_summary_dict
-
-    async def get_driver_result_summary(self, subsession_id: int, iracing_custid: int, simsession_number: int = 0, simsession_type: int = 6):
-        query = """
-            SELECT
-                members.iracing_custid,
-                members.name,
-                results.newi_rating,
-                results.oldi_rating,
-                results.starting_position_in_class,
-                results.finish_position_in_class,
-                results.livery_car_number,
-                results.champ_points,
-                results.new_license_level,
-                results.old_license_level,
-                results.new_sub_level,
-                results.old_sub_level,
-                results.laps_complete,
-                results.incidents,
-                results.car_class_id,
-                results.car_class_short_name
+            SELECT *
             FROM results
-            INNER JOIN members
-            ON members.iracing_custid = results.cust_id
             WHERE
-                subsession_id = ? AND
-                simsession_number = ? AND
-                simsession_type = ? AND
-                cust_id = ?
-        """
+                subsession_id = ? AND"""
 
-        parameters = (subsession_id, simsession_number, simsession_type, iracing_custid)
+        parameters = (subsession_id,)
+
+        if iracing_custid is not None:
+            query += " cust_id = ? AND"
+            parameters += (iracing_custid,)
+
+        if team_id is not None:
+            query += " team_id = ? AND"
+            parameters += (team_id,)
+
+        if simsession_number is not None:
+            query += " simsession_number = ? AND"
+            parameters += (simsession_number,)
+
+        if simsession_type is not None:
+            query += " simsession_type = ? AND"
+            parameters += (simsession_type,)
+
+        query = query[:-4]
 
         try:
-            results = await self.execute_read_query(query, params=parameters)
+            result_tuples = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_driver_result_summary() for driver {iracing_custid} in subsession {subsession_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_driver_result_summary() for driver {iracing_custid} in subsession {subsession_id}.", ErrorCodes.general_failure.value)
+
+        if result_tuples is None or len(result_tuples) < 1:
+            return []
+
+        driver_result_dicts = await self._map_tuples_to_dicts(result_tuples, 'results')
+
+        return driver_result_dicts
+
+    async def get_subsession_drivers_old_irs(self, subsession_id: int, car_class_id: int = None):
+        query = """
+            SELECT
+                cust_id,
+                livery_car_number,
+                oldi_rating
+            FROM results
+            WHERE
+                subsession_id = ? AND
+                simsession_number = 0 AND
+                cust_id IS NOT NULL AND
+                oldi_rating > 0
+        """
+
+        parameters = (subsession_id,)
+
+        if car_class_id is not None:
+            query += " AND car_class_id = ?"
+            parameters += (car_class_id,)
+
+        try:
+            results = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_subsession_drivers_old_irs() for "
+                f"subsession: {subsession_id} and car_class_id: {car_class_id}."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_subsession_drivers_old_irs() for "
+                f"subsession: {subsession_id} and car_class_id: {car_class_id}.",
+                ErrorCodes.general_failure.value
+            )
 
         if results is None or len(results) < 1:
             return {}
 
-        driver_result_summary_dict = {
-            'iracing_custid': results[0][0],
-            'name': results[0][1],
-            'newi_rating': results[0][2],
-            'oldi_rating': results[0][3],
-            'starting_position_in_class': results[0][4] + 1,
-            'finish_position_in_class': results[0][5] + 1,
-            'livery_car_number': results[0][6],
-            'champ_points': results[0][7],
-            'new_license_level': results[0][8],
-            'old_license_level': results[0][9],
-            'new_sub_level': results[0][10],
-            'old_sub_level': results[0][11],
-            'laps_complete': results[0][12],
-            'incidents': results[0][13],
-            'car_class_id': results[0][14],
-            'car_class_short_name': results[0][15]
-        }
-
-        return driver_result_summary_dict
+        return results
 
     async def is_season_in_seasons_table(self, season_id):
         query = """
@@ -577,6 +766,7 @@ class BotDatabase:
             result = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_season_in_season_table() for season_id {season_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_season_in_season_table() for season_id {season_id}.", ErrorCodes.general_failure.value)
         return len(result) > 0
 
     async def is_series_in_series_table(self, series_id):
@@ -590,6 +780,7 @@ class BotDatabase:
             result = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_series_in_series_table() fpr series_id {series_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_series_in_series_table() fpr series_id {series_id}.", ErrorCodes.general_failure.value)
         return len(result) > 0
 
     async def is_car_class_in_season_car_classes_table(self, season_id, car_class_id):
@@ -605,6 +796,7 @@ class BotDatabase:
             result = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_car_class_in_season_car_classes_table() for season_id {season_id} and car_class_id {car_class_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_car_class_in_season_car_classes_table() for season_id {season_id} and car_class_id {car_class_id}.", ErrorCodes.general_failure.value)
         return len(result) > 0
 
     async def is_season_in_season_dates_table(self, season_year, season_quarter):
@@ -620,6 +812,7 @@ class BotDatabase:
             result = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_season_in_season_dates_table() for season_year {season_year} and season_quarter {season_quarter}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_season_in_season_dates_table() for season_year {season_year} and season_quarter {season_quarter}.", ErrorCodes.general_failure.value)
         return len(result) > 0
 
     async def is_car_class_car_in_db(self, car_class_id, car_id):
@@ -637,6 +830,7 @@ class BotDatabase:
             result = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_car_class_car_in_db() for car_class_id {car_class_id} and car_id {car_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_car_class_car_in_db() for car_class_id {car_class_id} and car_id {car_id}.", ErrorCodes.general_failure.value)
         return len(result) > 0
 
     async def update_current_seasons(self, current_season_dicts):
@@ -645,6 +839,7 @@ class BotDatabase:
             await self.execute_query(query)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during update_current_seasons() when deleting the existing entries.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during update_current_seasons() when deleting the existing entries.", ErrorCodes.general_failure.value)
 
         new_current_season_parameters = []
 
@@ -805,6 +1000,7 @@ class BotDatabase:
                 await self.execute_query(dbq.INSERT_CURRENT_SEASONS, params=new_current_season_parameters)
             except Error as e:
                 logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add season to the current_seasons table.")
+                raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add season to the current_seasons table.", ErrorCodes.general_failure.value)
 
     async def update_seasons(self, series_dicts):
         new_series_parameters = []
@@ -855,10 +1051,13 @@ class BotDatabase:
                 series_dict['series_id'] if 'series_id' in series_dict else None
             )
 
-            if await self.is_series_in_series_table(int(series_dict['series_id'])) is False:
-                new_series_parameters.append(series_tuple)
-            else:
-                existing_series_parameters.append(series_tuple)
+            try:
+                if await self.is_series_in_series_table(int(series_dict['series_id'])) is False:
+                    new_series_parameters.append(series_tuple)
+                else:
+                    existing_series_parameters.append(series_tuple)
+            except BotDatabaseError:
+                raise
 
             if 'seasons' not in series_dict:
                 continue
@@ -878,10 +1077,13 @@ class BotDatabase:
                             car_class_dict['car_class_id'] if 'car_class_id' in car_class_dict else None
                         )
 
-                        if await self.is_car_class_in_season_car_classes_table(int(season_dict['season_id']), int(car_class_dict['car_class_id'])) is False:
-                            new_car_class_parameters.append(car_class_tuple)
-                        else:
-                            existing_car_class_parameters.append(car_class_tuple)
+                        try:
+                            if await self.is_car_class_in_season_car_classes_table(int(season_dict['season_id']), int(car_class_dict['car_class_id'])) is False:
+                                new_car_class_parameters.append(car_class_tuple)
+                            else:
+                                existing_car_class_parameters.append(car_class_tuple)
+                        except BotDatabaseError:
+                            raise
 
                 if 'license_group_types' in season_dict and season_dict['license_group_types'] is not None:
                     license_group_types = ""
@@ -918,46 +1120,55 @@ class BotDatabase:
                     season_dict['season_id'] if 'season_id' in season_dict else None
                 )
 
-                if await self.is_season_in_seasons_table(int(season_dict['season_id'])) is False:
-                    new_season_parameters.append(season_tuple)
-                else:
-                    existing_season_parameters.append(season_tuple)
+                try:
+                    if await self.is_season_in_seasons_table(int(season_dict['season_id'])) is False:
+                        new_season_parameters.append(season_tuple)
+                    else:
+                        existing_season_parameters.append(season_tuple)
+                except BotDatabaseError:
+                    raise
 
         if len(new_season_parameters) > 0:
             try:
                 await self.execute_query(dbq.INSERT_SEASONS, params=new_season_parameters)
             except Error as e:
                 logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add new seasons to the seasons table.")
+                raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add new seasons to the seasons table.", ErrorCodes.general_failure.value)
 
         if len(existing_season_parameters) > 0:
             try:
                 await self.execute_query(dbq.UPDATE_SEASONS, params=existing_season_parameters)
             except Error as e:
                 logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to update seasons in the seasons table.")
+                raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to update seasons in the seasons table.", ErrorCodes.general_failure.value)
 
         if len(new_series_parameters) > 0:
             try:
                 await self.execute_query(dbq.INSERT_SERIES, params=new_series_parameters)
             except Error as e:
                 logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add new series to the series table.")
+                raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add new series to the series table.", ErrorCodes.general_failure.value)
 
         if len(existing_series_parameters) > 0:
             try:
                 await self.execute_query(dbq.UPDATE_SERIES, params=existing_series_parameters)
             except Error as e:
                 logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to update series in the series table.")
+                raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to update series in the series table.", ErrorCodes.general_failure.value)
 
         if len(new_car_class_parameters) > 0:
             try:
                 await self.execute_query(dbq.INSERT_SEASON_CAR_CLASSES, params=new_car_class_parameters)
             except Error as e:
                 logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add new car class to the season_car_classes table.")
+                raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add new car class to the season_car_classes table.", ErrorCodes.general_failure.value)
 
         if len(existing_car_class_parameters) > 0:
             try:
                 await self.execute_query(dbq.UPDATE_SEASON_CAR_CLASSES, params=existing_car_class_parameters)
             except Error as e:
                 logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to update car class in the season_car_classes table.")
+                raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to update car class in the season_car_classes table.", ErrorCodes.general_failure.value)
 
     async def update_season_dates(self, season_dicts):
         new_season_parameters = []
@@ -984,10 +1195,13 @@ class BotDatabase:
                 season_dict['season_quarter'] if 'season_quarter' in season_dict else None,
             )
 
-            if await self.is_season_in_season_dates_table(int(season_dict['season_year']), int(season_dict['season_quarter'])) is False:
-                new_season_parameters.append(season_tuple)
-            else:
-                existing_season_parameters.append(season_tuple)
+            try:
+                if await self.is_season_in_season_dates_table(int(season_dict['season_year']), int(season_dict['season_quarter'])) is False:
+                    new_season_parameters.append(season_tuple)
+                else:
+                    existing_season_parameters.append(season_tuple)
+            except BotDatabaseError:
+                raise
 
         try:
             if len(new_season_parameters) > 0:
@@ -996,6 +1210,7 @@ class BotDatabase:
                 await self.execute_query(dbq.UPDATE_SEASON_DATES, params=existing_season_parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add/update {season_dict['season_year']}s{season_dict['season_quarter']} in the season_dates table.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add/update {season_dict['season_year']}s{season_dict['season_quarter']} in the season_dates table.", ErrorCodes.general_failure.value)
 
     async def fetch_guild_member_ids(self):
         query = "SELECT discord_id FROM members"
@@ -1004,6 +1219,7 @@ class BotDatabase:
             result = await self.execute_read_query(query)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_guild_member_ids().")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_guild_member_ids().", ErrorCodes.general_failure.value)
 
         guild_ids = []
 
@@ -1020,6 +1236,7 @@ class BotDatabase:
             cust_ids_tuples = await self.execute_read_query(query)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_iracing_cust_ids()")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_iracing_cust_ids()", ErrorCodes.general_failure.value)
 
         cust_ids = []
 
@@ -1041,6 +1258,7 @@ class BotDatabase:
             tuples = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_name() for iracing_custid {iracing_custid}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_name() for iracing_custid {iracing_custid}.", ErrorCodes.general_failure.value)
 
         name = None
 
@@ -1049,9 +1267,9 @@ class BotDatabase:
 
         return name
 
-    async def get_member_last_race_check(self, iracing_custid: int):
-        query = """
-            SELECT last_race_check
+    async def get_member_latest_session_found(self, iracing_custid: int):
+        query = f"""
+            SELECT latest_session_found
             FROM members
             WHERE iracing_custid = ?
         """
@@ -1060,27 +1278,36 @@ class BotDatabase:
         try:
             results = await self.execute_read_query(query, params=parameters)
         except Error as e:
-            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_member_last_race_check() for iracing_custid {iracing_custid}.")
+            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_member_latest_session_found() for iracing_custid {iracing_custid}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_member_latest_session_found() for iracing_custid {iracing_custid}.", ErrorCodes.general_failure.value)
 
         if results is None or len(results) < 1:
             return None
         else:
-            last_race_check = datetime.fromisoformat(results[0][0])
-            return last_race_check
+            try:
+                latest_session_found = datetime.fromisoformat(results[0][0])
+            except ValueError:
+                logging.getLogger('respobot.database').error(f"'latest_session_found' found in member info with iracing_custid: {iracing_custid} is not in iso format.")
+                return None
+            return latest_session_found
 
-    async def set_member_last_race_check(self, iracing_custid: int, last_race_check: datetime):
-        last_race_check_str = last_race_check.isoformat().replace('+00:00', 'Z')
-        query = """
+    async def set_member_latest_session_found(self, iracing_custid: int, latest_session_found: datetime):
+        if latest_session_found is None:
+            latest_session_found_str = None
+        else:
+            latest_session_found_str = latest_session_found.isoformat().replace('+00:00', 'Z')
+        query = f"""
             UPDATE 'members'
-            SET last_race_check = ?
+            SET latest_session_found = ?
             WHERE iracing_custid = ?
         """
-        parameters = (last_race_check_str, iracing_custid)
+        parameters = (latest_session_found_str, iracing_custid)
 
         try:
             await self.execute_query(query, params=parameters)
         except Error as e:
-            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during set_member_last_race_check() for iracing_custid = {iracing_custid}.")
+            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during set_member_latest_session_found() for iracing_custid = {iracing_custid}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during set_member_latest_session_found() for iracing_custid = {iracing_custid}.", ErrorCodes.general_failure.value)
 
     async def get_member_ir(self, iracing_custid: int, category_id: int = irConstants.Category.road.value):
         query = """
@@ -1101,25 +1328,50 @@ class BotDatabase:
             results = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_member_ir() for iracing_custid {iracing_custid}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_member_ir() for iracing_custid {iracing_custid}.", ErrorCodes.general_failure.value)
 
         if results is None or len(results) != 1:
             return None
 
         return results[0][1]
 
-    async def fetch_member_dict(self, iracing_custid: int = None, discord_id: int = None, first_name: str = None):
+    def _update_member_dict_objects(self, member_dict: dict):
+        if 'graph_colour' in member_dict and member_dict['graph_colour'] is not None:
+            graph_colour_list_text = member_dict['graph_colour'].split(',')
+            if len(graph_colour_list_text) >= 4:
+                member_dict['graph_colour'] = [int(graph_colour_list_text[0]), int(graph_colour_list_text[1]), int(graph_colour_list_text[2]), int(graph_colour_list_text[3])]
+
+        if 'latest_session_found' in member_dict and member_dict['latest_session_found'] is not None:
+            try:
+                latest_session_found = datetime.fromisoformat(member_dict['latest_session_found'])
+            except ValueError:
+                logging.getLogger('respobot.database').warning(f"Member {member_dict['name']} has an invalid latest_session_found value. Not in iso format.")
+                latest_session_found = None
+            finally:
+                member_dict['latest_session_found'] = latest_session_found
+
+        if 'ir_member_since' in member_dict and member_dict['ir_member_since'] is not None:
+            try:
+                ir_member_since = date.fromisoformat(member_dict['ir_member_since'])
+            except ValueError:
+                logging.getLogger('respobot.database').warning(f"Member {member_dict['name']} has an invalid ir_member_since value. Not in iso format.")
+                ir_member_since = None
+            finally:
+                member_dict['ir_member_since'] = ir_member_since
+
+        return member_dict
+
+    async def fetch_member_dict(self, uid: int = None, iracing_custid: int = None, discord_id: int = None, name: str = None):
         query = """
-            SELECT
-                name,
-                iracing_custid,
-                discord_id,
-                graph_colour,
-                last_race_check,
-                ir_member_since
+            SELECT *
             FROM members
         """
 
-        if iracing_custid is not None:
+        if uid is not None:
+            query += """    WHERE uid = ?
+            """
+            parameters = (uid,)
+        elif iracing_custid is not None:
             query += """    WHERE iracing_custid = ?
             """
             parameters = (iracing_custid,)
@@ -1127,71 +1379,76 @@ class BotDatabase:
             query += """    WHERE discord_id = ?
             """
             parameters = (discord_id,)
-        elif first_name is not None:
-            query += f"""    WHERE name LIKE ?
+        elif name is not None:
+            query += f"""    WHERE name = ?
             """
-            parameters = (first_name + "%",)
+            parameters = (name,)
         else:
-            parameters = ()
+            error_message = "Error fetching member dict. You must provide either uid, iracing_custid, discord_id, or name."
+            logging.getLogger('respobot.database').error(error_message)
+            raise BotDatabaseError(error_message, ErrorCodes.insufficient_info.value)
 
         try:
             tuples = await self.execute_read_query(query, params=parameters)
         except Error as e:
-            member = iracing_custid if iracing_custid is not None else discord_id if discord_id is not None else first_name if first_name is not None else "everyone"
+            member = iracing_custid if iracing_custid is not None else discord_id if discord_id is not None else name if name is not None else "everyone"
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_member_dict() for {member}.")
+            raise BotDatabaseError("Error fetching member dict.", ErrorCodes.general_failure.value)
+
+        if tuples is None or len(tuples) < 1:
+            return None
+
+        if len(tuples) > 1:
+            error_message = "Error: More than one result found in fetch_member_dict(). This indicates an issue with the database."
+            logging.getLogger('respobot.database').error(error_message)
+            raise BotDatabaseError(error_message, ErrorCodes.general_failure.value)
+
+        member_dicts = await self._map_tuples_to_dicts(tuples, 'members')
+
+        # Scan through the resulting dicts and convert the graph colours to a list of values and datetimes/dates to appropriate objects.
+        for member_dict in member_dicts:
+            self._update_member_dict_objects(member_dict)
+
+        return member_dicts[0]
+
+    async def fetch_member_dicts(self):
+        query = """
+            SELECT *
+            FROM members
+        """
+
+        try:
+            tuples = await self.execute_read_query(query)
+        except Error as e:
+            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_member_dicts().")
             raise BotDatabaseError("Error fetching member dicts.", ErrorCodes.general_failure.value)
 
         if tuples is None or len(tuples) < 1:
             return None
 
-        member_dicts = []
-        for member_tuple in tuples:
+        member_dicts = await self._map_tuples_to_dicts(tuples, 'members')
 
-            graph_colour_list = []
-            if member_tuple[3] is not None:
-                graph_colour_list_text = member_tuple[3].split(',')
-                if len(graph_colour_list_text) >= 4:
-                    graph_colour_list = [int(graph_colour_list_text[0]), int(graph_colour_list_text[1]), int(graph_colour_list_text[2]), int(graph_colour_list_text[3])]
-
-            try:
-                ir_member_since = date.fromisoformat(member_tuple[5])
-            except ValueError:
-                ir_member_since = None
-
-            member_dict = {
-                'name': member_tuple[0],
-                'iracing_custid': member_tuple[1],
-                'discord_id': member_tuple[2],
-                'graph_colour': graph_colour_list,
-                'last_race_check': member_tuple[4],
-                'ir_member_since': ir_member_since
-            }
-
-            if len(tuples) == 1 and (iracing_custid is not None or discord_id is not None or first_name is not None):
-                # If one member is found and a specific member was being fetched, return it directly and not in a list.
-                return member_dict
-
-            member_dicts.append(member_dict)
+        # Scan through the resulting dicts and convert the graph colours to a list of values and datetimes/dates to appropriate objects.
+        for member_dict in member_dicts:
+            self._update_member_dict_objects(member_dict)
 
         return member_dicts
 
-    async def fetch_member_dicts(self):
-        return await self.fetch_member_dict()
-
-    async def add_member(self, name: str, iracing_custid: int, discord_id: int, ir_member_since: str):
+    async def add_member(self, name: str, iracing_custid: int, discord_id: int, ir_member_since: str, pronoun_type: str):
         query = """
             INSERT INTO members (
                 name,
                 iracing_custid,
                 discord_id,
-                ir_member_since
+                ir_member_since,
+                pronoun_type
             )
             VALUES (
-                ?, ?, ?, ?
+                ?, ?, ?, ?, ?
             )
         """
 
-        parameters = (name, iracing_custid, discord_id, ir_member_since)
+        parameters = (name, iracing_custid, discord_id, ir_member_since, pronoun_type)
 
         try:
             await self.execute_query(query, params=parameters)
@@ -1201,19 +1458,123 @@ class BotDatabase:
                 f"name: {name}, iracing_custid: {iracing_custid}, discord_id: {discord_id}, ir_member_since: {ir_member_since}.")
             raise BotDatabaseError("Error adding member.", ErrorCodes.general_failure.value)
 
-    async def remove_member(self, iracing_custid: int):
+    async def remove_member(self, uid: int):
         query = """
             DELETE FROM members
-            WHERE iracing_custid = ?
-        """
-        parameters = (iracing_custid,)
+            WHERE uid = ?"""
+        parameters = (uid,)
 
         try:
             await self.execute_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(
-                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during remove_member() for iracing_custid: {iracing_custid}")
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during remove_member() for uid: {uid}")
             raise BotDatabaseError("Error removing member.", ErrorCodes.general_failure.value)
+
+    async def edit_member(
+        self,
+        uid: int,
+        name: str = None,
+        iracing_custid: int = None,
+        discord_id: int = None,
+        graph_colour: str = None,
+        latest_session_found: str = None,
+        ir_member_since: str = None,
+        pronoun_type: str = None
+    ):
+        if (
+            name is None
+            and iracing_custid is None
+            and discord_id is None
+            and graph_colour is None
+            and latest_session_found is None
+            and ir_member_since is None
+            and pronoun_type is None
+        ):
+            logging.getLogger('respobot.database').warning(f"edit_member() called with no kwargs. Nothing to edit.")
+            raise BotDatabaseError("edit_member() called with no kwargs", ErrorCodes.insufficient_info.value)
+
+        query = "UPDATE 'members' SET "
+
+        parameters = ()
+
+        if name is not None:
+            query += "name = ?,"
+            parameters += (name,)
+
+        if iracing_custid is not None:
+            query += "iracing_custid = ?,"
+            parameters += (iracing_custid,)
+
+        if discord_id is not None:
+            query += "discord_id = ?,"
+            parameters += (discord_id,)
+
+        if graph_colour is not None:
+            query += "graph_colour = ?,"
+            parameters += (graph_colour,)
+
+        if latest_session_found is not None:
+            query += "latest_session_found = ?,"
+            parameters += (latest_session_found,)
+
+        if ir_member_since is not None:
+            query += "ir_member_since = ?,"
+            parameters += (ir_member_since,)
+
+        if pronoun_type is not None:
+            query += "pronoun_type = ?,"
+            parameters += (pronoun_type,)
+
+        # Remove the trailing comma
+        query = query[:-1]
+
+        query += " WHERE uid = ?"
+
+        parameters += (uid,)
+
+        try:
+            await self.execute_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during edit_member() for "
+                f"uid: {uid}, name: {name}, iracing_custid: {iracing_custid}, discord_id: {discord_id}, "
+                f"graph_colour: {graph_colour}, latest_session_found: {latest_session_found}, "
+                f"ir_member_since: {ir_member_since}, pronoun_type: {pronoun_type}.")
+            raise BotDatabaseError("Error editing member.", ErrorCodes.general_failure.value)
+
+    async def fetch_member_car_numbers_in_subsession(self, subsession_id: int):
+        """ Returns a list of car number strings for all cars that were driven by a Respo member.
+        """
+        query = """
+            SELECT livery_car_number, car_class_id
+            FROM results
+            WHERE
+                subsession_id = ? AND
+                cust_id IN (
+                    SELECT iracing_custid
+                    FROM members
+                    WHERE iracing_custid > 0
+                )
+            GROUP BY livery_car_number
+        """
+        parameters = (subsession_id,)
+
+        try:
+            tuples = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_member_car_numbers_in_subsession() for subsession_id {subsession_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_member_car_numbers_in_subsession() for subsession_id {subsession_id}.", ErrorCodes.general_failure.value)
+
+        if tuples is None or len(tuples) < 1:
+            return None
+
+        car_numbers = []
+
+        for result_tuple in tuples:
+            car_numbers.append(result_tuple[0])
+
+        return car_numbers
 
     async def fetch_members_in_subsession(self, subsession_id: int, car_number: int = None):
         query = """
@@ -1222,14 +1583,12 @@ class BotDatabase:
                 members.iracing_custid,
                 members.discord_id,
                 members.graph_colour,
-                members.last_race_check,
+                members.latest_session_found,
                 members.ir_member_since
             FROM results
             INNER JOIN members
             ON members.iracing_custid = results.cust_id
             WHERE
-                simsession_number = 0 AND
-                simsession_type = ? AND
                 subsession_id = ?
         """
 
@@ -1237,14 +1596,19 @@ class BotDatabase:
             query += """
                 AND livery_car_number = ?
             """
-            parameters = (irConstants.SimSessionType.race.value, subsession_id, car_number)
+            parameters = (subsession_id, car_number)
         else:
-            parameters = (irConstants.SimSessionType.race.value, subsession_id)
+            parameters = (subsession_id,)
+
+        query += """
+            GROUP BY members.iracing_custid
+        """
 
         try:
             tuples = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_members_in_subsession() for subsession_id {subsession_id} and car_number {car_number}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_members_in_subsession() for subsession_id {subsession_id} and car_number {car_number}.", ErrorCodes.general_failure.value)
 
         if tuples is None or len(tuples) < 1:
             return None
@@ -1259,9 +1623,19 @@ class BotDatabase:
                 if len(graph_colour_list_text) >= 4:
                     graph_colour_list = [int(graph_colour_list_text[0]), int(graph_colour_list_text[1]), int(graph_colour_list_text[2]), int(graph_colour_list_text[3])]
 
+            if member_tuple[4] is not None:
+                try:
+                    latest_session_found = datetime.fromisoformat(member_tuple[4])
+                except ValueError:
+                    logging.getLogger('respobot.database').warning(f"Member {member_tuple[0]} has an invalid latest_session_found value. Not in iso format.")
+                    latest_session_found = None
+            else:
+                latest_session_found = None
+
             try:
                 ir_member_since = date.fromisoformat(member_tuple[5])
             except ValueError:
+                logging.getLogger('respobot.database').warning(f"Member {member_tuple[0]} has an invalid ir_member_since value. Not in iso format.")
                 ir_member_since = None
 
             member_dict = {
@@ -1269,7 +1643,7 @@ class BotDatabase:
                 'iracing_custid': member_tuple[1],
                 'discord_id': member_tuple[2],
                 'graph_colour': graph_colour_list,
-                'last_race_check': member_tuple[4],
+                'latest_session_found': latest_session_found,
                 'ir_member_since': ir_member_since
             }
 
@@ -1299,6 +1673,7 @@ class BotDatabase:
             tuples = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during fetch_graph_colour() for iracing_custid {iracing_custid} and discord_id {discord_id}")
+            tuples = None
 
         if tuples is not None and len(tuples) > 0:
             colour_strings = tuples[0][0].split(",")
@@ -1339,16 +1714,19 @@ class BotDatabase:
 
         try:
             await self.execute_query(query, params=parameters)
+        except BotDatabaseError:
+            raise
         except Error as e:
             member = "custid: " + str(iracing_custid) if iracing_custid is not None else "discord_id: " + str(discord_id)
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to update graph colour to {graph_colour} for {member}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to update graph colour to {graph_colour} for {member}.", ErrorCodes.general_failure.value)
 
-    async def get_latest_ir(self, iracing_custid: int = None, discord_id: int = None, first_name: str = None, category_id: int = irConstants.Category.road.value):
+    async def get_latest_ir(self, iracing_custid: int = None, discord_id: int = None, name: str = None, category_id: int = irConstants.Category.road.value):
 
-        if iracing_custid is None and discord_id is None and first_name is None:
-            raise BotDatabaseError("You must provide either iracing_custid, discord_id, or first_name.", ErrorCodes.insufficient_info.value)
+        if iracing_custid is None and discord_id is None and name is None:
+            raise BotDatabaseError("You must provide either iracing_custid, discord_id, or name.", ErrorCodes.insufficient_info.value)
 
-        member_dict = await self.fetch_member_dict(iracing_custid=iracing_custid, discord_id=discord_id, first_name=first_name)
+        member_dict = await self.fetch_member_dict(iracing_custid=iracing_custid, discord_id=discord_id, name=name)
 
         if member_dict is None:
             return None
@@ -1370,20 +1748,21 @@ class BotDatabase:
         try:
             result_tuples = await self.execute_read_query(query, params=parameters)
         except Error as e:
-            member = iracing_custid if iracing_custid is not None else discord_id if discord_id is not None else first_name
+            member = iracing_custid if iracing_custid is not None else discord_id if discord_id is not None else name
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_latest_ir() for {member}")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_latest_ir() for {member}", ErrorCodes.general_failure.value)
 
         if result_tuples is None or len(result_tuples) < 1:
             return None
 
         return result_tuples[0][0]
 
-    async def get_ir_data(self, iracing_custid: int = None, discord_id: int = None, first_name: str = None, category_id: int = None):
+    async def get_ir_data(self, iracing_custid: int = None, discord_id: int = None, name: str = None, category_id: int = None):
 
-        if iracing_custid is None and discord_id is None and first_name is None:
-            raise BotDatabaseError("You must provide either iracing_custid, discord_id, or first_name.", ErrorCodes.insufficient_info.value)
+        if iracing_custid is None and discord_id is None and name is None:
+            raise BotDatabaseError("You must provide either iracing_custid, discord_id, or name.", ErrorCodes.insufficient_info.value)
 
-        member_dict = await self.fetch_member_dict(iracing_custid=iracing_custid, discord_id=discord_id, first_name=first_name)
+        member_dict = await self.fetch_member_dict(iracing_custid=iracing_custid, discord_id=discord_id, name=name)
 
         if category_id is None:
             category_id = 2
@@ -1412,8 +1791,9 @@ class BotDatabase:
         try:
             result_tuples = await self.execute_read_query(query, params=parameters)
         except Error as e:
-            member = iracing_custid if iracing_custid is not None else discord_id if discord_id is not None else first_name
+            member = iracing_custid if iracing_custid is not None else discord_id if discord_id is not None else name
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_ir_data() for member {member}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_ir_data() for member {member}.", ErrorCodes.general_failure.value)
 
         converted_tuples = []
 
@@ -1423,6 +1803,47 @@ class BotDatabase:
             converted_tuples.append((timestamp, result_tuple[1]))
 
         return converted_tuples
+
+    async def get_cpi_data(self, iracing_custid: int, series_id: int = None, car_class_id: int = None):
+        query = """
+            SELECT
+                subsessions.end_time,
+                incidents,
+                laps_complete * corners_per_lap
+            FROM results
+            INNER JOIN subsessions
+            ON subsessions.subsession_id = results.subsession_id
+            WHERE
+                simsession_number = 0 AND
+                cust_id = ? AND
+                official_session = 1 AND
+                simsession_type = 6 AND
+                event_type = 5 AND
+                track_category_id = 2
+        """
+
+        parameters = (iracing_custid,)
+
+        if series_id is not None:
+            query += " AND series_id = ?"
+            parameters += (series_id,)
+
+        if car_class_id is not None:
+            query += " AND car_class_id = ?"
+            parameters += (car_class_id,)
+
+        query += " ORDER BY subsessions.subsession_id ASC"
+
+        try:
+            result_tuples = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_cpi_data() for member {iracing_custid} and series_id: {series_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_cpi_data() for member {iracing_custid} and series_id: {series_id}.", ErrorCodes.general_failure.value)
+
+        if result_tuples is None or len(result_tuples) < 1:
+            return None
+        else:
+            return result_tuples
 
     async def update_car_classes(self, car_class_dicts):
         new_car_class_parameters = []
@@ -1460,6 +1881,7 @@ class BotDatabase:
                 await self.execute_query(dbq.UPDATE_CURRENT_CAR_CLASSES, params=existing_car_class_parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add subsession {car_class_dict['subsession_id']} the subsessions table.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add subsession {car_class_dict['subsession_id']} the subsessions table.", ErrorCodes.general_failure.value)
 
     async def is_season_active(self):
         query = """
@@ -1472,6 +1894,7 @@ class BotDatabase:
             result = await self.execute_read_query(query)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_season_active().")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_season_active().", ErrorCodes.general_failure.value)
 
         return result[0][0] > 0
 
@@ -1507,56 +1930,83 @@ class BotDatabase:
             result = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_current_iracing_week() for series_id {series_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_current_iracing_week() for series_id {series_id}.", ErrorCodes.general_failure.value)
 
         if len(result) > 0:
             return result[0]
         else:
             return (None, None, None, None, None)
 
+    async def get_all_series(self):
+        query = """
+            SELECT *
+            FROM series
+        """
+
+        try:
+            series_tuples = await self.execute_read_query(query)
+        except Error as e:
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_all_series()."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_all_series().",
+                ErrorCodes.general_failure.value
+            )
+
+        series_dicts = await self._map_tuples_to_dicts(series_tuples, 'series')
+
+        return series_dicts
+
     async def get_season_basic_info(self, series_id: int = None, season_year: int = None, season_quarter: int = None):
-        """ Returns a list of tuples of (series_id, season_name, latest_year, latest_quarter, max_race_week) for the latest season for each series in the 'seasons' table.
+        """ Returns a list of tuples of (season_id, series_id, season_name, series_name, latest_year, latest_quarter, max_race_week) for the latest season for each series in the 'seasons' table.
             latest_year and latest_quarter represent the last time this series was run.
             Alternatively, you can supply a season_year and season_quarter to only get season tuples for a specific iRacing season."""
 
         query = """
             SELECT
                 season_id,
-                series_id,
+                series.series_id,
                 season_name,
+                series_name,
                 season_year,
                 season_quarter,
                 max_race_week
             FROM (
-                SELECT season_name,
-                series_id, season_id,
-                season_year,
-                season_quarter,
-                max_race_week
+                SELECT
+                    season_name,
+                    series_id,
+                    season_id,
+                    season_year,
+                    season_quarter,
+                    max_race_week
                 FROM seasons
         """
         parameters = tuple()
 
         if series_id is not None or (season_year is not None and season_quarter is not None):
 
-            query += "WHERE "
+            query += "WHERE"
 
             if series_id is not None:
-                query += "series_id = ? AND "
+                query += " series_id = ? AND"
                 parameters += (series_id,)
 
             if season_year is not None and season_quarter is not None:
-                query += "season_year = ? AND season_quarter = ? AND "
+                query += " season_year = ? AND season_quarter = ? AND"
                 parameters += (season_year, season_quarter)
 
-            query = query[:-5]
+            query = query[:-4]
 
         query += """
             ORDER BY
                 series_id,
                 season_year DESC,
                 season_quarter DESC
-            )
-            GROUP BY series_id
+            ) inner_result
+            INNER JOIN series
+            ON series.series_id = inner_result.series_id
+            GROUP BY series.series_id
         """
 
         try:
@@ -1565,6 +2015,11 @@ class BotDatabase:
             logging.getLogger('respobot.database').error(
                 f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_basic_info() for "
                 f"series_id = {series_id}, season_year = {season_year}, season_quarter = {season_quarter}."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_basic_info() for "
+                f"series_id = {series_id}, season_year = {season_year}, season_quarter = {season_quarter}.",
+                ErrorCodes.general_failure.value
             )
 
         if len(result) > 0:
@@ -1598,6 +2053,7 @@ class BotDatabase:
             result = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_series_last_run_season() for series_id {series_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_series_last_run_season() for series_id {series_id}.", ErrorCodes.general_failure.value)
 
         if len(result) > 0:
             return result[0]
@@ -1616,6 +2072,23 @@ class BotDatabase:
                 return series_tuple[1]
 
         return None
+
+    async def get_series_name_from_id(self, series_id: int):
+        query = "SELECT series_name FROM series WHERE series_id = ?"
+        parameters = (series_id,)
+
+        try:
+            result = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_series_last_run_season() for series_id {series_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_series_last_run_season() for series_id {series_id}.", ErrorCodes.general_failure.value)
+
+        if len(result) > 1:
+            raise BotDatabaseError(f"get_series_name_from_id() returned more than one result for series_id = {series_id}.", ErrorCodes.general_failure.value)
+        elif len(result) == 1:
+            return result[0][0]
+        else:
+            return (None, None)
 
     async def get_car_class_id_from_car_class_name(self, car_class_name: str, season_id: int = None, series_id: int = None, season_year: int = None, season_quarter: int = None):
 
@@ -1650,7 +2123,10 @@ class BotDatabase:
             parameters = (season_id,)
         elif series_id is not None:
             if season_year is None or season_quarter is None:
-                (season_year, season_quarter) = await self.get_series_last_run_season(series_id)
+                try:
+                    (season_year, season_quarter) = await self.get_series_last_run_season(series_id)
+                except BotDatabaseError:
+                    raise
 
             if season_year is not None and season_quarter is not None:
                 query = """
@@ -1675,6 +2151,11 @@ class BotDatabase:
             logging.getLogger('respobot.database').error(
                 f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_car_classes() for "
                 f"season_id {season_id}, series_id {series_id}, season_year {season_year}, season_quarter {season_quarter}."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_car_classes() for "
+                f"season_id {season_id}, series_id {series_id}, season_year {season_year}, season_quarter {season_quarter}.",
+                ErrorCodes.general_failure.value
             )
 
         return results
@@ -1706,6 +2187,11 @@ class BotDatabase:
                 f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_car_classes_for_all_series() for "
                 f"season_year {season_year}, season_quarter {season_quarter}."
             )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_car_classes_for_all_series() for "
+                f"season_year {season_year}, season_quarter {season_quarter}.",
+                ErrorCodes.general_failure.value
+            )
 
         return results
 
@@ -1721,7 +2207,18 @@ class BotDatabase:
         """
         parameters = (series_id, season_year, season_quarter)
 
-        results = await self.execute_read_query(query, params=parameters)
+        try:
+            results = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_id() for "
+                f"series_id: {series_id}, season_year {season_year}, season_quarter {season_quarter}."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_id() for "
+                f"series_id: {series_id}, season_year {season_year}, season_quarter {season_quarter}.",
+                ErrorCodes.general_failure.value
+            )
 
         if len(results) < 1:
             return None
@@ -1735,7 +2232,45 @@ class BotDatabase:
             WHERE subsession_id = ?
         """
         parameters = (subsession_id,)
-        results = await self.execute_read_query(query, params=parameters)
+
+        try:
+            results = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_subsession_in_db() for "
+                f"subsession_id: {subsession_id}."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_subsession_in_db() for "
+                f"subsession_id: {subsession_id}.",
+                ErrorCodes.general_failure.value
+            )
+
+        if results is None or len(results) < 1:
+            return False
+        else:
+            return True
+
+    async def is_subsession_in_laps_table(self, subsession_id: int):
+        query = """
+            SELECT subsession_id
+            FROM laps
+            WHERE subsession_id = ?
+        """
+        parameters = (subsession_id,)
+
+        try:
+            results = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_subsession_in_db() for "
+                f"subsession_id: {subsession_id}."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_subsession_in_db() for "
+                f"subsession_id: {subsession_id}.",
+                ErrorCodes.general_failure.value
+            )
 
         if results is None or len(results) < 1:
             return False
@@ -1750,7 +2285,8 @@ class BotDatabase:
         season_quarter: int = None,
         license_category_id: int = None,
         official_session: int = 1,
-        simsession_type: int = 6
+        simsession_type: int = irConstants.SimSessionType.race.value,
+        event_type: int = irConstants.EventType.race.value
     ):
         race_dicts = []
 
@@ -1778,8 +2314,7 @@ class BotDatabase:
                 max_team_drivers
             FROM results
             INNER JOIN subsessions ON subsessions.subsession_id = results.subsession_id
-            WHERE cust_id = ? AND
-        """
+            WHERE cust_id = ? AND"""
         parameters = (iracing_custid,)
 
         if series_id is not None:
@@ -1806,6 +2341,10 @@ class BotDatabase:
             query += " simsession_type = ? AND"
             parameters += (simsession_type,)
 
+        if event_type is not None:
+            query += " event_type = ? AND"
+            parameters += (event_type,)
+
         query = query[:-4]
 
         try:
@@ -1816,6 +2355,13 @@ class BotDatabase:
                 f"iracing_custid {iracing_custid}, series_id {series_id}, car_class_id {car_class_id}, "
                 f"season_year {season_year}, season_quarter {season_quarter}, license_category_id {license_category_id}"
                 f"official_session {official_session}, simsession_type {simsession_type}."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_member_race_results() for "
+                f"iracing_custid {iracing_custid}, series_id {series_id}, car_class_id {car_class_id}, "
+                f"season_year {season_year}, season_quarter {season_quarter}, license_category_id {license_category_id}"
+                f"official_session {official_session}, simsession_type {simsession_type}.",
+                ErrorCodes.general_failure.value
             )
 
         if results is None:
@@ -1850,6 +2396,48 @@ class BotDatabase:
 
         return race_dicts
 
+    async def get_official_race_subsession_ids(self, iracing_custid, category: int = None):
+        query = """
+            SELECT subsessions.subsession_id
+            FROM subsessions
+            INNER JOIN results
+            ON results.subsession_id = subsessions.subsession_id
+            WHERE
+                official_session = 1 AND
+                event_type = 5 AND
+                simsession_number = 0 AND
+                cust_id = ? AND"""
+
+        parameters = (iracing_custid,)
+
+        if category is not None:
+            query += " license_category_id = ? AND"
+            parameters += (category,)
+
+        query = query[:-4]
+
+        try:
+            results = await self.execute_read_query(query, params=parameters)
+        except Error as e:
+            logging.getLogger('respobot.database').error(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during during get_official_race_subsession_ids() for "
+                f"iracing_custid {iracing_custid}, category {category}."
+            )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during during get_official_race_subsession_ids() for "
+                f"iracing_custid {iracing_custid}, category {category}.",
+                ErrorCodes.general_failure.value
+            )
+
+        if results is None or len(results) < 1:
+            return []
+
+        race_list = []
+        for result_tuple in results:
+            race_list.append(result_tuple[0])
+
+        return race_list
+
     async def get_member_series_raced(
         self,
         iracing_custid: int,
@@ -1866,8 +2454,7 @@ class BotDatabase:
                 series_id
             FROM results
             INNER JOIN subsessions ON subsessions.subsession_id = results.subsession_id
-            WHERE cust_id = ? AND
-        """
+            WHERE cust_id = ? AND"""
         parameters = (iracing_custid,)
 
         if season_year is not None:
@@ -1902,6 +2489,12 @@ class BotDatabase:
                 f"iracing_custid {iracing_custid}, season_year {season_year}, season_quarter {season_quarter}, "
                 f"license_category_id {license_category_id}, official_session {official_session}, simsession_type {simsession_type}."
             )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_member_series_raced() for "
+                f"iracing_custid {iracing_custid}, season_year {season_year}, season_quarter {season_quarter}, "
+                f"license_category_id {license_category_id}, official_session {official_session}, simsession_type {simsession_type}.",
+                ErrorCodes.general_failure.value
+            )
 
         if results is None:
             return None
@@ -1935,16 +2528,22 @@ class BotDatabase:
                 f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_drivers_in_class() for "
                 f"subsession_id {subsession_id}, car_class_id {car_class_id}, simsession_number {simsession_number}, simsession_type {simsession_type}."
             )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_drivers_in_class() for "
+                f"subsession_id {subsession_id}, car_class_id {car_class_id}, simsession_number {simsession_number}, simsession_type {simsession_type}.",
+                ErrorCodes.general_failure.value
+            )
 
         return len(result)
 
     async def get_season_dates(self):
-        query = "SELECT * FROM season_dates"
-        
+        query = "SELECT * FROM season_dates ORDER BY start_time ASC"
+
         try:
             result = await self.execute_read_query(query)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_dates().")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_season_dates().", ErrorCodes.general_failure.value)
 
         if result is None or len(result) < 1:
             return None
@@ -1982,6 +2581,11 @@ class BotDatabase:
                 f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_quotes() for "
                 f"discord_id {discord_id}, quote_id {quote_id}"
             )
+            raise BotDatabaseError(
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_quotes() for "
+                f"discord_id {discord_id}, quote_id {quote_id}",
+                ErrorCodes.general_failure.value
+            )
 
         if len(result_tuples) < 1:
             return None
@@ -2016,6 +2620,7 @@ class BotDatabase:
             result_tuples = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_quote_in_db() for message_id {message_id}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during is_quote_in_db() for message_id {message_id}.", ErrorCodes.general_failure.value)
 
         return len(result_tuples) > 0
 
@@ -2036,6 +2641,7 @@ class BotDatabase:
             results = await self.execute_read_query(query)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_quote_leaderboard().")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_quote_leaderboard().", ErrorCodes.general_failure.value)
 
         return results
 
@@ -2049,6 +2655,7 @@ class BotDatabase:
             results = await self.execute_read_query(query)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_quote_ids().")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_quote_ids().", ErrorCodes.general_failure.value)
 
         id_list = []
 
@@ -2072,9 +2679,11 @@ class BotDatabase:
             await self.execute_query(dbq.INSERT_QUOTE, params=quote_tuple)
         except Error as e:
             if e.sqlite_errorcode == 1555:
-                logging.getLogger('respobot.database').warning(f"Quote already in database, ignoring.")
+                logging.getLogger('respobot.database').warning(f"Quote already in database. Did you remember to check before inserting?")
+                raise BotDatabaseError(f"Quote already in database. Did you remember to check before inserting?", ErrorCodes.general_failure.value)
             else:
                 logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add a quote to the quotes table.")
+                raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} when trying to add a quote to the quotes table.", ErrorCodes.general_failure.value)
 
     async def get_special_events(self, earliest_date=None):
         query = """
@@ -2099,6 +2708,7 @@ class BotDatabase:
             results = await self.execute_read_query(query, params=parameters)
         except Error as e:
             logging.getLogger('respobot.database').error(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_special_events() for earliest_date {earliest_date}.")
+            raise BotDatabaseError(f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_special_events() for earliest_date {earliest_date}.", ErrorCodes.general_failure.value)
 
         if results is None or len(results) < 1:
             return None
@@ -2129,18 +2739,6 @@ class BotDatabase:
         elif name == "" or start_date == "" or end_date == "" or track == "" or cars == "" or category == "":
             raise BotDatabaseError("You must provide all args to add a special event to the database.", ErrorCodes.insufficient_info.value)
             return
-
-        # try:
-        #     date.fromisoformat(start_date)
-        # except ValueError:
-        #     raise BotDatabaseError(f"Invalid date format: {start_date}. Use YYYY-mm-dd", ErrorCodes.value_error.value)
-        #     return
-
-        # try:
-        #     date.fromisoformat(end_date)
-        # except ValueError:
-        #     raise BotDatabaseError(f"Invalid date format: {end_date}. Use YYYY-mm-dd", ErrorCodes.value_error.value)
-        #     return
 
         query = """
             INSERT INTO special_events (
@@ -2184,7 +2782,6 @@ class BotDatabase:
         if name is None and start_date is None and end_date is None and track is None and cars is None and category is None:
             logging.getLogger('respobot.database').warning(f"edit_special_event() called with no kwargs. Nothing to edit.")
             raise BotDatabaseError("edit_special_event() called with no kwargs", ErrorCodes.insufficient_info.value)
-            return
 
         query = "UPDATE 'special_events' SET "
 
@@ -2214,8 +2811,8 @@ class BotDatabase:
             query += "category = ?,"
             parameters += (category,)
 
-        # Remove the railing comma
-        query = query[0:-1]
+        # Remove the trailing comma
+        query = query[:-1]
 
         query += " WHERE uid = ?"
 
@@ -2226,5 +2823,5 @@ class BotDatabase:
         except Error as e:
             logging.getLogger('respobot.database').error(
                 f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during edit_special_event() for "
-                f"uid: {uid}, name: {name}, start_date: {start_date}, end_daye: {end_date}, track: {track}, cars: {cars}, category: {category}.")
+                f"uid: {uid}, name: {name}, start_date: {start_date}, end_date: {end_date}, track: {track}, cars: {cars}, category: {category}.")
             raise BotDatabaseError("Error editing special event.", ErrorCodes.general_failure.value)
