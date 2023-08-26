@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 from discord.commands import Option
 import environment_variables as env
-import slash_command_helpers as slash_helpers
 from slash_command_helpers import SlashCommandHelpers
 
 

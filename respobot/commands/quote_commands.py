@@ -3,7 +3,6 @@ from discord.ext import commands
 from discord.commands import Option
 from discord.errors import NotFound
 from discord import Message
-import slash_command_helpers as slash_helpers
 from slash_command_helpers import SlashCommandHelpers
 from discord.commands import SlashCommandGroup
 import helpers
@@ -41,10 +40,16 @@ class QuoteCommandsCog(commands.Cog):
             try:
                 message_object = await ctx.fetch_message(message_id)
             except NotFound:
-                await ctx.respond("The URL " + message + " doesn't point to a valid message in this channel.", ephemeral=True)
+                await ctx.respond(
+                    "The URL " + message + " doesn't point to a valid message in this channel.",
+                    ephemeral=True
+                )
                 return
         else:
-            await ctx.respond("I'm not Silvia Brown for fuck's sake, I can't read your mind. I need a numeric message ID or a valid message URL in order to find it.")
+            await ctx.respond(
+                "I'm not Silvia Brown for fuck's sake, I can't read your mind. "
+                "I need a numeric message ID or a valid message URL in order to find it."
+            )
             return
 
         if message_object is None:
@@ -103,6 +108,7 @@ class QuoteCommandsCog(commands.Cog):
 
         if quote_dicts is None or len(quote_dicts) < 1:
             await ctx.edit(content="No one has quoted " + member + " and that makes me a sad panda :(")
+            return
 
         for quote_dict in quote_dicts:
             new_quote_text = ""
@@ -139,7 +145,12 @@ class QuoteCommandsCog(commands.Cog):
     async def quote_show(
         self,
         ctx,
-        member: Option(str, "Quote a specific person.", required=False, autocomplete=SlashCommandHelpers.get_member_list),
+        member: Option(
+            str,
+            "Quote a specific person.",
+            required=False,
+            autocomplete=SlashCommandHelpers.get_member_list
+        ),
         quote_id: Option(int, "Show a specific quote.", required=False, autocomplete=SlashCommandHelpers.get_quote_ids)
     ):
         quote_dict = {}
@@ -165,7 +176,10 @@ class QuoteCommandsCog(commands.Cog):
                 quote_dicts = await self.db.get_quotes(id_to_quote)
 
                 if quote_dicts is None:
-                    await ctx.respond(helpers.spongify("This person has never said anything notable. Not even once."), ephemeral=True)
+                    await ctx.respond(
+                        helpers.spongify("This person has never said anything notable. Not even once."),
+                        ephemeral=True
+                    )
                     return
 
                 quote_dict = random.choice(quote_dicts)
@@ -205,7 +219,10 @@ class QuoteCommandsCog(commands.Cog):
                 quote_dicts = await self.db.get_quotes(id_to_quote)
 
                 if quote_dicts is None:
-                    await ctx.respond(helpers.spongify("This person has never said anything notable. Not even once."), ephemeral=True)
+                    await ctx.respond(
+                        helpers.spongify("This person has never said anything notable. Not even once."),
+                        ephemeral=True
+                    )
                     return
 
                 quote_dict = random.choice(quote_dicts)
@@ -249,11 +266,17 @@ class QuoteCommandsCog(commands.Cog):
 
     async def process_quote_add(self, ctx: commands.Context, message_object: Message):
         if message_object and message_object.author == self.bot.user:
-            await ctx.respond("I know you love every little thing that comes out of my mouth, but sorry you can't quote me.", ephemeral=True)
+            await ctx.respond(
+                "I know you love every little thing that comes out of my mouth, but sorry you can't quote me.",
+                ephemeral=True
+            )
             return
 
         if message_object and message_object.author.id == 905283876346265710:
-            await ctx.respond("Fuck that noise. @WhoTheFuckBot has never said a single quotable thing once.", ephemeral=True)
+            await ctx.respond(
+                "Fuck that noise. @WhoTheFuckBot has never said a single quotable thing once.",
+                ephemeral=True
+            )
             return
 
         # Check to see if it's already in there.
@@ -262,7 +285,10 @@ class QuoteCommandsCog(commands.Cog):
             return
 
         # Only quoting text. I'm not going to write some stupid image handling code.
-        if message_object.content == "" or (len(message_object.content.split()) == 1 and "http" in message_object.content):
+        if (
+            message_object.content == ""
+            or (len(message_object.content.split()) == 1 and "http" in message_object.content)
+        ):
             await ctx.respond("How about quoting someone that actually said something?", ephemeral=True)
             return
 
@@ -284,6 +310,11 @@ class QuoteCommandsCog(commands.Cog):
         await ctx.respond("Should the following quote be added?")
         sentMessage = await ctx.channel.send(quote_text)
         await sentMessage.add_reaction('👍')
-        await SlashCommandHelpers.refresh_quotes()
-        self.bot_state.data['pending_quotes'][str(sentMessage.id)] = message_object.id
+        new_pending_quote = {
+            "vote_message_id": sentMessage.id,
+            "quoted_message_id": message_object.id,
+            "quote_added_by_id": message_object.author.id,
+            "has_been_voted_by_adder": False
+        }
+        self.bot_state.data['pending_quotes'].append(new_pending_quote)
         self.bot_state.dump_state()

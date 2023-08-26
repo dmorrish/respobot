@@ -55,7 +55,10 @@ async def promote_demote_members(bot: discord.Bot, db: BotDatabase):
             return
 
         for member_dict in member_dicts:
-            latest_road_ir_in_db = await db.get_member_ir(member_dict['iracing_custid'], category_id=irConstants.Category.road.value)
+            latest_road_ir_in_db = await db.get_member_ir(
+                member_dict['iracing_custid'],
+                category_id=irConstants.Category.road.value
+            )
             if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
                 continue
 
@@ -64,7 +67,10 @@ async def promote_demote_members(bot: discord.Bot, db: BotDatabase):
             else:
                 await roles.promote_driver(guild, member_dict['discord_id'])
     except Exception as exc:
-        await send_bot_failure_dm(bot, f"During promote_demote_members() the following exception was encountered: {exc}")
+        await send_bot_failure_dm(
+            bot,
+            f"During promote_demote_members() the following exception was encountered: {exc}"
+        )
 
 
 async def fetch_guild_member_objects(bot: discord.Bot, guild: discord.Guild, db: BotDatabase):
@@ -79,15 +85,22 @@ async def fetch_guild_member_objects(bot: discord.Bot, guild: discord.Guild, db:
                 new_member_object = await guild.fetch_member(member_id)
                 member_objects.append(new_member_object)
             except NotFound:
-                logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: Member {member_id} not found in the guild.")
+                logging.getLogger('respobot.bot').warning(
+                    f"fetch_guild_member_objects() failed due to: Member {member_id} not found in the guild."
+                )
             except HTTPException:
-                logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: HTTPException while fetching member {member_id}.")
+                logging.getLogger('respobot.bot').warning(
+                    f"fetch_guild_member_objects() failed due to: HTTPException while fetching member {member_id}."
+                )
             except Exception as e:
                 logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: {e}")
 
         return member_objects
     except Exception as exc:
-        await send_bot_failure_dm(bot, f"During fetch_guild_member_objects() the following exception was encountered: {exc}")
+        await send_bot_failure_dm(
+            bot,
+            f"During fetch_guild_member_objects() the following exception was encountered: {exc}"
+        )
         return None
 
 
@@ -101,9 +114,13 @@ async def send_bot_failure_dm(bot: discord.Bot, message: str):
                 try:
                     await admin_object.send(message)
                 except (discord.HTTPException, discord.Forbidden, discord.InvalidArgument) as exc:
-                    logging.getLogger('respobot.discord').warning(f"Could not send failure DM to admin {admin_object.display_name}. Exception: {exc}")
+                    logging.getLogger('respobot.discord').warning(
+                        f"Could not send failure DM to admin {admin_object.display_name}. Exception: {exc}"
+                    )
         except (discord.HTTPException, discord.Forbidden) as exc:
-            logging.getLogger('respobot.discord').warning(f"Could not fetch admin Member object to send failure DM. Exception {exc}")
+            logging.getLogger('respobot.discord').warning(
+                f"Could not fetch admin Member object to send failure DM. Exception {exc}"
+            )
             return
 
 

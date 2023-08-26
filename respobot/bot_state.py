@@ -22,7 +22,9 @@ class BotState:
                     )
 
                 except JSONDecodeError:
-                    logging.getLogger('respobot.bot').error(f"{env.BOT_STATE_FILENAME} did not contain valid JSON data, initializing as {{}}")
+                    logging.getLogger('respobot.bot').error(
+                        f"{env.BOT_STATE_FILENAME} did not contain valid JSON data, initializing as {{}}"
+                    )
                     self.data = {}
         except FileNotFoundError:
             logging.getLogger('respobot.bot').error("bot_state.json does not exist, initializing as {}")
@@ -35,7 +37,7 @@ class BotState:
 
         if 'pending_quotes' not in self.data:
             logging.getLogger('respobot.bot').info("'pending_quotes' missing from bot_state, setting to {}.")
-            self.data['pending_quotes'] = {}
+            self.data['pending_quotes'] = []
             self.dump_state()
 
         if 'birthday_flip_flop' not in self.data:

@@ -3,10 +3,17 @@ import httpx
 import traceback
 from datetime import datetime, timedelta, timezone
 from bot_database import BotDatabase
+import constants
 from irslashdata.client import Client as IracingClient
+from irslashdata import constants as irConstants
 
 
-async def update_season_dates(db: BotDatabase, ir: IracingClient, season_year: int = None, season_quarter: int = None):
+async def update_season_dates(
+    db: BotDatabase,
+    ir: IracingClient,
+    season_year: int = None,
+    season_quarter: int = None
+):
 
     try:
         series_dicts = await ir.stats_series_new()
@@ -48,7 +55,13 @@ async def update_season_dates(db: BotDatabase, ir: IracingClient, season_year: i
 
         while done is False:
             logging.getLogger('respobot.bot').info(f"Updating season dates for {year}s{quarter}")
-            result_dicts = await ir.search_results_new(season_year=year, season_quarter=quarter, race_week_num=0, series_id=139, official_only=True, event_types=[5])
+            result_dicts = await ir.search_results_new(
+                season_year=year,
+                season_quarter=quarter,
+                race_week_num=0,
+                series_id=constants.REFERENCE_SERIES,
+                official_only=True,
+                event_types=[irConstants.EventType.race.value])
 
             if result_dicts is not None and len(result_dicts) > 0:
                 min_start_time = datetime.fromisoformat(result_dicts[0]['start_time'])
@@ -67,14 +80,20 @@ async def update_season_dates(db: BotDatabase, ir: IracingClient, season_year: i
 
                 max_weeks = subsession_data['max_weeks']
 
-                start_time = datetime(min_start_time.year, min_start_time.month, min_start_time.day, tzinfo=timezone.utc)
+                start_time = datetime(
+                    min_start_time.year,
+                    min_start_time.month,
+                    min_start_time.day,
+                    tzinfo=timezone.utc
+                )
+
                 end_time = start_time + timedelta(days=7 * max_weeks)
 
                 new_season_dict = {
                     'season_year': year,
                     'season_quarter': quarter,
-                    'start_time': start_time.isoformat().replace('+00:00', 'Z'),
-                    'end_time': end_time.isoformat().replace('+00:00', 'Z')
+                    'start_time': start_time,
+                    'end_time': end_time
                 }
 
                 season_dicts.append(new_season_dict)
@@ -87,11 +106,15 @@ async def update_season_dates(db: BotDatabase, ir: IracingClient, season_year: i
             if year >= max_year and quarter > max_quarter:
                 done = True
         await db.update_season_dates(season_dicts)
-        print("Done updating season_dates table!")
+        logging.getLogger('respobot.bot').info("Done updating season_dates table!")
     except httpx.HTTPError:
-        logging.getLogger('respobot.bot').warning("Connection to iRacing timed out during the respobot.update_series.update_series_dates() method.")
+        logging.getLogger('respobot.bot').warning(
+            "Connection to iRacing timed out during the respobot.update_series.update_series_dates() method."
+        )
     except RecursionError:
-        logging.getLogger('respobot.bot').warning("iRacing client hit the recursion limit during the respobot.update_series.update_series_dates() method.")
+        logging.getLogger('respobot.bot').warning(
+            "iRacing client hit the recursion limit during the respobot.update_series.update_series_dates() method."
+        )
     except Exception as ex:
         print(traceback.format_exc())
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"

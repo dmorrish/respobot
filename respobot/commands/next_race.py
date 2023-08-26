@@ -28,7 +28,11 @@ class NextRaceCog(commands.Cog):
 
         (season_year, season_quarter) = SlashCommandHelpers.get_current_season()
 
-        series_id = await self.db.get_series_id_from_season_name(series, season_year=season_year, season_quarter=season_quarter)
+        series_id = await self.db.get_series_id_from_season_name(
+            series,
+            season_year=season_year,
+            season_quarter=season_quarter
+        )
 
         if series_id is None:
             await ctx.edit(content="I didn't find that series, just like your dignity.")
@@ -38,11 +42,18 @@ class NextRaceCog(commands.Cog):
             try:
                 race_guide = await self.ir.race_guide_new()
             except AuthenticationError:
-                await ctx.edit(content=f"Authentication failed when trying to log in to the iRacing server. Deryk has been DMed.")
+                await ctx.edit(
+                    content=f"Authentication failed when trying to log in to the iRacing server. Deryk has been DMed."
+                )
                 await helpers.send_bot_failure_dm(self.bot, "Authentication to the iRacing server failed.")
                 return
             except ServerDownError:
-                await ctx.edit(content=f"iRacing is down for maintenance and this command relies on the stats server. Try again later.")
+                await ctx.edit(
+                    content=(
+                        f"iRacing is down for maintenance and this command relies on the stats server. "
+                        f"Try again later."
+                    )
+                )
                 return
 
         if race_guide is None:
@@ -50,7 +61,16 @@ class NextRaceCog(commands.Cog):
             return
 
         race_found = False
-        time_start = datetime(year=3000, month=1, day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+        time_start = datetime(
+            year=3000,
+            month=1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+            tzinfo=timezone.utc
+        )
         for session in race_guide['sessions']:
             if 'series_id' in session and session['series_id'] == series_id:
                 if 'start_time' in session:
@@ -60,7 +80,12 @@ class NextRaceCog(commands.Cog):
                         time_start = session_start_time
 
         if race_found is False:
-            await ctx.edit(content=f"There aren't any races scheduled for **{series}** in the next three hours which is as far ahead that iRacing will let me see.")
+            await ctx.edit(
+                content=(
+                    f"There aren't any races scheduled for **{series}** in the next three hours "
+                    f"which is as far ahead that iRacing will let me see."
+                )
+            )
             return
 
         message_text = f"The next race in **{series}** is scheduled for <t:{str(int(time_start.timestamp()))}>"

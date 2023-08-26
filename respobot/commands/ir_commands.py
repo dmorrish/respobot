@@ -1,7 +1,6 @@
 import os
 import random
 import discord
-import asyncio
 from datetime import datetime
 from discord.ext import commands
 from discord.commands import Option
@@ -25,12 +24,19 @@ class IrCommandsCog(commands.Cog):
 
     @ir_command_group.command(
         name='graph',
-        description="Graph all Respo Racing members' iRating. Alternatively, plot a specific person by name or iRacing ID"
+        description=(
+            "Graph all Respo Racing members' iRating. Or plot a specific person by name or iRacing ID."
+        )
     )
     async def ir_graph(
         self,
         ctx,
-        member: Option(str, "Plot iRating for a specific person. Can be a Respo member, or by full name or iRacing ID.", required=False, autocomplete=SlashCommandHelpers.get_member_list)
+        member: Option(
+            str,
+            "Plot iRating for a specific person. Can be a Respo member, or by full name or iRacing ID.",
+            required=False,
+            autocomplete=SlashCommandHelpers.get_member_list
+        )
     ):
         member_dicts = []
         if member is not None:
@@ -40,14 +46,20 @@ class IrCommandsCog(commands.Cog):
                 await ctx.respond("Plotting iRating for " + member)
 
                 if 'graph_colour' not in member_dict:
-                    member_dict['graph_colour'] = [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255]
+                    member_dict['graph_colour'] = [
+                        random.randint(0, 255),
+                        random.randint(0, 255),
+                        random.randint(0, 255),
+                        255
+                    ]
 
                 member_dicts.append(member_dict)
             else:
                 if not member.isnumeric():
                     driver_name = ""
                     if (member[0] == '"' or member[0] == "“") and (member[-1] == '"' or member[-1] == '”'):
-                        # Adding by quoted name. Quoted and unquoted are now functionally equivalent since I stopped trying to clean up the command input.
+                        # Adding by quoted name. Quoted and unquoted are now functionally
+                        # equivalent since I stopped trying to clean up the command input.
                         driver_name = member[1:-1]
                     else:
                         # Adding by unquoted name
@@ -63,24 +75,44 @@ class IrCommandsCog(commands.Cog):
                             member_dict = {}
                             member_dict['name'] = driver_dict['display_name']
                             member_dict['iracing_custid'] = driver_dict['cust_id']
-                            member_dict['graph_colour'] = [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255]
+                            member_dict['graph_colour'] = [
+                                random.randint(0, 255),
+                                random.randint(0, 255),
+                                random.randint(0, 255),
+                                255
+                            ]
                             member_dicts.append(member_dict)
                             driver_found = True
                     if not driver_found:
-                        await ctx.edit(content="Just like your dignity, the driver named " + driver_name + " is nowhere to be found on iRacing.")
+                        await ctx.edit(
+                            content=(
+                                f"Just like your dignity, the driver named {driver_name} "
+                                f"is nowhere to be found on iRacing."
+                            )
+                        )
                         return
                 else:
                     iracing_custid = int(member)
                     await ctx.respond("Checking iRacing servers for ID: " + member)
                     member_info_dict_list = await self.ir.get_member_info_new([iracing_custid])
                     if len(member_info_dict_list) < 1:
-                        await ctx.edit(content="Just like your dignity, the driver with the iRacing ID " + member + " is nowhere to be found on iRacing.")
+                        await ctx.edit(
+                            content=(
+                                f"Just like your dignity, the driver with the iRacing ID {member} "
+                                f"is nowhere to be found on iRacing."
+                            )
+                        )
                         return
                     else:
                         member_dict = {}
                         member_dict['name'] = member_info_dict_list[0]['display_name']
                         member_dict['iracing_custid'] = iracing_custid
-                        member_dict['graph_colour'] = [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255]
+                        member_dict['graph_colour'] = [
+                            random.randint(0, 255),
+                            random.randint(0, 255),
+                            random.randint(0, 255),
+                            255
+                        ]
                         member_dicts.append(member_dict)
         else:
             await ctx.respond("Generating iR graph for all Respo members.")
@@ -93,10 +125,20 @@ class IrCommandsCog(commands.Cog):
 
             for member_dict in member_dicts:
                 if 'graph_colour' not in member_dict:
-                    member_dict['colour'] = [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255]
+                    member_dict['colour'] = [
+                        random.randint(0, 255),
+                        random.randint(0, 255),
+                        random.randint(0, 255),
+                        255
+                    ]
 
         if len(member_dicts) < 1:
-            await ctx.edit(content="Something went wrong. No one was found and an error wasn't thrown. Deryk sucks at programming.")
+            await ctx.edit(
+                content=(
+                    "Something went wrong. No one was found and an error "
+                    "wasn't thrown. Deryk sucks at programming."
+                )
+            )
             return
 
         for member_dict in member_dicts:
@@ -108,7 +150,10 @@ class IrCommandsCog(commands.Cog):
                     timestamp = time_point.timestamp() * 1000
                     member_dict['ir_data'].append((timestamp, point_dict['value']))
             else:
-                member_dict['ir_data'] = await self.db.get_ir_data(iracing_custid=member_dict['iracing_custid'], category_id=irConstants.Category.road.value)
+                member_dict['ir_data'] = await self.db.get_ir_data(
+                    iracing_custid=member_dict['iracing_custid'],
+                    category_id=irConstants.Category.road.value
+                )
 
         temp_member_dicts = []
 
@@ -126,7 +171,8 @@ class IrCommandsCog(commands.Cog):
             title_text = "iRating Graph for " + sorted_member_dicts[0]['name'] + " (" + str(irating) + ")"
             graph = image_gen.generate_ir_graph(sorted_member_dicts, title_text, False)
 
-        filepath = env.BOT_DIRECTORY + "media/tmp_ir_" + str(datetime.now().strftime("%Y%m%d%H%M%S%f")) + ".png"
+        filename = f"tmp_ir_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
+        filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
 
         graph.save(filepath, format=None)
 
@@ -136,7 +182,6 @@ class IrCommandsCog(commands.Cog):
             picture.close()
 
         if os.path.exists(filepath):
-            await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
             os.remove(filepath)
 
         return
@@ -162,7 +207,10 @@ class IrCommandsCog(commands.Cog):
             return
 
         for member_dict in member_dicts:
-            latest_road_ir_in_db = await self.db.get_member_ir(member_dict['iracing_custid'], category_id=irConstants.Category.road.value)
+            latest_road_ir_in_db = await self.db.get_member_ir(
+                member_dict['iracing_custid'],
+                category_id=irConstants.Category.road.value
+            )
             if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
                 continue
             ir_dict[helpers.spongify(member_dict['name'])] = latest_road_ir_in_db
@@ -170,7 +218,11 @@ class IrCommandsCog(commands.Cog):
         sorted_ir_dict = dict(sorted(ir_dict.items(), key=lambda item: item[1], reverse=True))
 
         for key in sorted_ir_dict:
-            if pleb_line_printed is False and sorted_ir_dict[key] is not None and sorted_ir_dict[key] < constants.PLEB_LINE:
+            if (
+                pleb_line_printed is False
+                and sorted_ir_dict[key] is not None
+                and sorted_ir_dict[key] < constants.PLEB_LINE
+            ):
                 response += "----------(pleb line)-----------\n"
                 pleb_line_printed = True
             response += key

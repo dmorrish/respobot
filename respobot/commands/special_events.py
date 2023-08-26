@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord.commands import Option
 from datetime import date
+import constants
 
 
 class SpecialEventsCog(commands.Cog):
@@ -18,8 +19,18 @@ class SpecialEventsCog(commands.Cog):
     async def special_events(
         self,
         ctx,
-        show: Option(str, "Select what to return. 'all' includes any races from the current year forward.", required=False, choices=['all', 'upcoming', 'next']),
-        category: Option(str, "Select a racing category.", required=False, choices=['road', 'oval', 'dirt_road', 'dirt_oval'])
+        show: Option(
+            str,
+            "Select what to return. 'all' includes any races from the current year forward.",
+            required=False,
+            choices=['all', 'upcoming', 'next']
+        ),
+        category: Option(
+            str,
+            "Select a racing category.",
+            required=False,
+            choices=constants.IRACING_CATEGORIES
+        )
     ):
         year_string = str(date.today().year)
         title_text = ""
@@ -45,10 +56,13 @@ class SpecialEventsCog(commands.Cog):
 
         embedVar = discord.Embed(title=title_text, description="", color=0xff0000)
 
-        event_dicts = await self.db.get_special_events(earliest_date=earliest_date.isoformat())
+        event_dicts = await self.db.get_special_events(earliest_date=earliest_date)
 
         if event_dicts is None or len(event_dicts) < 1:
-            await ctx.respond(f"Deryk hasn't entered any special event dates after {earliest_date} yet. Go tell him to get off his lazy ass and fix it.")
+            await ctx.respond(
+                f"Deryk hasn't entered any special event dates after {earliest_date} yet. "
+                f"Go tell him to get off his lazy ass and fix it."
+            )
         else:
             event_count = 0
             for event_dict in event_dicts:

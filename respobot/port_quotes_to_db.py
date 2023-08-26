@@ -16,11 +16,19 @@ async def main():
     load_dotenv()
 
     quotes = {}
-    db = await BotDatabase.init(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.DATABASE_FILENAME)
+    db = BotDatabase(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.DATABASE_FILENAME, max_retries=5)
+    await db.init_tables()
     load_json()
 
-    query = f"""
-        INSERT INTO quotes (discord_id, message_id, name, quote, replied_to_name, replied_to_quote, replied_to_message_id)
+    query = """
+        INSERT INTO quotes (
+            discord_id,
+            message_id,
+            name, quote,
+            replied_to_name,
+            replied_to_quote,
+            replied_to_message_id
+        )
         VALUES ( ?, ?, ?, ?, ?, ?, ? )
     """
     parameters = []
@@ -41,7 +49,7 @@ async def main():
                 int(quote_dict['replied_to_id']) if 'replied_to_id' in quote_dict else None
             ))
 
-    await db.execute_query(query, params=parameters)
+    await db._execute_write_query(query, params=parameters)
 
     print("Done!")
 

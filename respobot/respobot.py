@@ -3,7 +3,6 @@
 
 import os
 import signal
-import asyncio
 import discord
 import discord.commands
 from discord.ext import tasks
@@ -18,7 +17,6 @@ import logging
 import constants
 import environment_variables as env
 import race_results as results
-import respobot_logging as log
 import update_series
 import stats_helpers as stats
 from slash_command_helpers import SlashCommandHelpers
@@ -90,10 +88,15 @@ async def on_ready():
     print("I'm alive!")
 
     try:
-        await db.init()
+        await db.init_tables()
     except BotDatabaseError as exc:
-        logging.getLogger('respobot.bot').error(f"The following exception was raised when initializing the database: {exc}")
-        await helpers.send_bot_failure_dm(bot, f"The following exception was raised when initializing the database: {exc}")
+        logging.getLogger('respobot.bot').error(
+            f"The following exception was raised when initializing the database: {exc}"
+        )
+        await helpers.send_bot_failure_dm(
+            bot,
+            f"The following exception was raised when initializing the database: {exc}"
+        )
         return
 
     await helpers.change_bot_presence(bot)
@@ -103,7 +106,7 @@ async def on_ready():
         if season_dates is None:
             await update_series.update_season_dates(db, ir)
 
-        if not await db.is_series_in_series_table(139):
+        if not await db.is_series_in_series_table(constants.REFERENCE_SERIES):
             # series and seasons tables have not been populated. Update them now.
             ir_results = await ir.stats_series_new()
             await db.update_seasons(ir_results)
@@ -111,9 +114,9 @@ async def on_ready():
             ir_results = await ir.current_seasons_new()
             await db.update_current_seasons(ir_results)
 
-        if not await db.is_car_class_car_in_db(0, 34):
+        if not await db.is_car_class_car_in_current_car_classes(0, 34):
             car_class_dicts = await ir.current_car_classes_new()
-            await db.update_car_classes(car_class_dicts)
+            await db.update_current_car_classes(car_class_dicts)
     except AuthenticationError:
         logging.getLogger('respobot.iracing').warning(
             "Authentication to the iRacing server failed. "
@@ -156,7 +159,7 @@ async def on_guild_channel_create(channel):
         await channel.send("#TwoManyChannels")
 
 
-@tasks.loop(seconds=3600)
+@tasks.loop(seconds=constants.SLOW_LOOP_INTERVAL)
 async def slow_task_loop():
     # Don't run on startup.
     global first_run
@@ -165,25 +168,40 @@ async def slow_task_loop():
         return
 
     try:
-        (old_current_year, old_current_quarter, old_current_race_week, old_current_season_max_weeks, old_current_season_active) = await db.get_current_iracing_week()
+        (
+            old_current_year,
+            old_current_quarter,
+            old_current_race_week,
+            old_current_season_max_weeks,
+            old_current_season_active
+        ) = await db.get_current_iracing_week()
 
         # Update current_series, current_car_classes, and seasons
         ir_results = await ir.stats_series_new()
         await db.update_seasons(ir_results)
 
         ir_results = await ir.current_car_classes_new()
-        await db.update_car_classes(ir_results)
+        await db.update_current_car_classes(ir_results)
 
         ir_results = await ir.current_seasons_new()
         await db.update_current_seasons(ir_results)
 
-        (current_year, current_quarter, current_race_week, current_season_max_weeks, current_season_active) = await db.get_current_iracing_week()
+        (
+            current_year,
+            current_quarter,
+            current_race_week,
+            current_season_max_weeks,
+            current_season_active
+        ) = await db.get_current_iracing_week()
 
         if current_race_week is None:
             current_race_week = -1
 
         # Check if there is a new season. If yes, add it to the season_dates table.
-        if current_year > old_current_year or (current_year == old_current_year and current_quarter > old_current_quarter):
+        if (
+            current_year > old_current_year
+            or (current_year == old_current_year and current_quarter > old_current_quarter)
+        ):
             # A new season has been detected. Update season dates
             await update_series.update_season_dates(db, ir, season_year=current_year, season_quarter=current_quarter)
             # Since there's a new season, we need to refresh the autocomplete cache
@@ -213,7 +231,7 @@ async def slow_task_loop():
         )
 
 
-@tasks.loop(seconds=constants.RACE_SCAN_INTERVAL)
+@tasks.loop(seconds=constants.FAST_LOOP_INTERVAL)
 async def fast_task_loop():
 
     # Update colours
@@ -227,14 +245,27 @@ async def fast_task_loop():
                 new_colour = [64, 64, 64, 255]
             elif brightness < 110:
                 factor = 83 / brightness
-                new_colour = [member_obj.colour.r * factor, member_obj.colour.g * factor, member_obj.colour.b * factor, 255]
+                new_colour = [
+                    member_obj.colour.r * factor,
+                    member_obj.colour.g * factor,
+                    member_obj.colour.b * factor,
+                    255
+                ]
             else:
-                new_colour = [member_obj.colour.r, member_obj.colour.g, member_obj.colour.b, 255]
+                new_colour = [
+                    member_obj.colour.r,
+                    member_obj.colour.g,
+                    member_obj.colour.b,
+                    255
+                ]
 
             try:
                 await db.set_graph_colour(new_colour, discord_id=member_obj.id)
             except BotDatabaseError:
-                logging.getLogger('respobot.bot').warning(f"Unable to set graph color for Discord user {member_obj.display_name} ({member_obj.id}). Skipping.")
+                logging.getLogger('respobot.bot').warning(
+                    f"Unable to set graph color for Discord user {member_obj.display_name} "
+                    f"({member_obj.id}). Skipping."
+                )
 
     # Potentiall update bot presence
     if random.randint(0, 19) == 0:
@@ -245,7 +276,13 @@ async def fast_task_loop():
         bot_state.dump_state()
 
     try:
-        (current_year, current_quarter, current_race_week, current_season_max_weeks, current_season_active) = await db.get_current_iracing_week()
+        (
+            current_year,
+            current_quarter,
+            current_race_week,
+            current_season_max_weeks,
+            current_season_active
+        ) = await db.get_current_iracing_week()
 
         if current_race_week is None:
             current_race_week = -1
@@ -261,21 +298,37 @@ async def fast_task_loop():
                 # Post the end of week Respo update when week 2 or later begins and the season is still active
                 post_update = True
                 report_up_to = current_race_week
-                update_message = "We've reached the end of week " + str(current_race_week) + ", so let's see who's racing well, who's racing like shit, and who's not even racing at all!"
+                update_message = (
+                    f"We've reached the end of week {current_race_week} so let's see who's "
+                    f"racing well, who's racing like shit, and who's not even racing at all!"
+                )
                 bot_state.data['last_weekly_report_week'] = current_race_week
                 bot_state.dump_state()
-            elif (current_race_week < 0 or current_season_active != 1) and bot_state.data['last_weekly_report_week'] > 0:
-                # Post an end-of season Respo update if the season is not active and the previously reported week was an active week.
+            elif (
+                (current_race_week < 0 or current_season_active != 1)
+                and bot_state.data['last_weekly_report_week'] > 0
+            ):
+                # Post an end-of season Respo update if the season is not active
+                # and the previously reported week was an active week.
                 post_update = True
                 report_up_to = current_season_max_weeks
-                update_message = "Wow, I can't believe another season has passed. Let's see how you shitheels stack up."
+                update_message = (
+                    "Wow, I can't believe another season has passed. "
+                    "Let's see how you shitheels stack up."
+                )
                 bot_state.data['last_weekly_report_week'] = -1
                 bot_state.dump_state()
 
             if post_update:
                 channel = helpers.fetch_channel(bot)
                 member_dicts = await db.fetch_member_dicts()
-                week_data = await stats.get_respo_champ_points(db, member_dicts, current_year, current_quarter, report_up_to)
+                week_data = await stats.get_respo_champ_points(
+                    db,
+                    member_dicts,
+                    current_year,
+                    current_quarter,
+                    report_up_to
+                )
                 stats.calc_total_champ_points(week_data, constants.RESPO_WEEKS_TO_COUNT)
                 stats.calc_projected_champ_points(week_data, current_race_week, constants.RESPO_WEEKS_TO_COUNT, False)
 
@@ -291,12 +344,22 @@ async def fast_task_loop():
                     title_text += " for " + str(current_year) + "s" + str(current_quarter)
 
                     if current_season_active == 1:
-                        graph = image_gen.generate_champ_graph_compact(week_data, title_text, constants.RESPO_WEEKS_TO_COUNT, current_race_week)
+                        graph = image_gen.generate_champ_graph_compact(
+                            week_data,
+                            title_text,
+                            constants.RESPO_WEEKS_TO_COUNT,
+                            current_race_week
+                        )
                     else:
-                        graph = image_gen.generate_champ_graph(week_data, title_text, constants.RESPO_WEEKS_TO_COUNT, False)
+                        graph = image_gen.generate_champ_graph(
+                            week_data,
+                            title_text,
+                            constants.RESPO_WEEKS_TO_COUNT,
+                            False
+                        )
 
-                    filepath = env.BOT_DIRECTORY + "media/tmp_champ_" + str(datetime.now().strftime("%Y%m%d%H%M%S%f")) + ".png"
-
+                    filename = f"tmp_champ_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
+                    filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
                     graph.save(filepath, format=None)
 
                     with open(filepath, "rb") as f_graph:
@@ -305,7 +368,6 @@ async def fast_task_loop():
                         picture.close()
 
                     if os.path.exists(filepath):
-                        await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
                         os.remove(filepath)
     except BotDatabaseError as exc:
         logging.getLogger('respobot.database').warning(
@@ -327,7 +389,11 @@ async def fast_task_loop():
 
             if member_dicts is not None and len(member_dicts) > 0:
                 for member_dict in member_dicts:
-                    if member_dict['ir_member_since'] is not None and now.day == member_dict['ir_member_since'].day and now.month == member_dict['ir_member_since'].month:
+                    if (
+                        member_dict['ir_member_since'] is not None
+                        and now.day == member_dict['ir_member_since'].day
+                        and now.month == member_dict['ir_member_since'].month
+                    ):
                         channel = helpers.fetch_channel(bot)
                         await channel.send(f"Happy iRacing birthday, {member_dict['name']}! 🥳🎉🎊")
         elif now.hour != 16:

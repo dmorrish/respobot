@@ -13,18 +13,31 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
     try:
         (current_season_year, current_season_quarter, _, _, _) = await db.get_current_iracing_week()
     except BotDatabaseError:
-        await helpers.send_bot_failure_dm(bot, "During cache_races() an exception was encountered when fetching current iRacing week. Abandoning.")
+        await helpers.send_bot_failure_dm(
+            bot,
+            "During cache_races() an exception was encountered when fetching current iRacing week. Abandoning."
+        )
         return
 
     try:
         member_info = await ir.get_member_info_new(iracing_custids)
     except AuthenticationError:
-        logging.getLogger('respobot.iracing').warning("Authentication to the iRacing server failed when getting member info. Abandoning cache_races().")
-        await helpers.send_bot_failure_dm(bot, "Authentication to the iRacing server failed. Abandoning cache_races().")
+        logging.getLogger('respobot.iracing').warning(
+            "Authentication to the iRacing server failed when getting member info. Abandoning cache_races()."
+        )
+        await helpers.send_bot_failure_dm(
+            bot,
+            "Authentication to the iRacing server failed. Abandoning cache_races()."
+        )
         return
     except ServerDownError:
-        logging.getLogger('respobot.iracing').warning("The iRacing servers are down for maintenance. Abandoning cache_races().")
-        await helpers.send_bot_failure_dm(bot, "The iRacing servers are down for maintenance. Abandoning cache_races().")
+        logging.getLogger('respobot.iracing').warning(
+            "The iRacing servers are down for maintenance. Abandoning cache_races()."
+        )
+        await helpers.send_bot_failure_dm(
+            bot,
+            "The iRacing servers are down for maintenance. Abandoning cache_races()."
+        )
         return
 
     for member in member_info:
@@ -35,12 +48,20 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
         try:
             date_started = date.fromisoformat(member['member_since'])
         except ValueError:
-            await helpers.send_bot_failure_dm(bot, f"During cache_raceas() iRacing returned a malformed member_since value for {member['display_name']}. Skipping this member.")
+            await helpers.send_bot_failure_dm(
+                bot,
+                (
+                    f"During cache_raceas() iRacing returned a malformed member_since value "
+                    f"for {member['display_name']}. Skipping this member."
+                )
+            )
             continue
 
         year = date_started.year
-        logging.getLogger('respobot.bot').info(str(iracing_custid) + " joined iRacing on " + member['member_since'] + " year: " + str(year))
-        logging.getLogger('respobot.bot').info("Gathering subsessions for " + member['display_name'] + " back to " + str(year))
+        logging.getLogger('respobot.bot').info(
+            f"{member['display_name']} joined iRacing on {member['member_since']}. "
+            f"Gathering subsessions back to {str(year)}."
+        )
         quarter = 1
 
         subsession_summary_dicts = []
@@ -52,19 +73,37 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
         latest_session_end_time = None
 
         while caching_done is False:
-            logging.getLogger('respobot.bot').info("Gathering list of hosted subsessions for " + str(start_time) + " to " + str(end_time))
+            logging.getLogger('respobot.bot').info(
+                f"Gathering list of hosted subsessions for {start_time} to {end_time}."
+            )
             finish_range_begin = start_time.isoformat().replace("+00:00", "Z")
             finish_range_end = end_time.isoformat().replace("+00:00", "Z")
 
             try:
-                hosted_results_dicts = await ir.search_hosted_new(cust_id=iracing_custid, finish_range_begin=finish_range_begin, finish_range_end=finish_range_end)
+                hosted_results_dicts = await ir.search_hosted_new(
+                    cust_id=iracing_custid,
+                    finish_range_begin=finish_range_begin,
+                    finish_range_end=finish_range_end
+                )
             except AuthenticationError:
-                logging.getLogger('respobot.iracing').warning("Authentication to the iRacing server failed when searching hosted races. Abandoning cache_races().")
-                await helpers.send_bot_failure_dm(bot, "Authentication to the iRacing server failed. Abandoning cache_races().")
+                logging.getLogger('respobot.iracing').warning(
+                    "Authentication to the iRacing server failed when searching hosted races. "
+                    "Abandoning cache_races()."
+                )
+                await helpers.send_bot_failure_dm(
+                    bot,
+                    "Authentication to the iRacing server failed when searching hosted races. "
+                    "Abandoning cache_races()."
+                )
                 return
             except ServerDownError:
-                logging.getLogger('respobot.iracing').warning("The iRacing servers are down for maintenance. Abandoning cache_races().")
-                await helpers.send_bot_failure_dm(bot, "The iRacing servers are down for maintenance. Abandoning cache_races().")
+                logging.getLogger('respobot.iracing').warning(
+                    "The iRacing servers are down for maintenance. Abandoning cache_races()."
+                )
+                await helpers.send_bot_failure_dm(
+                    bot,
+                    "The iRacing servers are down for maintenance. Abandoning cache_races()."
+                )
                 return
 
             logging.getLogger('respobot.bot').info(str(len(hosted_results_dicts)) + " subsessions found.")
@@ -84,8 +123,14 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
         caching_done = False
 
         while caching_done is False:
-            logging.getLogger('respobot.bot').info("Gathering list of series subsessions for " + str(year) + "s" + str(quarter))
-            series_results_dicts = await ir.search_results_new(cust_id=iracing_custid, season_year=year, season_quarter=quarter)
+            logging.getLogger('respobot.bot').info(
+                f"Gathering list of series subsessions for {year}s{quarter}"
+            )
+            series_results_dicts = await ir.search_results_new(
+                cust_id=iracing_custid,
+                season_year=year,
+                season_quarter=quarter
+            )
 
             logging.getLogger('respobot.bot').info(str(len(series_results_dicts)) + " subsessions found.")
             # subsession_summary_dicts.append(series_results_dicts)
@@ -105,7 +150,9 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
         subsession_count = 0
         for subsession_summary_dict in subsession_summary_dicts:
             subsession_count += 1
-            logging.getLogger('respobot.bot').info(f"Caching subsession {subsession_count} of {len(subsession_summary_dicts)}")
+            logging.getLogger('respobot.bot').info(
+                f"Caching subsession {subsession_count} of {len(subsession_summary_dicts)}"
+            )
             if 'end_time' in subsession_summary_dict:
                 new_race_end_time = datetime.fromisoformat(subsession_summary_dict['end_time'])
                 if latest_session_end_time is None or new_race_end_time > latest_session_end_time:
@@ -155,13 +202,20 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
                 if 'simsession_number' not in session_result_dict or 'results' not in session_result_dict:
                     continue
 
-                lap_dicts = await ir.lap_data_new(new_subsession['subsession_id'], session_result_dict['simsession_number'])
+                lap_dicts = await ir.lap_data_new(
+                    new_subsession['subsession_id'],
+                    session_result_dict['simsession_number']
+                )
 
                 if lap_dicts is None or len(lap_dicts) < 1:
                     continue
 
                 try:
-                    await db.add_laps(lap_dicts, new_subsession['subsession_id'], session_result_dict['simsession_number'])
+                    await db.add_laps(
+                        lap_dicts,
+                        new_subsession['subsession_id'],
+                        session_result_dict['simsession_number']
+                    )
                 except BotDatabaseError as exc:
                     logging.getLogger('respobot.bot').warning(
                         f"During cache_races() an exception was encountered when adding "

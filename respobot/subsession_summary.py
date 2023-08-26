@@ -69,76 +69,189 @@ class CarResultSummary():
         self.driver_heat_results = None  # DONE
 
     def from_dict(self, data_dict):
-        self.results_url = data_dict['results_url'] if 'results_url' in data_dict else None
-        self.series_name = data_dict['series_name'] if 'series_name' in data_dict else None
-        self.season_id = data_dict['season_id'] if 'season_id' in data_dict else None
-        self.league_name = data_dict['league_name'] if 'league_name' in data_dict else None
-        self.session_name = data_dict[''] if '' in data_dict else None
-        self.car_class_name = data_dict['car_class_name'] if 'car_class_name' in data_dict else None
-        self.track_name = data_dict['track_name'] if 'track_name' in data_dict else None
-        self.track_config_name = data_dict['track_config_name'] if 'track_config_name' in data_dict else None
-        self.track_category_id = data_dict['track_category_id'] if 'track_category_id' in data_dict else None
-        self.license_category_id = data_dict['license_category_id'] if 'license_category_id' in data_dict else None
-        self.cars_in_event = data_dict['cars_in_event'] if 'cars_in_event' in data_dict else None
-        self.cars_in_class = data_dict['cars_in_class'] if 'cars_in_class' in data_dict else None
-        self.event_strength_of_field = data_dict['event_strength_of_field'] if 'event_strength_of_field' in data_dict else None
-        self.class_strength_of_field = data_dict['class_strength_of_field'] if 'class_strength_of_field' in data_dict else None
-        self.max_team_drivers = data_dict['max_team_drivers'] if 'max_team_drivers' in data_dict else None
-        self.is_multiclass = data_dict['is_multiclass'] if 'is_multiclass' in data_dict else None
+        self.results_url = data_dict['results_url'] if (
+            'results_url' in data_dict
+        ) else None
+        self.series_name = data_dict['series_name'] if (
+            'series_name' in data_dict
+        ) else None
+        self.season_id = data_dict['season_id'] if (
+            'season_id' in data_dict
+        ) else None
+        self.league_name = data_dict['league_name'] if (
+            'league_name' in data_dict
+        ) else None
+        self.session_name = data_dict[''] if (
+            '' in data_dict
+        ) else None
+        self.car_class_name = data_dict['car_class_name'] if (
+            'car_class_name' in data_dict
+        ) else None
+        self.track_name = data_dict['track_name'] if (
+            'track_name' in data_dict
+        ) else None
+        self.track_config_name = data_dict['track_config_name'] if (
+            'track_config_name' in data_dict
+        ) else None
+        self.track_category_id = data_dict['track_category_id'] if (
+            'track_category_id' in data_dict
+        ) else None
+        self.license_category_id = data_dict['license_category_id'] if (
+            'license_category_id' in data_dict
+        ) else None
+        self.cars_in_event = data_dict['cars_in_event'] if (
+            'cars_in_event' in data_dict
+        ) else None
+        self.cars_in_class = data_dict['cars_in_class'] if (
+            'cars_in_class' in data_dict
+        ) else None
+        self.event_strength_of_field = data_dict['event_strength_of_field'] if (
+            'event_strength_of_field' in data_dict
+        ) else None
+        self.class_strength_of_field = data_dict['class_strength_of_field'] if (
+            'class_strength_of_field' in data_dict
+        ) else None
+        self.max_team_drivers = data_dict['max_team_drivers'] if (
+            'max_team_drivers' in data_dict
+        ) else None
+        self.is_multiclass = data_dict['is_multiclass'] if (
+            'is_multiclass' in data_dict
+        ) else None
 
-        self.checkered_flag_lap_num = data_dict['checkered_flag_lap_num'] if 'checkered_flag_lap_num' in data_dict else None
-        self.green_flag_lap_num = data_dict['green_flag_lap_num'] if 'green_flag_lap_num' in data_dict else None
+        self.checkered_flag_lap_num = data_dict['checkered_flag_lap_num'] if (
+            'checkered_flag_lap_num' in data_dict
+        ) else None
+        self.green_flag_lap_num = data_dict['green_flag_lap_num'] if (
+            'green_flag_lap_num' in data_dict
+        ) else None
 
-        self.tow_laps = data_dict['tow_laps'] if 'tow_laps' in data_dict else None
-        self.car_contact_laps = data_dict['car_contact_laps'] if 'car_contact_laps' in data_dict else None
-        self.contact_laps = data_dict['contact_laps'] if 'contact_laps' in data_dict else None
-        self.lost_control_laps = data_dict['lost_control_laps'] if 'lost_control_laps' in data_dict else None
-        self.black_flag_laps = data_dict['black_flag_laps'] if 'black_flag_laps' in data_dict else None
+        self.tow_laps = data_dict['tow_laps'] if (
+            'tow_laps' in data_dict
+        ) else None
+        self.car_contact_laps = data_dict['car_contact_laps'] if (
+            'car_contact_laps' in data_dict
+        ) else None
+        self.contact_laps = data_dict['contact_laps'] if (
+            'contact_laps' in data_dict
+        ) else None
+        self.lost_control_laps = data_dict['lost_control_laps'] if (
+            'lost_control_laps' in data_dict
+        ) else None
+        self.black_flag_laps = data_dict['black_flag_laps'] if (
+            'black_flag_laps' in data_dict
+        ) else None
 
-        self.race_incidents = data_dict['race_incidents'] if 'race_incidents' in data_dict else None
-        self.heat_incidents = data_dict['heat_incidents'] if 'heat_incidents' in data_dict else None
+        self.race_incidents = data_dict['race_incidents'] if (
+            'race_incidents' in data_dict
+        ) else None
+        self.heat_incidents = data_dict['heat_incidents'] if (
+            'heat_incidents' in data_dict
+        ) else None
 
-        self.got_fastest_race_lap = data_dict['got_fastest_race_lap'] if 'got_fastest_race_lap' in data_dict else None
-        self.fastest_race_lap_time = data_dict['fastest_race_lap_time'] if 'fastest_race_lap_time' in data_dict else None
-        self.got_fastest_heat_lap = data_dict['got_fastest_heat_lap'] if 'got_fastest_heat_lap' in data_dict else None
-        self.fastest_heat_lap_time = data_dict['fastest_heat_lap_time'] if 'fastest_heat_lap_time' in data_dict else None
-        self.got_fastest_qual_lap = data_dict['got_fastest_qual_lap'] if 'got_fastest_qual_lap' in data_dict else None
-        self.fastest_qual_lap_time = data_dict['fastest_qual_lap_time'] if 'fastest_qual_lap_time' in data_dict else None
-        self.fastest_qual_lap_driver_cust_id = data_dict['fastest_qual_lap_driver_cust_id'] if 'fastest_qual_lap_driver_cust_id' in data_dict else None
+        self.got_fastest_race_lap = data_dict['got_fastest_race_lap'] if (
+            'got_fastest_race_lap' in data_dict
+        ) else None
+        self.fastest_race_lap_time = data_dict['fastest_race_lap_time'] if (
+            'fastest_race_lap_time' in data_dict
+        ) else None
+        self.got_fastest_heat_lap = data_dict['got_fastest_heat_lap'] if (
+            'got_fastest_heat_lap' in data_dict
+        ) else None
+        self.fastest_heat_lap_time = data_dict['fastest_heat_lap_time'] if (
+            'fastest_heat_lap_time' in data_dict
+        ) else None
+        self.got_fastest_qual_lap = data_dict['got_fastest_qual_lap'] if (
+            'got_fastest_qual_lap' in data_dict
+        ) else None
+        self.fastest_qual_lap_time = data_dict['fastest_qual_lap_time'] if (
+            'fastest_qual_lap_time' in data_dict
+        ) else None
+        self.fastest_qual_lap_driver_cust_id = data_dict['fastest_qual_lap_driver_cust_id'] if (
+            'fastest_qual_lap_driver_cust_id' in data_dict
+        ) else None
 
-        self.close_finishers = data_dict['close_finishers'] if 'close_finishers' in data_dict else None
-        self.laps_down = data_dict['laps_down'] if 'laps_down' in data_dict else None
+        self.close_finishers = data_dict['close_finishers'] if (
+            'close_finishers' in data_dict
+        ) else None
+        self.laps_down = data_dict['laps_down'] if (
+            'laps_down' in data_dict
+        ) else None
 
-        self.race_starting_position_in_class = data_dict['race_starting_position_in_class'] if 'race_starting_position_in_class' in data_dict else None
-        self.race_finish_position_in_class = data_dict['race_finish_position_in_class'] if 'race_finish_position_in_class' in data_dict else None
-        self.race_finish_position_relative_to_car_num = data_dict['race_finish_position_relative_to_car_num'] if 'race_finish_position_relative_to_car_num' in data_dict else None
+        self.race_starting_position_in_class = data_dict['race_starting_position_in_class'] if (
+            'race_starting_position_in_class' in data_dict
+        ) else None
+        self.race_finish_position_in_class = data_dict['race_finish_position_in_class'] if (
+            'race_finish_position_in_class' in data_dict
+        ) else None
+        self.race_finish_position_relative_to_car_num = data_dict['race_finish_position_relative_to_car_num'] if (
+            'race_finish_position_relative_to_car_num' in data_dict
+        ) else None
 
-        self.heat_starting_position_in_class = data_dict['heat_starting_position_in_class'] if 'heat_starting_position_in_class' in data_dict else None
-        self.heat_finish_position_in_class = data_dict['heat_finish_position_in_class'] if 'heat_finish_position_in_class' in data_dict else None
-        self.heat_finish_position_relative_to_car_num = data_dict['heat_finish_position_relative_to_car_num'] if 'heat_finish_position_relative_to_car_num' in data_dict else None
+        self.heat_starting_position_in_class = data_dict['heat_starting_position_in_class'] if (
+            'heat_starting_position_in_class' in data_dict
+        ) else None
+        self.heat_finish_position_in_class = data_dict['heat_finish_position_in_class'] if (
+            'heat_finish_position_in_class' in data_dict
+        ) else None
+        self.heat_finish_position_relative_to_car_num = data_dict['heat_finish_position_relative_to_car_num'] if (
+            'heat_finish_position_relative_to_car_num' in data_dict
+        ) else None
 
-        self.car_number_in_class = data_dict['car_number_in_class'] if 'car_number_in_class' in data_dict else None
+        self.car_number_in_class = data_dict['car_number_in_class'] if (
+            'car_number_in_class' in data_dict
+        ) else None
 
-        self.laps_led = data_dict['laps_led'] if 'laps_led' in data_dict else None
-        self.did_not_finish = data_dict['did_not_finish'] if 'did_not_finish' in data_dict else None
-        self.disqualified = data_dict['disqualified'] if 'disqualified' in data_dict else None
+        self.laps_led = data_dict['laps_led'] if (
+            'laps_led' in data_dict
+        ) else None
+        self.did_not_finish = data_dict['did_not_finish'] if (
+            'did_not_finish' in data_dict
+        ) else None
+        self.disqualified = data_dict['disqualified'] if (
+            'disqualified' in data_dict
+        ) else None
 
         if 'driver_race_results' in data_dict:
             self.driver_race_results = []
             for driver_race_result in data_dict['driver_race_results']:
                 driver_race_result_obj = DriverResultSummary()
-                driver_race_result_obj.cust_id = driver_race_result['cust_id'] if 'cust_id' in driver_race_result else None
-                driver_race_result_obj.display_name = driver_race_result['display_name'] if 'display_name' in driver_race_result else None
-                driver_race_result_obj.irating_new = driver_race_result['irating_new'] if 'irating_new' in driver_race_result else None
-                driver_race_result_obj.irating_old = driver_race_result['irating_old'] if 'irating_old' in driver_race_result else None
-                driver_race_result_obj.license_level_new = driver_race_result['license_level_new'] if 'license_level_new' in driver_race_result else None
-                driver_race_result_obj.license_level_old = driver_race_result['license_level_old'] if 'license_level_old' in driver_race_result else None
-                driver_race_result_obj.license_sub_level_new = driver_race_result['license_sub_level_new'] if 'license_sub_level_new' in driver_race_result else None
-                driver_race_result_obj.license_sub_level_old = driver_race_result['license_sub_level_old'] if 'license_sub_level_old' in driver_race_result else None
-                driver_race_result_obj.incidents = driver_race_result['incidents'] if 'incidents' in driver_race_result else None
-                driver_race_result_obj.laps_complete = driver_race_result['laps_complete'] if 'laps_complete' in driver_race_result else None
-                driver_race_result_obj.laps_led = driver_race_result['laps_led'] if 'laps_led' in driver_race_result else None
-                driver_race_result_obj.champ_points = driver_race_result['champ_points'] if 'champ_points' in driver_race_result else None
+                driver_race_result_obj.cust_id = driver_race_result['cust_id'] if (
+                    'cust_id' in driver_race_result
+                ) else None
+                driver_race_result_obj.display_name = driver_race_result['display_name'] if (
+                    'display_name' in driver_race_result
+                ) else None
+                driver_race_result_obj.irating_new = driver_race_result['irating_new'] if (
+                    'irating_new' in driver_race_result
+                ) else None
+                driver_race_result_obj.irating_old = driver_race_result['irating_old'] if (
+                    'irating_old' in driver_race_result
+                ) else None
+                driver_race_result_obj.license_level_new = driver_race_result['license_level_new'] if (
+                    'license_level_new' in driver_race_result
+                ) else None
+                driver_race_result_obj.license_level_old = driver_race_result['license_level_old'] if (
+                    'license_level_old' in driver_race_result
+                ) else None
+                driver_race_result_obj.license_sub_level_new = driver_race_result['license_sub_level_new'] if (
+                    'license_sub_level_new' in driver_race_result
+                ) else None
+                driver_race_result_obj.license_sub_level_old = driver_race_result['license_sub_level_old'] if (
+                    'license_sub_level_old' in driver_race_result
+                ) else None
+                driver_race_result_obj.incidents = driver_race_result['incidents'] if (
+                    'incidents' in driver_race_result
+                ) else None
+                driver_race_result_obj.laps_complete = driver_race_result['laps_complete'] if (
+                    'laps_complete' in driver_race_result
+                ) else None
+                driver_race_result_obj.laps_led = driver_race_result['laps_led'] if (
+                    'laps_led' in driver_race_result
+                ) else None
+                driver_race_result_obj.champ_points = driver_race_result['champ_points'] if (
+                    'champ_points' in driver_race_result
+                ) else None
+
                 self.driver_race_results.append(driver_race_result_obj)
         else:
             self.driver_race_results = None
@@ -147,18 +260,43 @@ class CarResultSummary():
             self.driver_heat_results = []
             for driver_heat_result in data_dict['driver_heat_results']:
                 driver_heat_result_obj = DriverResultSummary()
-                driver_heat_result_obj.cust_id = driver_heat_result['cust_id'] if 'cust_id' in driver_heat_result else None
-                driver_heat_result_obj.display_name = driver_heat_result['display_name'] if 'display_name' in driver_heat_result else None
-                driver_heat_result_obj.irating_new = driver_heat_result['irating_new'] if 'irating_new' in driver_heat_result else None
-                driver_heat_result_obj.irating_old = driver_heat_result['irating_old'] if 'irating_old' in driver_heat_result else None
-                driver_heat_result_obj.license_level_new = driver_heat_result['license_level_new'] if 'license_level_new' in driver_heat_result else None
-                driver_heat_result_obj.license_level_old = driver_heat_result['license_level_old'] if 'license_level_old' in driver_heat_result else None
-                driver_heat_result_obj.license_sub_level_new = driver_heat_result['license_sub_level_new'] if 'license_sub_level_new' in driver_heat_result else None
-                driver_heat_result_obj.license_sub_level_old = driver_heat_result['license_sub_level_old'] if 'license_sub_level_old' in driver_heat_result else None
-                driver_heat_result_obj.incidents = driver_heat_result['incidents'] if 'incidents' in driver_heat_result else None
-                driver_heat_result_obj.laps_complete = driver_heat_result['laps_complete'] if 'laps_complete' in driver_heat_result else None
-                driver_heat_result_obj.laps_led = driver_heat_result['laps_led'] if 'laps_led' in driver_heat_result else None
-                driver_heat_result_obj.champ_points = driver_heat_result['champ_points'] if 'champ_points' in driver_heat_result else None
+                driver_heat_result_obj.cust_id = driver_heat_result['cust_id'] if (
+                    'cust_id' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.display_name = driver_heat_result['display_name'] if (
+                    'display_name' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.irating_new = driver_heat_result['irating_new'] if (
+                    'irating_new' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.irating_old = driver_heat_result['irating_old'] if (
+                    'irating_old' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.license_level_new = driver_heat_result['license_level_new'] if (
+                    'license_level_new' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.license_level_old = driver_heat_result['license_level_old'] if (
+                    'license_level_old' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.license_sub_level_new = driver_heat_result['license_sub_level_new'] if (
+                    'license_sub_level_new' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.license_sub_level_old = driver_heat_result['license_sub_level_old'] if (
+                    'license_sub_level_old' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.incidents = driver_heat_result['incidents'] if (
+                    'incidents' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.laps_complete = driver_heat_result['laps_complete'] if (
+                    'laps_complete' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.laps_led = driver_heat_result['laps_led'] if (
+                    'laps_led' in driver_heat_result
+                ) else None
+                driver_heat_result_obj.champ_points = driver_heat_result['champ_points'] if (
+                    'champ_points' in driver_heat_result
+                ) else None
+
                 self.driver_heat_results.append(driver_heat_result_obj)
         else:
             self.driver_heat_results = None
@@ -184,7 +322,10 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
 
     car_results = CarResultSummary()
 
-    car_results.results_url = f"https://members.iracing.com/membersite/member/EventResult.do?&subsessionid={subsession_id}"
+    car_results.results_url = (
+        f"https://members.iracing.com/membersite/member/"
+        f"EventResult.do?&subsessionid={subsession_id}"
+    )
 
     try:
         subsession_data = await db.get_subsession_data(subsession_id)
@@ -243,7 +384,9 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
             # Skip any results that are missing a car number
             # This shouldn't ever happen.
             if subsession_result_dict['livery_car_number'] is None:
-                logging.getLogger('respobot.bot').warning(f"A result for subsession {subsession_id} is missing a car number.")
+                logging.getLogger('respobot.bot').warning(
+                    f"A result for subsession {subsession_id} is missing a car number."
+                )
                 continue
 
             # Keep track of all car numbers in the race
@@ -317,7 +460,10 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
             if 'car_class_id' not in subsession_result_dict:
                 continue
 
-            if subsession_result_dict['car_class_id'] == car_class_id and subsession_result_dict['livery_car_number'] not in car_numbers_in_class:
+            if (
+                subsession_result_dict['car_class_id'] == car_class_id
+                and subsession_result_dict['livery_car_number'] not in car_numbers_in_class
+            ):
                 car_numbers_in_class.append(subsession_result_dict['livery_car_number'])
 
         car_results.cars_in_class = len(car_numbers_in_class)
@@ -347,7 +493,9 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
             car_heat_result_dict = driver_heat_result_dicts[0]
 
         if car_race_result_dict is None:
-            logging.getLogger('respobot.bot').warning("During mine_race_results_for_juicy_details() no car_race_result_dict was found.")
+            logging.getLogger('respobot.bot').warning(
+                "During mine_race_results_for_juicy_details() no car_race_result_dict was found."
+            )
             return []
 
         if fastest_race_lap_car_number == car_number:
@@ -385,11 +533,15 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
             int_car_numbers_in_class.sort()
             car_number_in_class = int_car_numbers_in_class.index(int(car_number))
             car_results.car_number_in_class = car_number_in_class
-            race_finish_position_relative_to_car_num = car_number_in_class - car_race_result_dict['finish_position_in_class']
+            race_finish_position_relative_to_car_num = (
+                car_number_in_class - car_race_result_dict['finish_position_in_class']
+            )
             car_results.race_finish_position_relative_to_car_num = race_finish_position_relative_to_car_num
 
             if car_heat_result_dict is not None:
-                heat_finish_position_relative_to_car_num = car_number_in_class - car_heat_result_dict['finish_position_in_class']
+                heat_finish_position_relative_to_car_num = (
+                    car_number_in_class - car_heat_result_dict['finish_position_in_class']
+                )
                 car_results.heat_finish_position_relative_to_car_num = heat_finish_position_relative_to_car_num
 
         # Get all race laps for this subsession
@@ -614,7 +766,10 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
             car_results.driver_heat_results.append(new_result)
 
         # Calculate the SoF as the average based on each individual team's average IR.
-        class_sof_data = await db.get_subsession_drivers_old_irs(subsession_data['subsession_id'], car_class_id=car_class_id)
+        class_sof_data = await db.get_subsession_drivers_old_irs(
+            subsession_data['subsession_id'],
+            car_class_id=car_class_id
+        )
         sof_dict = {}
         for driver_tuple in class_sof_data:
             car_num = driver_tuple[1]
@@ -651,7 +806,6 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
         exception_string = ""
         for line in exception_lines:
             exception_string += line
-        # print(exception_string)
 
         logging.getLogger('respobot.bot').error(exception_string)
         await helpers.send_bot_failure_dm(bot, exception_string)

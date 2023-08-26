@@ -33,7 +33,11 @@ file_handler_formatter = logging.Formatter(
 logger_discord = logging.getLogger('discord')
 logger_discord.propagate = False
 logger_discord.setLevel(logging.DEBUG)
-file_handler_discord = logging.FileHandler(filename=env.BOT_DIRECTORY + env.LOG_SUBDIRECTORY + 'discord.log', encoding='utf-8', mode='a')
+file_handler_discord = logging.FileHandler(
+    filename=env.BOT_DIRECTORY + env.LOG_SUBDIRECTORY + 'discord.log',
+    encoding='utf-8',
+    mode='a'
+)
 file_handler_discord.setFormatter(file_handler_formatter)
 logger_discord.addHandler(file_handler_discord)
 socket_handler = SocketHandler(env.LOG_SERVER_ADDRESS, 19996)  # default listening address
@@ -42,7 +46,11 @@ logger_discord.addHandler(socket_handler)
 logger_iracing = logging.getLogger('irslashdata')
 logger_iracing.propagate = False
 logger_iracing.setLevel(logging.DEBUG)
-file_handler_iracing = logging.FileHandler(filename=env.BOT_DIRECTORY + env.LOG_SUBDIRECTORY + 'iracing.log', encoding='utf-8', mode='a')
+file_handler_iracing = logging.FileHandler(
+    filename=env.BOT_DIRECTORY + env.LOG_SUBDIRECTORY + 'iracing.log',
+    encoding='utf-8',
+    mode='a'
+)
 file_handler_iracing.setFormatter(file_handler_formatter)
 logger_iracing.addHandler(file_handler_iracing)
 logger_iracing.addHandler(socket_handler)
@@ -50,7 +58,11 @@ logger_iracing.addHandler(socket_handler)
 logger_respobot = logging.getLogger('respobot')
 logger_respobot.propagate = False
 logger_respobot.setLevel(logging.DEBUG)
-file_handler_respobot = logging.FileHandler(filename=env.BOT_DIRECTORY + env.LOG_SUBDIRECTORY + 'respobot.log', encoding='utf-8', mode='a')
+file_handler_respobot = logging.FileHandler(
+    filename=env.BOT_DIRECTORY + env.LOG_SUBDIRECTORY + 'respobot.log',
+    encoding='utf-8',
+    mode='a'
+)
 file_handler_respobot.setFormatter(file_handler_formatter)
 logger_respobot.addHandler(file_handler_respobot)
 logger_respobot.addHandler(socket_handler)

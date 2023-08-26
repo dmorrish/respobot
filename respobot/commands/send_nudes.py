@@ -18,6 +18,7 @@ class SendNudesCog(commands.Cog):
         self,
         ctx
     ):
-        with open(env.BOT_DIRECTORY + "media/RespoBot" + str(random.randint(0, 6)) + ".jpeg", 'rb') as f_image:
+        filename = f"RespoBot{str(random.randint(0, 6))}.jpeg"
+        with open(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename, 'rb') as f_image:
             picture = discord.File(f_image)
             await ctx.respond(file=picture)

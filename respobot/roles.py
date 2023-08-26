@@ -13,7 +13,9 @@ async def promote_driver(guild: discord.Guild, discord_id: int):
             role_god = guild.get_role(env.ROLE_GOD)
             role_pleb = guild.get_role(env.ROLE_PLEB)
             if role_god is not None and role_pleb is not None:
-                role_change_reason = helpers.spongify(discord_member.display_name + " has proven themself worthy of the title God Among Men.")
+                role_change_reason = helpers.spongify(
+                    f"{discord_member.display_name} has proven themself worthy of the title God Among Men."
+                )
                 await discord_member.add_roles(role_god, reason=role_change_reason)
                 await discord_member.remove_roles(role_pleb, reason=role_change_reason)
             else:
@@ -31,7 +33,10 @@ async def demote_driver(guild: discord.Guild, discord_id: int):
             role_god = guild.get_role(env.ROLE_GOD)
             role_pleb = guild.get_role(env.ROLE_PLEB)
             if role_god is not None and role_pleb is not None:
-                role_change_reason = helpers.spongify(discord_member.display_name + " has been banished from Mount Olypmus and must carry out the rest of their days among the peasants.")
+                role_change_reason = helpers.spongify(
+                    f"{discord_member.display_name} has been banished from Mount Olypmus and must carry out "
+                    f"the rest of their days among the peasants."
+                )
                 await discord_member.add_roles(role_pleb, reason=role_change_reason)
                 await discord_member.remove_roles(role_god, reason=role_change_reason)
             else:

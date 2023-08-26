@@ -1,5 +1,4 @@
 import os
-import asyncio
 import discord
 from datetime import datetime
 from discord.ext import commands
@@ -26,9 +25,24 @@ class Head2HeadCog(commands.Cog):
     async def head_2_head(
         self,
         ctx,
-        racer1: Option(str, "The first person in the comparison.", required=True, autocomplete=SlashCommandHelpers.get_member_list),
-        racer2: Option(str, "The second person in the comparison.", required=True, autocomplete=SlashCommandHelpers.get_member_list),
-        season: Option(str, "The season to compare. If left blank, the full driver careers are compared.", required=False, autocomplete=SlashCommandHelpers.get_iracing_seasons)
+        racer1: Option(
+            str,
+            "The first person in the comparison.",
+            required=True,
+            autocomplete=SlashCommandHelpers.get_member_list
+        ),
+        racer2: Option(
+            str,
+            "The second person in the comparison.",
+            required=True,
+            autocomplete=SlashCommandHelpers.get_member_list
+        ),
+        season: Option(
+            str,
+            "The season to compare. If left blank, the full driver careers are compared.",
+            required=False,
+            autocomplete=SlashCommandHelpers.get_iracing_seasons
+        )
     ):
         if racer1 is None or racer2 is None:
             ctx.respond("You must supply two people to compare.", ephemeral=True)
@@ -38,12 +52,16 @@ class Head2HeadCog(commands.Cog):
 
         racer1_dict = await self.db.fetch_member_dict(name=racer1)
         if not racer1_dict:
-            await ctx.edit(content="I didn't find " + racer1 + " as a Respo member. Make sure you pick someone from the list.")
+            await ctx.edit(
+                content="I didn't find " + racer1 + " as a Respo member. Make sure you pick someone from the list."
+            )
             return
 
         racer2_dict = await self.db.fetch_member_dict(name=racer2)
         if not racer2_dict:
-            await ctx.edit(content="I didn't find " + racer2 + " as a Respo member. Make sure you pick someone from the list.")
+            await ctx.edit(
+                content="I didn't find " + racer2 + " as a Respo member. Make sure you pick someone from the list."
+            )
             return
 
         year = -1
@@ -75,9 +93,25 @@ class Head2HeadCog(commands.Cog):
                 await ctx.edit(content="iRacing was launched in 2008.")
                 return
 
-        racer1_stats = await stats.populate_head2head_stats(self.db, racer1_dict['iracing_custid'], year=year, quarter=quarter, category=irConstants.Category.road.value, series=None, car_class=None)
+        racer1_stats = await stats.populate_head2head_stats(
+            self.db,
+            racer1_dict['iracing_custid'],
+            year=year,
+            quarter=quarter,
+            category=irConstants.Category.road.value,
+            series=None,
+            car_class=None
+        )
 
-        racer2_stats = await stats.populate_head2head_stats(self.db, racer2_dict['iracing_custid'], year=year, quarter=quarter, category=irConstants.Category.road.value, series=None, car_class=None)
+        racer2_stats = await stats.populate_head2head_stats(
+            self.db,
+            racer2_dict['iracing_custid'],
+            year=year,
+            quarter=quarter,
+            category=irConstants.Category.road.value,
+            series=None,
+            car_class=None
+        )
 
         if racer1_stats['total_races'] < 1:
             await ctx.edit(content=racer1_dict['name'] + " has no races for the selected options.")
@@ -92,9 +126,17 @@ class Head2HeadCog(commands.Cog):
         else:
             title = "Full Career"
 
-        image = await image_gen.generate_head2head_image(ctx.guild, title, racer1_dict, racer1_stats, racer2_dict, racer2_stats)
+        image = await image_gen.generate_head2head_image(
+            ctx.guild,
+            title,
+            racer1_dict,
+            racer1_stats,
+            racer2_dict,
+            racer2_stats
+        )
 
-        filepath = env.BOT_DIRECTORY + "media/tmp_h2h_" + str(datetime.now().strftime("%Y%m%d%H%M%S%f")) + ".png"
+        filename = f"tmp_h2h_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
+        filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
 
         image.save(filepath, format=None)
 
@@ -104,7 +146,6 @@ class Head2HeadCog(commands.Cog):
             picture.close()
 
         if os.path.exists(filepath):
-            await asyncio.sleep(5)  # Give discord some time to upload the image before deleting it. I'm not sure why this is needed since ctx.edit() is awaited, but here we are.
             os.remove(filepath)
 
         return

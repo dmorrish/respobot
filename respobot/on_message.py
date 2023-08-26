@@ -53,12 +53,16 @@ class OnMessageCog(commands.Cog):
             await message.add_reaction('🥩')
 
         if "a dime a dozen" in message.content.lower():
-            await message.channel.send(helpers.spongify("A dime a dozen? Are you talking about your favourite worker's handjob rates?"))
+            await message.channel.send(
+                helpers.spongify("A dime a dozen? Are you talking about your favourite worker's handjob rates?")
+            )
 
         if "speak of the devil" in message.content.lower():
             await message.channel.send(helpers.spongify("Did someone mention me?"))
 
         if "i need to get over" in message.content.lower():
-            await message.channel.send(helpers.spongify("Before you get over that, maybe you should get over yourself."))
+            await message.channel.send(helpers.spongify(
+                "Before you get over that, maybe you should get over yourself.")
+            )
 
         return
