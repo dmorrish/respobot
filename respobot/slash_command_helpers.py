@@ -1,6 +1,8 @@
 import logging
+import traceback
 import discord
 import constants
+import helpers
 from bot_database import BotDatabase, BotDatabaseError
 
 
@@ -327,3 +329,19 @@ class SlashCommandHelpers:
                 f"The following error occured when trying to add the special event to the database: {exc}"
             )
             return ["Database error when fetching special events."]
+
+    @classmethod
+    async def process_command_failure(self, bot, ctx, message: str, exc: Exception = None):
+
+        if exc is not None:
+            exception_lines = traceback.format_exception(exc)
+            exception_string = ""
+            for line in exception_lines:
+                exception_string += line
+            dm_log_message = f"{message}\nTraceback:\n{exception_string}"
+        else:
+            dm_log_message = message
+
+        await ctx.edit(content=f"{message}\nDeryk has been DMed.")
+        await helpers.send_bot_failure_dm(bot, dm_log_message)
+        logging.getLogger('respobot.bot').error(dm_log_message)
