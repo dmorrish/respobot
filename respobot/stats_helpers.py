@@ -330,6 +330,7 @@ def calc_projected_champ_points(leaderboard_dict, max_week, weeks_to_count, acti
 async def get_member_weekly_points_dict(
     db: BotDatabase,
     iracing_custid,
+    result_dicts,
     series_id,
     car_class_id,
     season_year,
@@ -342,26 +343,18 @@ async def get_member_weekly_points_dict(
     for i in range(0, 12):
         points[str(i)] = []
 
-    race_dicts = await db.get_member_race_results(
-        iracing_custid,
-        series_id=series_id,
-        car_class_id=car_class_id,
-        season_year=season_year,
-        season_quarter=season_quarter,
-        official_session=1,
-        simsession_type=irConstants.SimSessionType.race.value
-    )
-
-    for race_dict in race_dicts:
-        if subsession_to_ignore is not None and race_dict['subsession_id'] == subsession_to_ignore:
+    for result_dict in result_dicts:
+        if subsession_to_ignore is not None and result_dict['subsession_id'] == subsession_to_ignore:
+            continue
+        if result_dict["series_id"] != series_id:
             continue
         race_week = None
-        if adjust_race_weeks and 'start_time' in race_dict:
+        if adjust_race_weeks and 'start_time' in result_dict:
             (
                 adjusted_season_year,
                 adjusted_season_quarter,
                 adjusted_race_week
-            ) = await get_respo_race_week(db, race_dict['start_time'])
+            ) = await get_respo_race_week(db, result_dict['start_time'])
 
             if (
                 adjusted_race_week is not None
@@ -369,15 +362,19 @@ async def get_member_weekly_points_dict(
                 and adjusted_season_quarter == season_quarter
             ):
                 race_week = adjusted_race_week
-        elif 'race_week_num' in race_dict:
-            race_week = race_dict['race_week_num']
+        elif 'race_week_num' in result_dict:
+            race_week = result_dict['race_week_num']
 
         if race_week is None:
             continue
 
         if race_week <= up_to_week:
-            if 'champ_points' in race_dict and 'official_session' in race_dict and race_dict['official_session'] == 1:
-                points[str(race_week)].append(race_dict['champ_points'])
+            if (
+                'champ_points' in result_dict
+                and 'official_session' in result_dict
+                and result_dict['official_session'] == 1
+            ):
+                points[str(race_week)].append(result_dict['champ_points'])
 
     weekly_points = {}
     for week in points:
@@ -402,9 +399,15 @@ async def get_champ_points(
     leaderboard = {}
 
     for member_dict in member_dicts:
+        result_dicts = await db.get_champ_points_data(
+            member_dict['iracing_custid'],
+            season_year=season_year,
+            season_quarter=season_quarter
+        )
         weekly_points = await get_member_weekly_points_dict(
             db,
             member_dict['iracing_custid'],
+            result_dicts,
             series_id,
             car_class_id,
             season_year,
@@ -429,18 +432,24 @@ async def get_respo_champ_points(
 
     for member_dict in member_dicts:
         weekly_points_best = {}
-        series_list = await db.get_member_series_raced(
+        result_dicts = await db.get_champ_points_data(
             member_dict['iracing_custid'],
             season_year=season_year,
-            season_quarter=season_quarter,
-            official_session=1,
-            simsession_type=irConstants.SimSessionType.race.value
+            season_quarter=season_quarter
         )
+
+        # print(member_dict['name'])
+        # for result_dict in result_dicts:
+        #     print(result_dict)
+        # print("\n\n")
+
+        series_list = get_list_of_series(result_dicts)
 
         for series_id in series_list:
             weekly_points = await get_member_weekly_points_dict(
                 db,
                 member_dict['iracing_custid'],
+                result_dicts,
                 series_id,
                 None,
                 season_year,
@@ -459,3 +468,13 @@ async def get_respo_champ_points(
         leaderboard[member_dict['name']] = {'weeks': weekly_points_best}
 
     return leaderboard
+
+
+def get_list_of_series(result_dicts: dict):
+    series_list = []
+
+    for result_dict in result_dicts:
+        if result_dict['series_id'] not in series_list:
+            series_list.append(result_dict['series_id'])
+
+    return series_list
