@@ -5,7 +5,7 @@ import environment_variables as env
 import constants
 import logging
 from PIL import Image, ImageDraw, ImageFont
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from discord.errors import NotFound
 
 
@@ -1149,14 +1149,14 @@ def generate_ir_graph(member_dicts, title, print_legend):
     return im
 
 
-def generate_cpi_graph(member_dicts, title, print_legend):
+def generate_cpi_graph(member_dict, title, print_legend):
     image_width = 1000
     image_height = 420
     im = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 0))
     bg = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 255))
     draw = ImageDraw.Draw(im)
     font = ImageFont.truetype(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.IMAGE_FONT_FILENAME, int(18))
-    # fontsm = ImageFont.truetype(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.IMAGE_FONT_FILENAME, int(12))
+    fontsm = ImageFont.truetype(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.IMAGE_FONT_FILENAME, int(12))
 
     margin_v_top = 0.2 * image_height
     margin_v_bottom = 0.2 * image_height
@@ -1189,19 +1189,53 @@ def generate_cpi_graph(member_dicts, title, print_legend):
             anchor="mm"
         )
 
+    # Draw the x-axis label
+    draw.text(
+        (
+            margin_h_left + (image_width - margin_h_left - margin_h_right) / 2,
+            image_height - margin_v_bottom + tick_length + font.size * 2
+        ),
+        "Total Corners",
+        font=font,
+        fill=(255, 255, 255, 255),
+        anchor="mm"
+    )
+
     max_cpi = 0
     max_corners = 0
     min_timestamp = 10000000000000
 
-    for member_dict in member_dicts:
-        for point in member_dict['cpi_data']:
-            point = (point[0].timestamp() * 1000, point[1], point[2])  # Convert the datetime to a timestamp
-            if point[2] > max_cpi:
-                max_cpi = point[2]
-            if point[0] < min_timestamp:
-                min_timestamp = point[0]
-            if point[1] > max_corners:
-                max_corners = point[1]
+    date_points = []
+
+    prev_point = None
+    for point in member_dict['cpi_data']:
+        if prev_point is not None:
+            if(point[0].year > prev_point[0].year):
+                # The two cpi points span a year. Generate a year boundary data point
+                # interpolated between the two lap counts.
+                prev_total_corners = prev_point[1]
+                prev_date = prev_point[0]
+                total_corners = point[1]
+                date = point[0]
+
+                timespan = date - prev_date
+                cornerspan = total_corners - prev_total_corners
+
+                new_year = datetime(date.year, 1, 1, tzinfo=timezone.utc)
+
+                time_to_point = new_year - prev_date
+
+                corners_at_new_year = prev_total_corners + time_to_point / timespan * cornerspan
+
+                date_points.append((new_year, corners_at_new_year))
+        prev_point = point
+        point = (point[0].timestamp() * 1000, point[1], point[2])  # Convert the datetime to a timestamp
+        if point[2] > max_cpi:
+            max_cpi = point[2]
+        if point[0] < min_timestamp:
+            min_timestamp = point[0]
+        if point[1] > max_corners:
+            max_corners = point[1]
 
     cpi_scale_maj_divisions = 5
     cpi_scale_maj_division_size = round_up_to_nearest_125(max_cpi / cpi_scale_maj_divisions)
@@ -1234,9 +1268,41 @@ def generate_cpi_graph(member_dicts, title, print_legend):
         draw.line([(x, y + tick_length / 2), (x, y)], fill=(255, 255, 255, 255), width=1, joint=None)
         draw.text(
             (x, y + tick_length),
-            str(int(i * total_corners_scale_maj_division_size)),
+            f"{int(i * total_corners_scale_maj_division_size):,}",
             font=font,
             fill=(255, 255, 255, 255),
+            anchor="mt"
+        )
+
+    prev_scaled_x = margin_h_left
+    for date_point in date_points:
+        scaled_x = (
+            margin_h_left
+            + (date_point[1] / (total_corners_scale_maj_divisions * total_corners_scale_maj_division_size) * total_corners_scale_pixels)
+        )
+        text_x = (scaled_x + prev_scaled_x) / 2
+        prev_scaled_x = scaled_x
+        draw.line(
+            [(scaled_x, margin_v_top), (scaled_x, image_height - margin_v_bottom)],
+            fill=(255, 0, 0, 128),
+            width=1, joint=None
+        )
+        draw.text(
+            (text_x, margin_v_top + fontsm.size / 2),
+            f"{date_point[0].year - 1}",
+            font=fontsm,
+            fill=(255, 0, 0, 128),
+            anchor="mt"
+        )
+
+    # Add the year label past the final division line
+    if(len(date_points) > 0):
+        text_x = (image_width - margin_h_right + prev_scaled_x) / 2
+        draw.text(
+            (text_x, margin_v_top + fontsm.size / 2),
+            f"{date_point[0].year}",
+            font=fontsm,
+            fill=(255, 0, 0, 128),
             anchor="mt"
         )
 
@@ -1264,71 +1330,45 @@ def generate_cpi_graph(member_dicts, title, print_legend):
 
     scaled_tuples = []
 
-    count = 0
-
     legend_v_spacing = cpi_scale_pixels / 10
     box_size = legend_v_spacing * 0.75
 
-    for member_dict in member_dicts:
-        scaled_tuples.append([])
-        if (
-            'graph_colour' in member_dict
-            and member_dict['graph_colour'] is not None
-            and len(member_dict['graph_colour']) >= 4
-        ):
-            colour = (
-                member_dict['graph_colour'][0],
-                member_dict['graph_colour'][1],
-                member_dict['graph_colour'][2],
-                member_dict['graph_colour'][3]
-            )
-        else:
-            colour = (
-                random.randint(0, 255),
-                random.randint(0, 255),
-                random.randint(0, 255),
-                255
-            )
+    if (
+        'graph_colour' in member_dict
+        and member_dict['graph_colour'] is not None
+        and len(member_dict['graph_colour']) >= 4
+    ):
+        colour = (
+            member_dict['graph_colour'][0],
+            member_dict['graph_colour'][1],
+            member_dict['graph_colour'][2],
+            member_dict['graph_colour'][3]
+        )
+    else:
+        colour = (
+            random.randint(0, 255),
+            random.randint(0, 255),
+            random.randint(0, 255),
+            255
+        )
 
-        if len(member_dict['name']) < 16:
-            legend_name = member_dict['name']
-        else:
-            legend_name = member_dict['name'][0:11] + "..."
+    for point in member_dict['cpi_data']:
+        scaled_tuple_x = (
+            margin_h_left
+            + (point[1] / (total_corners_scale_maj_divisions * total_corners_scale_maj_division_size) * total_corners_scale_pixels)
+        )
+        scaled_tuple_y = (
+            image_height
+            - margin_v_bottom
+            - point[2] / (cpi_scale_maj_divisions * cpi_scale_maj_division_size) * cpi_scale_pixels
+        )
+        scaled_tuples.append(
+            (scaled_tuple_x, scaled_tuple_y)
+        )
 
-        legend_cpi_text = f" ({member_dict['cpi_data'][-1][2]:.1f})"
-
-        for i in range(0, 22 - len(legend_name) - len(legend_cpi_text)):
-            legend_name += " "
-
-        legend_name += legend_cpi_text
-
-        for point in member_dict['cpi_data']:
-            scaled_tuple_x = (
-                margin_h_left
-                + (point[1] / (total_corners_scale_maj_divisions * total_corners_scale_maj_division_size) * total_corners_scale_pixels)
-            )
-            scaled_tuple_y = (
-                image_height
-                - margin_v_bottom
-                - point[2] / (cpi_scale_maj_divisions * cpi_scale_maj_division_size) * cpi_scale_pixels
-            )
-            scaled_tuples[count].append(
-                (scaled_tuple_x, scaled_tuple_y)
-            )
-        draw.line(scaled_tuples[count], fill=colour, width=2, joint="curve")
-        x = image_width - margin_h_right + tick_length
-        y = margin_v_top + legend_v_spacing * 0.5 - box_size / 2 + count * legend_v_spacing
-
-        if print_legend:
-            draw.rectangle([(x, y), (x + box_size, y + box_size)], fill=colour, outline=(255, 255, 255, 255), width=1)
-            draw.text(
-                (x + box_size * 1.5, y + box_size / 2),
-                legend_name,
-                font=font,
-                fill=(255, 255, 255, 255), anchor="lm"
-            )
-
-        count += 1
+    draw.line(scaled_tuples, fill=colour, width=2, joint="curve")
+    x = image_width - margin_h_right + tick_length
+    y = margin_v_top + legend_v_spacing * 0.5 - box_size / 2
 
     # Draw the axes
     draw.line(
