@@ -34,7 +34,6 @@ from commands.head2head import Head2HeadCog
 from commands.ir_commands import IrCommandsCog
 from commands.next_race import NextRaceCog
 from commands.quote_commands import QuoteCommandsCog
-from commands.refresh_cache import RefreshCacheCog
 from commands.schedule import ScheduleCog
 from commands.send_nudes import SendNudesCog
 from commands.special_events import SpecialEventsCog
@@ -71,7 +70,6 @@ bot.add_cog(Head2HeadCog(bot, db, ir))
 bot.add_cog(IrCommandsCog(bot, db, ir))
 bot.add_cog(NextRaceCog(bot, db, ir))
 bot.add_cog(QuoteCommandsCog(bot, db, ir, bot_state))
-bot.add_cog(RefreshCacheCog(bot, db, ir))
 bot.add_cog(ScheduleCog(bot, db, ir))
 bot.add_cog(SendNudesCog(bot))
 bot.add_cog(SpecialEventsCog(bot, db, ir))
