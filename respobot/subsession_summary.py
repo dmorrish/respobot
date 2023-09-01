@@ -329,13 +329,13 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
 
     try:
         subsession_data = await db.get_subsession_data(subsession_id)
-        subsession_result_dicts = await db.get_results(subsession_id)
+        subsession_result_dicts = await db.get_subsession_results(subsession_id)
 
         if subsession_result_dicts is None or len(subsession_result_dicts) < 1:
             # Main event is not a race or no results for some other reason
             logging.getLogger('respobot.bot').warning(
                 f"During mine_race_results_for_juicy_details() no race results were returned by "
-                f"db.get_results() for subsession {subsession_id}."
+                f"db.get_subsession_results() for subsession {subsession_id}."
             )
             return
 
