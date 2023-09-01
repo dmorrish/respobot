@@ -427,7 +427,6 @@ async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id:
         traceback_string = ""
         for line in traceback_lines:
             traceback_string += line
-        print(traceback_string)
 
         logging.getLogger('respobot.bot').warning(
             f"During generate_race_report() the following exception was caught: {exc}"
