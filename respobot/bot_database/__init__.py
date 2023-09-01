@@ -41,7 +41,7 @@ class BotDatabase:
 
         Returns:
             None
-        
+
         Raises:
             aiosqlite.Error: Raised for any Error during table/index creation.
         """
@@ -257,7 +257,7 @@ class BotDatabase:
             ErrorCodes.max_retries_exceeded.value
         )
 
-    async def _map_tuples_to_dicts(self, query_result_tuples: list, table_name: str):
+    async def _map_tuples_to_dicts(self, query_result_tuples: list, table_name: str, extra_columns: list = []):
         """Maps row tuples returned from a SELECT query to a dict object where each key-value pair
         is of the form: "table_column_name": value
 
@@ -294,7 +294,7 @@ class BotDatabase:
 
         query_result_dicts = []
         for query_result_tuple in query_result_tuples:
-            if len(table_column_tuples) != len(query_result_tuple):
+            if len(table_column_tuples) != len(query_result_tuple) - len(extra_columns):
                 raise BotDatabaseError(
                     f"Error mapping tuple to dict, tuple length does not match number of columns in {table_name}."
                 )
@@ -304,6 +304,9 @@ class BotDatabase:
             for table_column_tuple in table_column_tuples:
                 index = table_column_tuple[1]
                 new_query_result_dict[index] = query_result_tuple[columns_mapped]
+                columns_mapped += 1
+            for extra_column in extra_columns:
+                new_query_result_dict[extra_column] = query_result_tuple[columns_mapped]
                 columns_mapped += 1
             query_result_dicts.append(new_query_result_dict)
 
@@ -327,7 +330,8 @@ class BotDatabase:
     )
 
     from ._results import (
-        get_results
+        get_subsession_results,
+        get_champ_points_data
     )
 
     from ._seasons import (
