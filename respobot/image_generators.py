@@ -1284,14 +1284,14 @@ def generate_cpi_graph(member_dict, title, print_legend):
         prev_scaled_x = scaled_x
         draw.line(
             [(scaled_x, margin_v_top), (scaled_x, image_height - margin_v_bottom)],
-            fill=(255, 0, 0, 128),
+            fill=(255, 255, 255, 64),
             width=1, joint=None
         )
         draw.text(
             (text_x, margin_v_top + fontsm.size / 2),
             f"{date_point[0].year - 1}",
             font=fontsm,
-            fill=(255, 0, 0, 128),
+            fill=(255, 255, 255, 64),
             anchor="mt"
         )
 
@@ -1302,7 +1302,7 @@ def generate_cpi_graph(member_dict, title, print_legend):
             (text_x, margin_v_top + fontsm.size / 2),
             f"{date_point[0].year}",
             font=fontsm,
-            fill=(255, 0, 0, 128),
+            fill=(255, 255, 255, 64),
             anchor="mt"
         )
 
