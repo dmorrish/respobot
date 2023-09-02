@@ -20,7 +20,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
         return
 
     try:
-        member_info = await ir.get_member_info_new(iracing_custids)
+        member_info = await ir.get_member_info(iracing_custids)
     except AuthenticationError:
         logging.getLogger('respobot.iracing').warning(
             "Authentication to the iRacing server failed when getting member info. Abandoning cache_races()."
@@ -80,7 +80,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
             finish_range_end = end_time.isoformat().replace("+00:00", "Z")
 
             try:
-                hosted_results_dicts = await ir.search_hosted_new(
+                hosted_results_dicts = await ir.search_hosted(
                     cust_id=iracing_custid,
                     finish_range_begin=finish_range_begin,
                     finish_range_end=finish_range_end
@@ -126,7 +126,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
             logging.getLogger('respobot.bot').info(
                 f"Gathering list of series subsessions for {year}s{quarter}"
             )
-            series_results_dicts = await ir.search_results_new(
+            series_results_dicts = await ir.search_results(
                 cust_id=iracing_custid,
                 season_year=year,
                 season_quarter=quarter
@@ -158,7 +158,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
                 if latest_session_end_time is None or new_race_end_time > latest_session_end_time:
                     latest_session_end_time = new_race_end_time
 
-            new_subsession = await ir.subsession_data_new(subsession_summary_dict['subsession_id'])
+            new_subsession = await ir.subsession_data(subsession_summary_dict['subsession_id'])
 
             if new_subsession is None:
                 continue
@@ -202,7 +202,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
                 if 'simsession_number' not in session_result_dict or 'results' not in session_result_dict:
                     continue
 
-                lap_dicts = await ir.lap_data_new(
+                lap_dicts = await ir.lap_data(
                     new_subsession['subsession_id'],
                     session_result_dict['simsession_number']
                 )

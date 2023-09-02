@@ -16,7 +16,7 @@ async def update_season_dates(
 ):
 
     try:
-        series_dicts = await ir.stats_series_new()
+        series_dicts = await ir.stats_series()
 
         if series_dicts is None or len(series_dicts) < 1:
             return
@@ -55,7 +55,7 @@ async def update_season_dates(
 
         while done is False:
             logging.getLogger('respobot.bot').info(f"Updating season dates for {year}s{quarter}")
-            result_dicts = await ir.search_results_new(
+            result_dicts = await ir.search_results(
                 season_year=year,
                 season_quarter=quarter,
                 race_week_num=0,
@@ -73,7 +73,7 @@ async def update_season_dates(
                         min_start_time = new_start_time
                         subsession_id = result_dict['subsession_id']
 
-                subsession_data = await ir.subsession_data_new(subsession_id)
+                subsession_data = await ir.subsession_data(subsession_id)
 
                 if subsession_data is None:
                     continue

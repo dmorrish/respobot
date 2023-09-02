@@ -26,7 +26,7 @@ class ScheduleCog(commands.Cog):
     ):
         try:
             await ctx.respond("Working on it...")
-            season_dicts = await self.ir.current_seasons_new()
+            season_dicts = await self.ir.current_seasons()
 
             if season_dicts is None:
                 await ctx.edit("Something went horribly wrong! There are no active seasons!")

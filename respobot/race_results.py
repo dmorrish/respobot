@@ -76,20 +76,20 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
         # 5. The longer race ends but is never found because latest_session_found is later than this race.
         # Scanning based on finish time eliminates this issue.
         try:
-            races_list = await ir.search_results_new(
+            races_list = await ir.search_results(
                 cust_id=iracing_custid,
                 finish_range_begin=start_low_str,
                 finish_range_end=start_high_str
             )
         except ValueError:
             logging.getLogger('respobot.bot').warning(
-                f"search_results_new() for cust_id {iracing_custid} failed due to insufficient information."
+                f"search_results() for cust_id {iracing_custid} failed due to insufficient information."
             )
         except Exception as e:
             logging.getLogger('respobot.bot').warning(e)
 
         try:
-            hosted_races_list = await ir.search_hosted_new(
+            hosted_races_list = await ir.search_hosted(
                 cust_id=iracing_custid,
                 finish_range_begin=start_low_str,
                 finish_range_end=start_high_str
@@ -97,7 +97,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
             races_list += hosted_races_list
         except ValueError:
             logging.getLogger('respobot.bot').warning(
-                f"search_hosted_new() for cust_id {iracing_custid} failed due to insufficient information."
+                f"search_hosted() for cust_id {iracing_custid} failed due to insufficient information."
             )
         except Exception as e:
             logging.getLogger('respobot.bot').warning(e)
@@ -125,7 +125,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
             if race_found is False:
                 logging.getLogger('respobot.bot').info(f"Adding new subsession: {race['subsession_id']}")
                 try:
-                    new_race = await ir.subsession_data_new(race['subsession_id'])
+                    new_race = await ir.subsession_data(race['subsession_id'])
                 except Exception as exc:
                     logging.getLogger('respobot.bot').warning(
                         "During get_race_results() an exception was caught when fetching data "
@@ -162,7 +162,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                             continue
 
                         try:
-                            lap_dicts = await ir.lap_data_new(
+                            lap_dicts = await ir.lap_data(
                                 new_race['subsession_id'],
                                 session_result_dict['simsession_number']
                             )

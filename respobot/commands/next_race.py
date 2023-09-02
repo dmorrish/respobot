@@ -41,7 +41,7 @@ class NextRaceCog(commands.Cog):
                 return
 
             if series_id > 0:
-                race_guide = await self.ir.race_guide_new()
+                race_guide = await self.ir.race_guide()
 
             if race_guide is None:
                 await ctx.edit(content="I think I shit myself. Sorry.")

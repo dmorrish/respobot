@@ -28,7 +28,7 @@ class TestRaceResultsCog(commands.Cog):
             await ctx.respond("Working on it...")
 
             try:
-                subsession_data = await self.ir.subsession_data_new(subsession_id)
+                subsession_data = await self.ir.subsession_data(subsession_id)
                 if subsession_data is None or len(subsession_data) < 1:
                     await ctx.edit(content="Race not found.")
                     return

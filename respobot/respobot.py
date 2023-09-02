@@ -106,14 +106,14 @@ async def on_ready():
 
         if not await db.is_series_in_series_table(constants.REFERENCE_SERIES):
             # series and seasons tables have not been populated. Update them now.
-            ir_results = await ir.stats_series_new()
+            ir_results = await ir.stats_series()
             await db.update_seasons(ir_results)
 
-            ir_results = await ir.current_seasons_new()
+            ir_results = await ir.current_seasons()
             await db.update_current_seasons(ir_results)
 
         if not await db.is_car_class_car_in_current_car_classes(0, 34):
-            car_class_dicts = await ir.current_car_classes_new()
+            car_class_dicts = await ir.current_car_classes()
             await db.update_current_car_classes(car_class_dicts)
     except AuthenticationError:
         logging.getLogger('respobot.iracing').warning(
@@ -176,13 +176,13 @@ async def slow_task_loop():
 
         # Update series, seasons, season_car_classes,
         # current_seasons, and current_car_classes.
-        ir_results = await ir.stats_series_new()
+        ir_results = await ir.stats_series()
         await db.update_seasons(ir_results)
 
-        ir_results = await ir.current_car_classes_new()
+        ir_results = await ir.current_car_classes()
         await db.update_current_car_classes(ir_results)
 
-        ir_results = await ir.current_seasons_new()
+        ir_results = await ir.current_seasons()
         await db.update_current_seasons(ir_results)
 
         (

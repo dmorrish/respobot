@@ -51,7 +51,7 @@ class AdminCommandsCog(commands.Cog):
 
             discord_id = int(discord_id)
 
-            ir_member_dicts = await self.ir.get_member_info_new([iracing_custid])
+            ir_member_dicts = await self.ir.get_member_info([iracing_custid])
 
             if ir_member_dicts is None or len(ir_member_dicts) < 1:
                 await ctx.edit(content="Not a valid iRacing cust_id. Member not added.")
@@ -169,7 +169,7 @@ class AdminCommandsCog(commands.Cog):
                 ir_member_since = None
 
                 if refresh_ir:
-                    ir_member_dicts = await self.ir.get_member_info_new([iracing_custid])
+                    ir_member_dicts = await self.ir.get_member_info([iracing_custid])
 
                     if ir_member_dicts is None or len(ir_member_dicts) < 1:
                         await ctx.edit(content="Not a valid iRacing cust_id. Member not edited.")

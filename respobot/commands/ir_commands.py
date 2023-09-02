@@ -70,7 +70,7 @@ class IrCommandsCog(commands.Cog):
 
                         await ctx.respond("Checking iRacing servers for " + member)
 
-                        driver_dict_list = await self.ir.lookup_drivers_new(driver_name)
+                        driver_dict_list = await self.ir.lookup_drivers(driver_name)
 
                         driver_found = False
                         for driver_dict in driver_dict_list:
@@ -97,7 +97,7 @@ class IrCommandsCog(commands.Cog):
                     else:
                         iracing_custid = int(member)
                         await ctx.respond("Checking iRacing servers for ID: " + member)
-                        member_info_dict_list = await self.ir.get_member_info_new([iracing_custid])
+                        member_info_dict_list = await self.ir.get_member_info([iracing_custid])
                         if len(member_info_dict_list) < 1:
                             await ctx.edit(
                                 content=(
@@ -147,7 +147,7 @@ class IrCommandsCog(commands.Cog):
             for member_dict in member_dicts:
                 member_dict['ir_data'] = []
                 if 'discord_id' not in member_dict:
-                    irating_data = await self.ir.chart_data_new(
+                    irating_data = await self.ir.chart_data(
                         member_dict['iracing_custid'],
                         category_id=2,
                         chart_type=1
