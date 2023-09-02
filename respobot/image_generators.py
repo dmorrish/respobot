@@ -1216,12 +1216,12 @@ def generate_cpi_graph(member_dict, title, print_legend):
                 prev_total_corners = prev_point[1]
                 prev_date = prev_point[0]
                 total_corners = point[1]
-                date = point[0]
+                point_date = point[0]
 
-                timespan = date - prev_date
+                timespan = point_date - prev_date
                 cornerspan = total_corners - prev_total_corners
 
-                new_year = datetime(date.year, 1, 1, tzinfo=timezone.utc)
+                new_year = datetime(point_date.year, 1, 1, tzinfo=timezone.utc)
 
                 time_to_point = new_year - prev_date
 
