@@ -7,18 +7,16 @@ import asyncio
 
 def load_json():
     with open(env.BOT_DIRECTORY + "json/quotes.json", "r") as f_quotes:
-        global quotes
-        quotes = json.load(f_quotes)
+        return json.load(f_quotes)
 
 
 async def main():
 
     load_dotenv()
 
-    quotes = {}
+    quotes = load_json()
     db = BotDatabase(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.DATABASE_FILENAME, max_retries=5)
     await db.init_tables()
-    load_json()
 
     query = """
         INSERT INTO quotes (

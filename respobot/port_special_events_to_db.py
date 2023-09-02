@@ -8,14 +8,13 @@ import asyncio
 
 def load_json():
     with open(env.BOT_DIRECTORY + "json/special_events.json", "r") as f_special_events:
-        global special_events
-        special_events = json.load(f_special_events)
+        return json.load(f_special_events)
 
 
 async def main():
     load_dotenv()
 
-    special_events = {}
+    special_events = load_json()
     db = BotDatabase(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.DATABASE_FILENAME, max_retries=5)
     await db.init_tables()
     load_json()
