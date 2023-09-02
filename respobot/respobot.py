@@ -174,7 +174,8 @@ async def slow_task_loop():
             old_current_season_active
         ) = await db.get_current_iracing_week()
 
-        # Update current_series, current_car_classes, and seasons
+        # Update series, seasons, season_car_classes,
+        # current_seasons, and current_car_classes.
         ir_results = await ir.stats_series_new()
         await db.update_seasons(ir_results)
 

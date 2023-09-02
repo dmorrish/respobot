@@ -527,8 +527,8 @@ async def update_current_seasons(self, current_season_dicts):
 
 
 async def update_seasons(self, series_dicts):
-    """Update the 'seasons' table using JSON as returned from the
-    /data/series/stats_series iRacing endpoint
+    """Update the 'series', 'seasons', and 'season_car_classes' tables using
+    JSON as returned from the /data/series/stats_series iRacing endpoint
 
     Arguments:
         series_dicts (list): A list of dicts as returned from /data/series/stats_series
