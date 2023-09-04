@@ -47,7 +47,7 @@ class AdminCommandsCog(commands.Cog):
                 )
                 return
 
-            await ctx.respond("Working on it...")
+            await ctx.respond("Working on it...", ephemeral=True)
 
             discord_id = int(discord_id)
 
@@ -148,7 +148,7 @@ class AdminCommandsCog(commands.Cog):
                 )
                 return
 
-            await ctx.respond("Working on it...")
+            await ctx.respond("Working on it...", ephemeral=True)
 
             member_split = member.split()
             if member_split[0].isnumeric():
@@ -264,7 +264,7 @@ class AdminCommandsCog(commands.Cog):
                 )
                 return
 
-            await ctx.respond("Working on it...")
+            await ctx.respond("Working on it...", ephemeral=True)
 
             await self.db.add_special_event(name, start_date, end_date, track, cars, category)
             await ctx.edit(content=f"Success. {name} added to the database.")
@@ -318,7 +318,7 @@ class AdminCommandsCog(commands.Cog):
                 )
                 return
 
-            await ctx.respond("Working on it...")
+            await ctx.respond("Working on it...", ephemeral=True)
 
             event_split = event.split()
             if event_split[0].isnumeric():
