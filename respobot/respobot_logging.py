@@ -40,7 +40,7 @@ file_handler_discord = logging.FileHandler(
 )
 file_handler_discord.setFormatter(file_handler_formatter)
 logger_discord.addHandler(file_handler_discord)
-socket_handler = SocketHandler(env.LOG_SERVER_ADDRESS, 19996)  # default listening address
+socket_handler = SocketHandler(env.LOG_SERVER_ADDRESS, env.LOG_SERVER_PORT)  # default listening address
 logger_discord.addHandler(socket_handler)
 
 logger_iracing = logging.getLogger('irslashdata')
