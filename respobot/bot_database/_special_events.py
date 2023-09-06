@@ -8,6 +8,7 @@ import logging
 from aiosqlite import Error
 from datetime import date
 from ._queries import *
+from bot_database import BotDatabaseError
 
 
 async def get_special_events(self, earliest_date: date = None):

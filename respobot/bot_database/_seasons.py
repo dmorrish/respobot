@@ -13,6 +13,7 @@ import logging
 from aiosqlite import Error
 from ._queries import *
 import constants
+from bot_database import BotDatabaseError
 
 
 async def is_season_in_seasons_table(self, season_id):

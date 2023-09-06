@@ -3,6 +3,7 @@ from aiosqlite import Error
 from datetime import datetime
 from ._queries import *
 from irslashdata import constants as irConstants
+from bot_database import BotDatabaseError
 
 
 async def get_latest_ir(

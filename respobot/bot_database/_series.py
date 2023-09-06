@@ -7,6 +7,7 @@ Methods that mainly interact with the 'series' table.
 import logging
 from aiosqlite import Error
 from ._queries import *
+from bot_database import BotDatabaseError
 
 
 async def is_series_in_series_table(self, series_id):
