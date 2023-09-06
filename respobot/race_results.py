@@ -503,7 +503,7 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
     elif car_results.black_flag_laps is not None and len(car_results.black_flag_laps) > 0:
         message = (
             f"Pathetic. {he_she_they[0].upper()}{he_she_they[1:]} {was_were} black flagged "
-            "on lap {min(car_results.black_flag_laps)}. <:KEKW:821408061960486992>"
+            f"on lap {min(car_results.black_flag_laps)}. <:KEKW:821408061960486992>"
         )
     elif car_results.green_flag_lap_num in car_results.tow_laps:
         message = (
