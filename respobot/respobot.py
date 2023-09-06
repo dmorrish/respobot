@@ -198,8 +198,11 @@ async def slow_task_loop():
 
         # Check if there is a new season. If yes, add it to the season_dates table.
         if (
-            current_year > old_current_year
-            or (current_year == old_current_year and current_quarter > old_current_quarter)
+            current_year is not None and current_quarter is not None
+            and (
+                current_year > old_current_year
+                or (current_year == old_current_year and current_quarter > old_current_quarter)
+            )
         ):
             # A new season has been detected. Update season dates
             await update_series.update_season_dates(db, ir, season_year=current_year, season_quarter=current_quarter)
