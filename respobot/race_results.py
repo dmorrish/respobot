@@ -66,7 +66,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
         start_low_str = start_low.isoformat().replace('+00:00', 'Z')
         start_high_str = start_high.isoformat().replace('+00:00', 'Z')
 
-        races_list = None
+        subsessions_list = []
 
         # finish_range_... are used to account for the following scenario:
         # 1. User signs up for long race and crashes out early.
@@ -76,11 +76,13 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
         # 5. The longer race ends but is never found because latest_session_found is later than this race.
         # Scanning based on finish time eliminates this issue.
         try:
-            races_list = await ir.search_results(
+            series_subsessions_list = await ir.search_results(
                 cust_id=iracing_custid,
                 finish_range_begin=start_low_str,
                 finish_range_end=start_high_str
             )
+            if series_subsessions_list is not None:
+                subsessions_list += series_subsessions_list
         except ValueError:
             logging.getLogger('respobot.bot').warning(
                 f"search_results() for cust_id {iracing_custid} failed due to insufficient information."
@@ -89,12 +91,13 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
             logging.getLogger('respobot.bot').warning(e)
 
         try:
-            hosted_races_list = await ir.search_hosted(
+            hosted_subsessions_list = await ir.search_hosted(
                 cust_id=iracing_custid,
                 finish_range_begin=start_low_str,
                 finish_range_end=start_high_str
             )
-            races_list += hosted_races_list
+            if hosted_subsessions_list is not None:
+                subsessions_list += hosted_subsessions_list
         except ValueError:
             logging.getLogger('respobot.bot').warning(
                 f"search_hosted() for cust_id {iracing_custid} failed due to insufficient information."
@@ -102,79 +105,83 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
         except Exception as e:
             logging.getLogger('respobot.bot').warning(e)
 
-        if races_list is None:
+        if subsessions_list is None:
             continue
 
         latest_new_session = None
-        for race in races_list:
+        for subsession in subsessions_list:
             try:
-                race_found = await db.is_subsession_in_db(race['subsession_id'])
-                laps_found = await db.is_subsession_in_laps_table(race['subsession_id'])
+                race_found = await db.is_subsession_in_db(subsession['subsession_id'])
+                laps_found = await db.is_subsession_in_laps_table(subsession['subsession_id'])
             except BotDatabaseError as exc:
                 logging.getLogger('respobot.bot').warning(
                     "During get_race_results() an exception was caught when "
-                    f"checking if subsession {race['subsession_id']} was in the database.: {exc}"
+                    f"checking if subsession {subsession['subsession_id']} was in the database.: {exc}"
                 )
                 await helpers.send_bot_failure_dm(
                     bot,
                     "During get_race_results() an exception was caught when "
-                    f"checking if subsession {race['subsession_id']} was in the database.: {exc}"
+                    f"checking if subsession {subsession['subsession_id']} was in the database.: {exc}"
                 )
                 continue
 
             if race_found is False:
-                logging.getLogger('respobot.bot').info(f"Adding new subsession: {race['subsession_id']}")
+                logging.getLogger('respobot.bot').info(f"Adding new subsession: {subsession['subsession_id']}")
                 try:
-                    new_race = await ir.subsession_data(race['subsession_id'])
+                    new_subsession = await ir.subsession_data(subsession['subsession_id'])
                 except Exception as exc:
                     logging.getLogger('respobot.bot').warning(
                         "During get_race_results() an exception was caught when fetching data "
-                        f"for subsession {race['subsession_id']}: {exc}"
+                        f"for subsession {subsession['subsession_id']}: {exc}"
                     )
                     await helpers.send_bot_failure_dm(
                         bot,
                         "During get_race_results() an exception was caught when fetching data "
-                        f"for subsession {race['subsession_id']}: {exc}"
+                        f"for subsession {subsession['subsession_id']}: {exc}"
                     )
                     continue
 
-                new_session_end_time = datetime.fromisoformat(race['end_time'])
+                new_session_end_time = datetime.fromisoformat(subsession['end_time'])
 
                 try:
-                    await db.add_subsessions([new_race])
+                    await db.add_subsessions([new_subsession])
                 except BotDatabaseError as exc:
                     logging.getLogger('respobot.bot').warning(
                         "During get_race_results() an exception was caught when adding "
-                        f"subsession {race['subsession_id']} to the database: {exc}"
+                        f"subsession {subsession['subsession_id']} to the database: {exc}"
                     )
                     await helpers.send_bot_failure_dm(
                         bot,
                         "During get_race_results() an exception was caught when adding "
-                        f"subsession {race['subsession_id']} to the database: {exc}"
+                        f"subsession {subsession['subsession_id']} to the database: {exc}"
                     )
                     continue
 
                 # And now for the laps
-                if laps_found is False and 'session_results' in new_race and len(new_race['session_results']) > 0:
+                if (
+                    laps_found is False
+                    and 'session_results' in new_subsession
+                    and len(new_subsession['session_results']) > 0
+                ):
 
-                    for session_result_dict in new_race['session_results']:
+                    for session_result_dict in new_subsession['session_results']:
                         if 'simsession_number' not in session_result_dict or 'results' not in session_result_dict:
                             continue
 
                         try:
                             lap_dicts = await ir.lap_data(
-                                new_race['subsession_id'],
+                                new_subsession['subsession_id'],
                                 session_result_dict['simsession_number']
                             )
                         except Exception as exc:
                             logging.getLogger('respobot.bot').warning(
                                 "During get_race_results() an exception was caught when fetching lap data "
-                                f"for subsession {race['subsession_id']}: {exc}"
+                                f"for subsession {subsession['subsession_id']}: {exc}"
                             )
                             await helpers.send_bot_failure_dm(
                                 bot,
                                 "During get_race_results() an exception was caught when fetching lap data "
-                                f"for subsession {race['subsession_id']}: {exc}"
+                                f"for subsession {subsession['subsession_id']}: {exc}"
                             )
                             continue
 
@@ -183,7 +190,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
 
                         try:
                             await db.add_laps(
-                                lap_dicts, new_race['subsession_id'],
+                                lap_dicts, new_subsession['subsession_id'],
                                 session_result_dict['simsession_number']
                             )
                         except BotDatabaseError as exc:
@@ -201,20 +208,20 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                 if latest_new_session is None or latest_new_session < new_session_end_time:
                     latest_new_session = new_session_end_time
 
-                logging.getLogger('respobot.bot').info(f"Successfully added subsession: {race['subsession_id']}")
+                logging.getLogger('respobot.bot').info(f"Successfully added subsession: {subsession['subsession_id']}")
 
                 if (
-                    'host_id' in new_race
-                    and 'league_id' in new_race
-                    and (new_race['league_id'] is None or new_race['league_id'] < 1)
+                    'host_id' in new_subsession
+                    and 'league_id' in new_subsession
+                    and (new_subsession['league_id'] is None or new_subsession['league_id'] < 1)
                 ):
                     # This is just some random hosted session. Don't report it.
                     continue
-                elif 'event_type' in new_race and new_race['event_type'] != 5:
+                elif 'event_type' in new_subsession and new_subsession['event_type'] != 5:
                     # This is a non-hosted practice, qualifying, or time-trial. Don't report it.
                     continue
 
-                await generate_race_report(bot, db, new_race['subsession_id'], embed_type='auto')
+                await generate_race_report(bot, db, new_subsession['subsession_id'], embed_type='auto')
 
         try:
             db_latest_session_found = await db.get_member_latest_session_found(member_dict['iracing_custid'])
