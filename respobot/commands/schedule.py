@@ -29,7 +29,7 @@ class ScheduleCog(commands.Cog):
             season_dicts = await self.ir.current_seasons()
 
             if season_dicts is None:
-                await ctx.edit("Something went horribly wrong! There are no active seasons!")
+                await ctx.edit(content="Something went horribly wrong! There are no active seasons!")
                 return
 
             series_found = False
@@ -45,7 +45,7 @@ class ScheduleCog(commands.Cog):
                         race_week = season_dict['race_week']
 
             if series_found is not True:
-                await ctx.edit(f"What the fuck series is \"{series}\"?")
+                await ctx.edit(content=f"What the fuck series is \"{series}\"?")
                 return
 
             title = "Schedule for " + series
@@ -62,9 +62,9 @@ class ScheduleCog(commands.Cog):
                     if 'track' in race_week_dict and 'config_name' in race_week_dict['track']:
                         track_text += " (" + race_week_dict['track']['config_name'] + ")"
                     embedVar.add_field(name=week_text, value=track_text, inline=False)
-                await ctx.edit(embed=embedVar)
+                await ctx.edit(content="", embed=embedVar)
             else:
-                await ctx.edit(f"No schedule was found for {series}")
+                await ctx.edit(content=f"No schedule was found for {series}")
             return
         except BotDatabaseError as exc:
             await SlashCommandHelpers.process_command_failure(

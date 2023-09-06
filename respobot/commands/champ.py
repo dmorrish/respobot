@@ -16,6 +16,7 @@ import constants
 import os
 import random
 from datetime import datetime, timezone
+import asyncio
 
 
 class ChampCog(commands.Cog):
@@ -54,10 +55,12 @@ class ChampCog(commands.Cog):
             ) = await self.db.get_current_iracing_week(series_id=constants.REFERENCE_SERIES)
 
             if current_standard_year is None or current_standard_quarter is None or current_standard_race_week is None:
-                await ctx.edit((
-                    f"Something catastrophically bad happened while trying to figure out "
-                    f"the current iRacing season. I'm not even a little bit sorry."
-                ))
+                await ctx.edit(
+                    content=(
+                        f"Something catastrophically bad happened while trying to figure out "
+                        f"the current iRacing season. I'm not even a little bit sorry."
+                    )
+                )
                 log.logger_respobot.error(
                     f"Champ command failed during db.get_current_iracing_week() with input "
                     f"fields season: {season}, series: {series}, and car: {car}"
