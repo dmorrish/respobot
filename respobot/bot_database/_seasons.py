@@ -14,6 +14,7 @@ from aiosqlite import Error
 from ._queries import *
 import constants
 from bot_database import BotDatabaseError
+from datetime import datetime, timedelta, timezone
 
 
 async def is_season_in_seasons_table(self, season_id):
@@ -540,6 +541,8 @@ async def update_seasons(self, series_dicts):
     Raises:
         BotDatabaseError: Raised for any error.
     """
+    logging.getLogger('respobot.bot').info("Running update_seasons(). This will take a while.")
+
     new_series_parameters = []
     existing_series_parameters = []
 
@@ -633,14 +636,12 @@ async def update_seasons(self, series_dicts):
             else:
                 license_group_types = None
 
-            max_race_week = None
+            max_race_week = -1
             if 'race_weeks' in season_dict and season_dict['race_weeks'] is not None:
-                max_race_week = -1
                 for race_week in season_dict['race_weeks']:
-                    if 'track_typerace_week_num' in race_week:
-                        if race_week['race_week_num'] > max_race_week:
-                            max_race_week = race_week['race_week_num'] + 1
-            if max_race_week is not None and max_race_week < 0:
+                    if 'race_week_num' in race_week and race_week['race_week_num'] + 1 > max_race_week:
+                        max_race_week = race_week['race_week_num'] + 1
+            if max_race_week < 0:
                 max_race_week = None
 
             season_tuple = (
@@ -950,7 +951,7 @@ async def is_season_active(self):
     return result[0][0] > 0
 
 
-async def get_current_iracing_week(self, series_id: int = constants.REFERENCE_SERIES):
+async def get_current_series_week(self, series_id: int):
     """Returns a tuple of (season_year, season_quarter, race_week, max_weeks, active) based on
     the 'current_seasons' table. If series_id is not provided, the info from the reference
     series defined in constants.REFERENCE_SERIES will be used.
@@ -974,26 +975,68 @@ async def get_current_iracing_week(self, series_id: int = constants.REFERENCE_SE
 
     query = f"""
         SELECT
-            MAX(season_year) as year,
-            quarter,
+            season_year,
+            season_quarter,
+            race_week,
+            start_date,
+            max_weeks
+        FROM current_seasons
+        WHERE series_id = ?
+        GROUP BY season_year
+    """
+    parameters = (series_id,)
+
+    try:
+        result = await self._execute_read_query(query, params=parameters)
+    except Error as e:
+        logging.getLogger('respobot.database').error(
+            f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during "
+            f"get_current_series_week() for series_id {series_id}."
+        )
+        raise BotDatabaseError(
+            (
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during "
+                f"get_current_series_week() for series_id {series_id}."
+            ),
+            ErrorCodes.general_failure.value
+        )
+
+    if len(result) > 0:
+        return result[0]
+    else:
+        return (None, None, None, None, None)
+
+
+async def get_current_iracing_week(self):
+    """Returns a tuple of (season_year, season_quarter, race_week, max_weeks, active) based on
+    the 'current_seasons' table using the reference series stored in constants.REFERENCE_SERIES.
+    If the reference series is not in the 'current_weeks' table, the latest season in the
+    'season_dates' table is used instead.
+
+    Arguments:
+        None.
+
+    Returns:
+        A tuple containing (season_year, season_quarter, race_week, max_weeks, active).
+        All values are ints where active == 1 if the season is currently active at this
+        moment. 'current_seasons' is updated every constants.FAST_LOOP_INTERVAL seconds.
+
+    Raises:
+        BotDatabaseError: Raised for any error.
+    """
+
+    query = f"""
+        SELECT
+            season_year,
+            season_quarter,
             race_week,
             max_weeks,
             active
-        FROM (
-            SELECT
-                series_id,
-                season_id,
-                season_year,
-                MAX(season_quarter) AS quarter,
-                race_week,
-                max_weeks,
-                active
-            FROM current_seasons
-            WHERE series_id = ?
-            GROUP BY season_year
-        )
+        FROM current_seasons
+        WHERE series_id = ?
+        GROUP BY season_year
     """
-    parameters = (series_id,)
+    parameters = (constants.REFERENCE_SERIES,)
 
     try:
         result = await self._execute_read_query(query, params=parameters)
@@ -1012,8 +1055,54 @@ async def get_current_iracing_week(self, series_id: int = constants.REFERENCE_SE
 
     if len(result) > 0:
         return result[0]
-    else:
+
+    query = """
+        SELECT
+            season_year,
+            season_quarter,
+            MAX(start_time),
+            end_time
+        FROM season_dates
+    """
+
+    try:
+        result = await self._execute_read_query(query)
+    except Error as e:
+        logging.getLogger('respobot.database').error(
+            f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during "
+            f"get_current_iracing_week() for series_id {series_id}."
+        )
+        raise BotDatabaseError(
+            (
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during "
+                f"get_current_iracing_week() for series_id {series_id}."
+            ),
+            ErrorCodes.general_failure.value
+        )
+
+    if len(result) < 1:
         return (None, None, None, None, None)
+
+    try:
+        start_time = datetime.fromisoformat(result[0][2])
+        end_time = datetime.fromisoformat(result[0][3])
+    except ValueError:
+        logging.getLogger('respobot.database').error(
+            f"An invalid date was returned from 'season_dates' in get_current_iracing_week()."
+        )
+        raise BotDatabaseError(
+            "An invalid date was returned from 'season_dates' in get_current_iracing_week().",
+            ErrorCodes.value_error.value
+        )
+
+    now = datetime.now(timezone.utc)
+
+    delta_time = now - start_time
+    max_delta_time = end_time - start_time
+    race_week = int(delta_time / timedelta(days=7))
+    max_weeks = int(max_delta_time / timedelta(days=7))
+
+    return (result[0][0], result[0][1], race_week, max_weeks, 0)
 
 
 async def get_season_basic_info(self, series_id: int = None, season_year: int = None, season_quarter: int = None):
