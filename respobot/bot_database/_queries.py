@@ -314,14 +314,14 @@ CREATE TABLE 'results' (
 );
 """
 
-INDEX_RESULTS_SUBID_SESNUM = """
+CREATE_INDEX_RESULTS_SUBID_SESNUM = """
 CREATE INDEX 'index_results_subid_sesnum' ON 'results' (
     'subsession_id' ASC,
     'simsession_number' DESC
 );
 """
 
-INDEX_RESULTS_SESNUM_SUBID_CUSTID = """
+CREATE_INDEX_RESULTS_SESNUM_SUBID_CUSTID = """
 CREATE INDEX 'index_results_sesnum_subid_custid' ON 'results' (
     'simsession_type' ASC,
     'simsession_number' DESC,
@@ -330,7 +330,7 @@ CREATE INDEX 'index_results_sesnum_subid_custid' ON 'results' (
 );
 """
 
-INDEX_RESULTS_IRATING_GRAPH = """
+CREATE_INDEX_RESULTS_IRATING_GRAPH = """
 CREATE INDEX 'index_results_irating_graph' ON 'results' (
     'cust_id'   ASC,
     'simsession_type'   ASC
@@ -447,7 +447,7 @@ CREATE TABLE 'subsession_car_classes' (
 );
 """
 
-INDEX_SUBSESSION_CAR_CLASSES_SUBID_CLASSID = """
+CREATE_INDEX_SUBSESSION_CAR_CLASSES_SUBID_CLASSID = """
 CREATE INDEX 'index_subsession_car_classes_subid_classid' ON 'subsession_car_classes' (
     'subsession_id' ASC,
     'car_class_id' ASC
@@ -496,7 +496,7 @@ CREATE TABLE 'laps' (
 );
 """
 
-INDEX_LAPS_SUBID_SESSNUM_CUSTID = """
+CREATE_INDEX_LAPS_SUBID_SESSNUM_CUSTID = """
 CREATE INDEX 'index_laps_subid_sessnum_custid' ON 'laps' (
     'subsession_id' ASC,
     'simsession_number' ASC,
