@@ -44,14 +44,6 @@ class CornersPerIncidentCog(commands.Cog):
 
             series_name = ""
 
-            (
-                current_year,
-                current_quarter,
-                _,
-                _,
-                _
-            ) = await self.db.get_current_iracing_week(series_id=constants.REFERENCE_SERIES)
-
             if series is not None:
                 id_start = series.rfind("(") + 1
                 id_end = series.rfind(")")
