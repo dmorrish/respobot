@@ -52,7 +52,7 @@ class ChampCog(commands.Cog):
                 current_standard_race_week,
                 current_standard_max_weeks,
                 current_standard_season_active
-            ) = await self.db.get_current_iracing_week(series_id=constants.REFERENCE_SERIES)
+            ) = await self.db.get_current_iracing_week()
 
             if current_standard_year is None or current_standard_quarter is None or current_standard_race_week is None:
                 await ctx.edit(
@@ -94,7 +94,7 @@ class ChampCog(commands.Cog):
                     current_season_race_week,
                     current_season_max_weeks,
                     current_season_active
-                ) = await self.db.get_current_iracing_week(series_id=series_id)
+                ) = await self.db.get_current_series_week(series_id=series_id)
 
                 season_tuples = await self.db.get_season_basic_info(
                     series_id=series_id,
@@ -109,7 +109,7 @@ class ChampCog(commands.Cog):
                     current_season_race_week,
                     current_season_max_weeks,
                     current_season_active
-                ) = await self.db.get_current_iracing_week(series_id=constants.REFERENCE_SERIES)
+                ) = await self.db.get_current_iracing_week()
 
                 season_tuples = await self.db.get_season_basic_info(
                     series_id=constants.REFERENCE_SERIES,
