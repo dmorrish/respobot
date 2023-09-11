@@ -155,6 +155,9 @@ async def generate_cpi_graph_data(db: BotDatabase, iracing_custid, series_id: in
     cpi_graph_data = []
     total_corners = 0
 
+    if cpi_tuples is None or len(cpi_tuples) < 1:
+        return []
+
     for i in range(len(cpi_tuples)):
         total_corners += cpi_tuples[i][2]
         previous_races_needed = 1
