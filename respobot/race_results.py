@@ -13,6 +13,7 @@ from irslashdata import constants as irConstants
 import subsession_summary
 import logging
 import traceback
+import random
 
 from datetime import datetime, timezone, timedelta
 
@@ -445,7 +446,16 @@ async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id:
 
 
 async def generate_race_event_message(db: BotDatabase, car_results: subsession_summary.CarResultSummary):
-    message = ""
+    team_race = True if (
+        car_results.driver_race_results is not None
+        and len(car_results.driver_race_results) > 1
+    ) else False
+
+    if car_results.driver_race_results is not None and team_race is False:
+        member_dict = await db.fetch_member_dict(iracing_custid=car_results.driver_race_results[0].cust_id)
+    else:
+        member_dict = None
+
     racers = ""
     was_were = ""
     is_are = ""
@@ -453,9 +463,9 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
     him_her_them = ""
     his_her_their = ""
     he_she_they = ""
-    boy_girl_people = ""
+    seem_seems = ""
 
-    if len(car_results.driver_race_results) > 1:
+    if team_race is True:
         racers = "these jokers"
         was_were = "were"
         is_are = "are"
@@ -463,10 +473,9 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         him_her_them = "them"
         his_her_their = "their"
         he_she_they = "they"
-        boy_girl_people = "people"
-    else:
-        member_dict = await db.fetch_member_dict(iracing_custid=car_results.driver_race_results[0].cust_id)
-        racers = car_results.driver_race_results[0].display_name
+        seem_seems = "seem"
+    elif member_dict is not None and 'pronoun_type' in member_dict:
+        racers = member_dict['name']
         was_were = "was"
         is_are = "is"
         if member_dict['pronoun_type'] == "male":
@@ -474,128 +483,207 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
             him_her_them = "him"
             his_her_their = "his"
             he_she_they = "he"
-            boy_girl_people = "boy"
+            seem_seems = "seems"
         elif member_dict['pronoun_type'] == "female":
             himself_herself_themself = "herself"
             him_her_them = "her"
             his_her_their = "her"
             he_she_they = "she"
-            boy_girl_people = "girl"
+            seem_seems = "seem"
         else:
             himself_herself_themself = "themself"
             him_her_them = "them"
             his_her_their = "their"
             he_she_they = "they"
-            boy_girl_people = "my friend"
+            seem_seems = "seem"
+    else:
+        racers = "this joker"
+        was_were = "was"
+        is_are = "is"
+        himself_herself_themself = "themself"
+        him_her_them = "them"
+        his_her_their = "their"
+        he_she_they = "they"
+        seem_seems = "seem"
 
-    self_spin_laps = [lap for lap in car_results.lost_control_laps if lap not in car_results.car_contact_laps]
+    Racers = racers.capitalize()
+    He_She_They = he_she_they.capitalize()
+
+    messages = []
+
+    self_spin_laps = []
+    if car_results.lost_control_laps is not None and car_results.car_contact_laps is not None:
+        self_spin_laps = [lap for lap in car_results.lost_control_laps if lap not in car_results.car_contact_laps]
+
+    pre_green_tow_laps = []
+    if car_results.tow_laps is not None:
+        pre_green_tow_laps = [lap for lap in car_results.tow_laps if lap < car_results.green_flag_lap_num]
+
+    post_checkered_tow_laps = []
+    if car_results.tow_laps is not None and car_results.checkered_flag_lap_num is not None:
+        post_checkered_tow_laps = [lap for lap in car_results.tow_laps if lap > car_results.checkered_flag_lap_num]
 
     if car_results.disqualified:
-        message = (
-            f"Hey, everyone! {he_she_they[0].upper()}{he_she_they[1:]} {was_were} "
-            f"disqualified from the race. <:KEKW:821408061960486992>"
+        # script_line_dict = await db.get_script_line(1)
+        messages.append(
+            f"No surprise here. {He_She_They} {was_were} disqualified from the race. <:KEKW:821408061960486992>"
         )
-    if car_results.did_not_finish:
-        message = (
-            f"Positively delightful! {he_she_they[0].upper()}{he_she_they[1:]} DNFed "
-            "from the race. <:KEKW:821408061960486992>"
+        messages.append(
+            f"Hey, everyone! {He_She_They} {was_were} disqualified from the race. <:KEKW:821408061960486992>"
         )
+        messages.append(f"There were no hot eats or cool treats at this DQ.")
+        messages.append(f"Please tell us how the DQ was _totally_ not your fault. We're dying to hear it.")
+    elif car_results.did_not_finish:
+        messages.append(f"Positively delightful! {He_She_They} DNFed.")
+        messages.append(
+            f"Did not finish. I'm not sure if that's {his_her_their} race result or a description of "
+            f"{his_her_their} last sexual partner."
+        )
+        messages.append(f"Positively delightful! {He_She_They} DNFed.")
+        messages.append(f"{He_She_They} disconnected and the other drivers let out a collective sigh of relief.")
+
     elif car_results.black_flag_laps is not None and len(car_results.black_flag_laps) > 0:
-        message = (
-            f"Pathetic. {he_she_they[0].upper()}{he_she_they[1:]} {was_were} black flagged "
-            f"on lap {min(car_results.black_flag_laps)}. <:KEKW:821408061960486992>"
+        lap_laps = "laps" if len(car_results.black_flag_laps) > 1 else "lap"
+        black_flag_laps = helpers.format_grammar_for_item_list(car_results.black_flag_laps)
+        messages.append(
+            f"{He_She_They} {was_were} black flagged on {lap_laps} {black_flag_laps}. <:KEKW:821408061960486992>"
         )
-    elif car_results.green_flag_lap_num in car_results.tow_laps:
-        message = (
+        messages.append(
+            f"{He_She_They} got black flagged on {lap_laps} {black_flag_laps}. "
+            f"It was all the netcode's fault, I'm sure."
+        )
+        messages.append(
+            f"I'm going go out on a limb and assume that {his_her_their} favourite punk band is Black Flag."
+        )
+    elif car_results.tow_laps is not None and car_results.green_flag_lap_num in car_results.tow_laps:
+        messages.append(
             f"I'm no pro or anything, but I'm pretty sure having to tow on the green flag lap isn't a good strategy."
         )
-    elif car_results.checkered_flag_lap_num in car_results.tow_laps:
-        message = f"You tried so hard and got so far, but in the end you had to tow on the checkered flag lap."
-    elif (
-        (
-            len([lap for lap in car_results.tow_laps if lap < car_results.green_flag_lap_num]) < 1
-            and len(car_results.tow_laps) > 0
+        messages.append(
+            f"Race recap: Green flag, green flag! ... loud crunching sounds ... the tow truck is on the way."
         )
-        or len(car_results.tow_laps) > 1
+        messages.append(
+            f"If {he_she_they} {seem_seems} a little cranky, it's because {he_she_they} had to tow "
+            f"on the green flag lap."
+        )
+    elif car_results.tow_laps is not None and car_results.checkered_flag_lap_num in car_results.tow_laps:
+        messages.append(f"You tried so hard and got so far, but in the end you had to tow on the checkered flag lap.")
+        messages.append(f"The rules go out the window on white flag. Unfortunately, so did your body.")
+        messages.append(f"Well, calling a tow truck is _one_ way to finish your last lap.")
+    elif (
+        car_results.tow_laps is not None
+        and len(car_results.tow_laps) - len(pre_green_tow_laps) - len(post_checkered_tow_laps) > 0
     ):
-        message = f"You should look into getting a AAA membership with all the towing you do."
-    elif len(car_results.car_contact_laps) > 2:
-        message = f"Car contact on {len(car_results.car_contact_laps)} separate laps? Settle down a little."
+        messages.append(f"You should look into getting a AAA membership with all the towing you do.")
+    elif (
+        car_results.track_category_id is not None and car_results.car_contact_laps is not None
+        and (
+            (
+                car_results.track_category_id == irConstants.Category.road.value
+                or car_results.track_category_id == irConstants.Category.oval.value
+            )
+            and len(car_results.car_contact_laps) > 2
+            or len(car_results.car_contact_laps) > 4
+        )
+    ):
+        num_car_contact_laps = len(car_results.car_contact_laps)
+        messages.append(f"Car contact on {num_car_contact_laps} separate laps? Settle down a little.")
     elif len(self_spin_laps) > 1:
-        message = (
-            f"How amusing. {he_she_they[0].upper()}{he_she_they[1:]} lost control all by "
-            f"{himself_herself_themself} on lap{'s' if len(self_spin_laps) > 1 else ''} "
-            f"{helpers.format_grammar_for_item_list(self_spin_laps)}."
+        self_spin_laps = helpers.format_grammar_for_item_list(self_spin_laps)
+        lap_laps = 'laps' if len(self_spin_laps) > 1 else 'lap'
+        messages.append(
+            f"How amusing. {He_She_They} lost control all by {himself_herself_themself} on {lap_laps} {self_spin_laps}"
         )
     elif car_results.race_finish_position_in_class is not None and car_results.race_finish_position_in_class == 0:
-        message = f"Holy shit, {he_she_they} won the damn race. Congrats!"
-    elif len(car_results.laps_led) > 0 and car_results.race_finish_position_in_class != 0:
-        if len(car_results.laps_led) == 1:
-            lap_desc = 'a lap'
-        else:
-            lap_desc = f"{len(car_results.laps_led)} laps"
-        message = f"How sad, {he_she_they} led {lap_desc} but couldn't complete the win."
+        messages.append(f"Holy shit, {he_she_they} won the damn race. Congrats!")
+    elif (
+        car_results.laps_led is not None
+        and len(car_results.laps_led) > 0 and car_results.race_finish_position_in_class != 0
+    ):
+        a_lap_x_laps = f"{len(car_results.laps_led)} laps" if len(car_results.laps_led) > 1 else 'a lap'
+        messages.append(f"How sad, {he_she_they} led {a_lap_x_laps} but couldn't complete the win.")
     elif car_results.race_finish_position_in_class is not None and car_results.race_finish_position_in_class < 3:
-        message = f"A podium finish. Great work!"
+        messages.append(f"A podium finish. Great work!")
     elif (
         car_results.race_finish_position_relative_to_car_num is not None
         and car_results.race_finish_position_relative_to_car_num > 9
     ):
-        message = (
-            f"Respect where respect is due. {he_she_they[0].upper()}{he_she_they[1:]} finished "
-            f"{car_results.race_finish_position_relative_to_car_num} positions better than "
-            f"{his_her_their} car number."
+        finish_vs_car_num = car_results.race_finish_position_relative_to_car_num
+        messages.append(
+            f"Respect where respect is due. {He_She_They} finished {finish_vs_car_num} positions better "
+            f"than {his_her_their} car number."
         )
-    elif len(car_results.contact_laps) > 2:
-        message = (
-            f"You made contact with track objects on {car_results.contact_count} separate laps. "
-            f"At some point it's just vandalism."
+    elif car_results.contact_laps is not None and len(car_results.contact_laps) > 2:
+        contact_count = len(car_results.contact_laps)
+        messages.append(
+            f"{He_She_They} made contact with track objects on {contact_count} separate laps. "
+            f"At some point that's just vandalism."
         )
-    elif car_results.race_incidents > 9:
-        message = f"{car_results.race_incidents}x? Were you trying for a new high score?"
+    elif car_results.race_incidents is not None and car_results.race_incidents > 9:
+        race_incidents = car_results.race_incidents
+        messages.append(f"{race_incidents}x on race laps? Were you trying for a new high score?")
     elif car_results.laps_down:
-        int_laps_down = abs(int(car_results.laps_down))
-        message = (
-            f"{he_she_they[0].upper()}{he_she_they[1:]} finished {int_laps_down} "
-            f"lap{'s' if int_laps_down > 1 else ''} down. Git gud, {boy_girl_people}."
-        )
+        laps_down = abs(int(car_results.laps_down))
+        a_lap_x_laps = 'laps' if laps_down > 1 else 'a lap'
+        messages.append(f"{He_She_They} finished {a_lap_x_laps} down. Git gud.")
     elif car_results.close_finishers is not None and len(car_results.close_finishers) == 1:
-        message = f"It was a photo finish between {him_her_them} and car {car_results.close_finishers[0][0]} "
-        if car_results.close_finishers[0][1] > 0:
-            message += (
+        other_car_nums = car_results.close_finishers[0][0]
+        interval = car_results.close_finishers[0][1] / 1000
+        if interval > 0:
+            messages.append(
+                f"It was a photo finish between {him_her_them} and car {other_car_nums} "
                 f"but unfortunately {he_she_they} didn't have it in {him_her_them} and "
-                f"{he_she_they} lost by {car_results.close_finishers[0][1]/1000}s."
+                f"{he_she_they} lost by {abs(interval)}s."
             )
         else:
-            message += (
-                f"and miraculously {he_she_they} came out ahead by {abs(car_results.close_finishers[0][1]/1000)}s."
+            messages.append(
+                f"It was a photo finish between {him_her_them} and car {other_car_nums} "
+                f"and miraculously {he_she_they} came out ahead by {abs(interval)}s."
             )
     elif car_results.close_finishers is not None and len(car_results.close_finishers) > 1:
         cars_ahead = [tup[0] for tup in car_results.close_finishers if tup[1] > 0]
         cars_behind = [tup[0] for tup in car_results.close_finishers if tup[1] < 0]
-        message = (
-            f"It was a photo finish between {him_her_them} and cars "
-            f"{helpers.format_grammar_for_item_list([tup[0] for tup in car_results.close_finishers])}. "
+        other_car_nums = helpers.format_grammar_for_item_list(
+            [tup[0] for tup in car_results.close_finishers]
         )
-        if len(cars_ahead) == 0:
-            message += f"Somehow {he_she_they} came out on top of the rest."
-        elif len(cars_behind) == 0:
-            message += f"It should come as a surprise to no-one that {he_she_they} came out the loser in the bunch."
-        else:
-            message += (
-                f"Car{'s' if len(cars_ahead) > 1 else ''} {helpers.format_grammar_for_item_list(cars_ahead)} "
-                f"came out ahead of {him_her_them} and "
-                f"car{'s' if len(cars_behind) > 1 else ''} {helpers.format_grammar_for_item_list(cars_behind)} "
-                f"finished behind."
-            )
-    elif len([lap for lap in car_results.car_contact_laps if lap < car_results.green_flag_lap_num]) > 0:
-        message = f"What a shame. You couldn't even make it to the green flag before you had car contact."
-    elif len([lap for lap in car_results.contact_laps if lap < car_results.green_flag_lap_num]) > 0:
-        message = f"You couldn't even make it to the green flag before hitting shit."
+        cars_ahead = helpers.format_grammar_for_item_list(cars_ahead)
+        cars_behind = helpers.format_grammar_for_item_list(cars_behind)
+        car_cars_ahead = 'cars' if len(cars_ahead) > 1 else 'car'
+        car_cars_behind = 'cars' if len(cars_behind) > 1 else 'car'
+        Car_Cars_ahead = car_cars_ahead.capitalize()
+        Car_Cars_behind = car_cars_behind.capitalize()
 
-    if message == "":
+        if len(cars_ahead) == 0:
+            messages.append(
+                f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
+                f"Somehow {he_she_they} came out on top of the rest."
+            )
+        elif len(cars_behind) == 0:
+            messages.append(
+                f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
+                f"It should come as a surprise to no-one that {he_she_they} came out the loser in the bunch."
+            )
+        else:
+            messages.append(
+                f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
+                f"{Car_Cars_ahead} {cars_ahead} came out ahead of {him_her_them} and "
+                f"{car_cars_behind} {cars_behind} finished behind."
+            )
+    elif (
+        car_results.car_contact_laps is not None and car_results.green_flag_lap_num is not None
+        and len([lap for lap in car_results.car_contact_laps if lap < car_results.green_flag_lap_num]) > 0
+    ):
+        messages.append(f"What a shame. You couldn't even make it to the green flag before you had car contact.")
+    elif (
+        car_results.contact_laps is not None and car_results.green_flag_lap_num is not None
+        and len([lap for lap in car_results.contact_laps if lap < car_results.green_flag_lap_num]) > 0
+    ):
+        messages.append(f"You couldn't even make it to the green flag before hitting shit.")
+
+    if len(messages) < 1:
         return None
 
+    message = random.choice(messages)
     return message
 
 
@@ -877,7 +965,7 @@ async def send_results_embed_compact(
                         + " iR (" + str(car_results.driver_race_results[0].irating_new) + "), "
                     )
                 result_string += str(car_results.driver_race_results[0].incidents) + "x, "
-                if car_results.class_strength_of_field is not None:
+                if car_results.class_strength_of_field is not None and car_results.is_multiclass:
                     result_string += str(car_results.class_strength_of_field) + " Class SoF"
                 else:
                     result_string += str(car_results.event_strength_of_field) + " SoF"
