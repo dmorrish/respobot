@@ -63,19 +63,19 @@ class BotDatabase:
             if not await self._table_exists('results'):
                 logging.getLogger('respobot.database').info("creating table: results")
                 await self._execute_write_query(CREATE_TABLE_RESULTS)
-                await self._execute_write_query(INDEX_RESULTS_SUBID_SESNUM)
-                await self._execute_write_query(INDEX_RESULTS_SESNUM_SUBID_CUSTID)
-                await self._execute_write_query(INDEX_RESULTS_IRATING_GRAPH)
+                await self._execute_write_query(CREATE_INDEX_RESULTS_SUBID_SESNUM)
+                await self._execute_write_query(CREATE_INDEX_RESULTS_SESNUM_SUBID_CUSTID)
+                await self._execute_write_query(CREATE_INDEX_RESULTS_IRATING_GRAPH)
 
             if not await self._table_exists('subsession_car_classes'):
                 logging.getLogger('respobot.database').info("creating table: subsession_car_classes")
                 await self._execute_write_query(CREATE_TABLE_SUBSESSION_CAR_CLASSES)
-                await self._execute_write_query(INDEX_SUBSESSION_CAR_CLASSES_SUBID_CLASSID)
+                await self._execute_write_query(CREATE_INDEX_SUBSESSION_CAR_CLASSES_SUBID_CLASSID)
 
             if not await self._table_exists('laps'):
                 logging.getLogger('respobot.database').info("creating table: laps")
                 await self._execute_write_query(CREATE_TABLE_LAPS)
-                await self._execute_write_query(INDEX_LAPS_SUBID_SESSNUM_CUSTID)
+                await self._execute_write_query(CREATE_INDEX_LAPS_SUBID_SESSNUM_CUSTID)
 
             if not await self._table_exists('current_seasons'):
                 logging.getLogger('respobot.database').info("creating table: current_seasons")
@@ -344,6 +344,7 @@ class BotDatabase:
         update_season_dates,
         update_current_car_classes,
         is_season_active,
+        get_current_series_week,
         get_current_iracing_week,
         get_season_basic_info,
         get_series_last_run_season,
