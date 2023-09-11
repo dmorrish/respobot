@@ -166,13 +166,7 @@ async def slow_task_loop():
         return
 
     try:
-        (
-            old_current_year,
-            old_current_quarter,
-            old_current_race_week,
-            old_current_season_max_weeks,
-            old_current_season_active
-        ) = await db.get_current_iracing_week()
+        (old_current_year, old_current_quarter, _, _, _) = await db.get_current_iracing_week()
 
         # Update series, seasons, season_car_classes,
         # current_seasons, and current_car_classes.
@@ -185,16 +179,7 @@ async def slow_task_loop():
         ir_results = await ir.current_seasons()
         await db.update_current_seasons(ir_results)
 
-        (
-            current_year,
-            current_quarter,
-            current_race_week,
-            current_season_max_weeks,
-            current_season_active
-        ) = await db.get_current_iracing_week()
-
-        if current_race_week is None:
-            current_race_week = -1
+        (current_year, current_quarter, _, _, _) = await db.get_current_iracing_week()
 
         # Check if there is a new season. If yes, add it to the season_dates table.
         if (
@@ -296,7 +281,11 @@ async def fast_task_loop():
 
         # From 1am to 2am UTC every Tuesday, check if we need to post an end-of-week update.
         if now.hour == 1 and now.weekday() == 1:
-            if current_race_week > 0 and current_race_week > bot_state.data['last_weekly_report_week']:
+            if (
+                current_race_week > 0
+                and current_race_week < current_season_max_weeks
+                and current_race_week > bot_state.data['last_weekly_report_week']
+            ):
                 # Post the end of week Respo update when week 2 or later begins and the season is still active
                 post_update = True
                 report_up_to = current_race_week
@@ -307,7 +296,7 @@ async def fast_task_loop():
                 bot_state.data['last_weekly_report_week'] = current_race_week
                 bot_state.dump_state()
             elif (
-                (current_race_week < 0 or current_season_active != 1)
+                (current_race_week >= current_season_max_weeks or current_season_active != 1)
                 and bot_state.data['last_weekly_report_week'] > 0
             ):
                 # Post an end-of season Respo update if the season is not active
