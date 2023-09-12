@@ -103,7 +103,7 @@ async def update_season_dates(
                 quarter = 1
                 year += 1
 
-            if year >= max_year and quarter > max_quarter:
+            if year >= max_year or (year == max_year and quarter > max_quarter):
                 done = True
         await db.update_season_dates(season_dicts)
         logging.getLogger('respobot.bot').info("Done updating season_dates table!")
