@@ -168,11 +168,7 @@ async def slow_task_loop():
     try:
         (old_current_year, old_current_quarter, _, _, _) = await db.get_current_iracing_week()
 
-        # Update series, seasons, season_car_classes,
-        # current_seasons, and current_car_classes.
-        ir_results = await ir.stats_series()
-        await db.update_seasons(ir_results)
-
+        # Update 'current_seasons' and 'current_car_classes' tables.
         ir_results = await ir.current_car_classes()
         await db.update_current_car_classes(ir_results)
 
@@ -181,7 +177,7 @@ async def slow_task_loop():
 
         (current_year, current_quarter, _, _, _) = await db.get_current_iracing_week()
 
-        # Check if there is a new season. If yes, add it to the season_dates table.
+        # Check if there is a new season. If yes, update 'seasons' and 'season_dates' tables.
         if (
             current_year is not None and current_quarter is not None
             and (
@@ -189,7 +185,9 @@ async def slow_task_loop():
                 or (current_year == old_current_year and current_quarter > old_current_quarter)
             )
         ):
-            # A new season has been detected. Update season dates
+            ir_results = await ir.stats_series()
+            await db.update_seasons(ir_results)
+
             await update_series.update_season_dates(db, ir, season_year=current_year, season_quarter=current_quarter)
             # Since there's a new season, we need to refresh the autocomplete cache
             await SlashCommandHelpers.refresh_series()
