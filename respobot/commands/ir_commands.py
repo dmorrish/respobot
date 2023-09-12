@@ -154,8 +154,7 @@ class IrCommandsCog(commands.Cog):
                     )
                     for point_dict in irating_data:
                         time_point = datetime.fromisoformat(point_dict['when'])
-                        timestamp = time_point.timestamp() * 1000
-                        member_dict['ir_data'].append((timestamp, point_dict['value']))
+                        member_dict['ir_data'].append((time_point, point_dict['value']))
                 else:
                     member_dict['ir_data'] = await self.db.get_ir_data(
                         iracing_custid=member_dict['iracing_custid'],
