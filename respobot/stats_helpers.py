@@ -303,7 +303,7 @@ def calc_projected_champ_points(leaderboard_dict, max_week, weeks_to_count, acti
         )
 
         num_weeks_raced = len(leaderboard_dict[member]['weeks'])
-        projected_weeks_raced = num_weeks_raced / max_week * 12
+        projected_weeks_raced = num_weeks_raced / (max_week + 1) * 12
         if projected_weeks_raced > 0:
             inclusion_rate = 6 / projected_weeks_raced
         else:
