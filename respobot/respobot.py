@@ -59,8 +59,6 @@ db = BotDatabase(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.DATABASE_FILENA
 
 bot_state = BotState(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.BOT_STATE_FILENAME)
 
-first_run = True
-
 # Attach all bot command cogs
 bot.add_cog(AdminCommandsCog(bot, db, ir))
 bot.add_cog(ChampCog(bot, db, ir))
@@ -159,12 +157,6 @@ async def on_guild_channel_create(channel):
 
 @tasks.loop(seconds=constants.SLOW_LOOP_INTERVAL)
 async def slow_task_loop():
-    # Don't run on startup.
-    global first_run
-    if first_run:
-        first_run = False
-        return
-
     try:
         (old_current_year, old_current_quarter, _, _, _) = await db.get_current_iracing_week()
 
