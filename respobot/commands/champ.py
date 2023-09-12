@@ -213,7 +213,7 @@ class ChampCog(commands.Cog):
 
                 return
             else:
-                await ctx.edit(content="No one raced this combo in ")
+                await ctx.edit(content=f"No one raced this combo in {season}.")
                 return
         except BotDatabaseError as exc:
             await SlashCommandHelpers.process_command_failure(
