@@ -70,6 +70,7 @@ class SlashCommandHelpers:
 
     @classmethod
     async def refresh_series(self):
+        self.current_season_string = ""
         new_iracing_season_strings = []
         (year, quarter, _, _, _) = await self.db.get_current_iracing_week()
         new_current_season_string = str(year) + 's' + str(quarter)
