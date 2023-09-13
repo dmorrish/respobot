@@ -464,6 +464,7 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
     his_her_their = ""
     he_she_they = ""
     seem_seems = ""
+    has_have = ""
 
     if team_race is True:
         racers = "these jokers"
@@ -474,10 +475,12 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         his_her_their = "their"
         he_she_they = "they"
         seem_seems = "seem"
+        has_have = "have"
     elif member_dict is not None and 'pronoun_type' in member_dict:
         racers = member_dict['name']
         was_were = "was"
         is_are = "is"
+        has_have = "has"
         if member_dict['pronoun_type'] == "male":
             himself_herself_themself = "himself"
             him_her_them = "him"
@@ -496,6 +499,7 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
             his_her_their = "their"
             he_she_they = "they"
             seem_seems = "seem"
+            has_have = "have"
     else:
         racers = "this joker"
         was_were = "was"
@@ -574,7 +578,18 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         car_results.tow_laps is not None
         and len(car_results.tow_laps) - len(pre_green_tow_laps) - len(post_checkered_tow_laps) > 0
     ):
+
         messages.append(f"You should look into getting a AAA membership with all the towing you do.")
+        messages.append(
+            f"{He_She_They} had to tow yet again. {He_She_They} have had to tow out on\nException OverflowError: "
+            f"result of num_races_towed too large."
+        )
+        messages.append(
+            f"It's too bad iRacing doesn't let you drive the tow truck. "
+            f"Then at least you'd get a little more track time."
+        )
+        if len(car_results.tow_laps) == 3:
+            messages.append(f"With your pace and race performance, your new nickname should be the three tow sloth.")
     elif (
         car_results.track_category_id is not None and car_results.car_contact_laps is not None
         and (
@@ -587,23 +602,58 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         )
     ):
         num_car_contact_laps = len(car_results.car_contact_laps)
-        messages.append(f"Car contact on {num_car_contact_laps} separate laps? Settle down a little.")
+        messages.append(f"4x car contact on {num_car_contact_laps} separate laps? Settle down a little.")
+        messages.append(
+            f"I think everyone should be made aware that {he_she_they} made 4x car contact "
+            f"on {num_car_contact_laps} completely separate laps."
+        )
+        messages.append(f"The saying is trading paint, not body panels.")
     elif len(self_spin_laps) > 1:
         self_spin_laps = helpers.format_grammar_for_item_list(self_spin_laps)
         lap_laps = 'laps' if len(self_spin_laps) > 1 else 'lap'
         messages.append(
-            f"How amusing. {He_She_They} lost control all by {himself_herself_themself} on {lap_laps} {self_spin_laps}"
+            f"How amusing. {He_She_They} lost control all by {himself_herself_themself} on {lap_laps} "
+            f"{self_spin_laps}."
+        )
+        messages.append(
+            f"Well this is a little embarrassing. {He_She_They} lost control all by {himself_herself_themself} "
+            f"on {lap_laps} {self_spin_laps}."
+        )
+        messages.append(
+            f"Who needs practice?. It's perfectly normal to self spin on {len(self_spin_laps)} separate laps."
         )
     elif car_results.race_finish_position_in_class is not None and car_results.race_finish_position_in_class == 0:
-        messages.append(f"Holy shit, {he_she_they} won the damn race. Congrats!")
+        messages.append(f"Holy shit, {he_she_they} actually won the damn race. Congrats!")
+        messages.append(f"{He_She_They} won the race. There must be a new griphacks.exe I haven't heard about.")
+        messages.append(
+            f"{He_She_They} won. Hurry up and downplay {his_her_their} victory so you can feel better about "
+            f"yourself."
+        )
     elif (
         car_results.laps_led is not None
         and len(car_results.laps_led) > 0 and car_results.race_finish_position_in_class != 0
     ):
         a_lap_x_laps = f"{len(car_results.laps_led)} laps" if len(car_results.laps_led) > 1 else 'a lap'
+        it_wasnt_none_were = "none of them were" if len(car_results.laps_led) > 1 else "it wasn't"
+        its_one_is = "one of them is" if len(car_results.laps_led) > 1 else "it's"
         messages.append(f"How sad, {he_she_they} led {a_lap_x_laps} but couldn't complete the win.")
+        messages.append(f"{He_She_They} led {a_lap_x_laps} but sadly {it_wasnt_none_were} the last one.")
+        messages.append(
+            f"If you're going to lead {a_lap_x_laps}, next time try to make sure {its_one_is} the last one."
+        )
     elif car_results.race_finish_position_in_class is not None and car_results.race_finish_position_in_class < 3:
         messages.append(f"A podium finish. Great work!")
+        messages.append(f"Congrats on the podium. At least _someone_ around here is seeing some success.")
+        if car_results.race_finish_position_in_class == 2:
+            messages.append(
+                f"First the Second Step program and now the second step of the podium. "
+                f"What second step will you take next?"
+            )
+        elif car_results.race_finish_position_in_class == 3:
+            messages.append(
+                f"From the First Step Act to the first step of the podium, things are looking up for you. "
+                f"Maybe next it will be the first step of brushing your teeth."
+            )
     elif (
         car_results.race_finish_position_relative_to_car_num is not None
         and car_results.race_finish_position_relative_to_car_num > 9
@@ -613,6 +663,14 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
             f"Respect where respect is due. {He_She_They} finished {finish_vs_car_num} positions better "
             f"than {his_her_their} car number."
         )
+        # messages.append(
+        #     f"Respect where respect is due. {He_She_They} finished {finish_vs_car_num} positions better "
+        #     f"than {his_her_their} car number."
+        # )
+        # messages.append(
+        #     f"Respect where respect is due. {He_She_They} finished {finish_vs_car_num} positions better "
+        #     f"than {his_her_their} car number."
+        # )
     elif car_results.contact_laps is not None and len(car_results.contact_laps) > 2:
         contact_count = len(car_results.contact_laps)
         messages.append(
@@ -622,6 +680,11 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
     elif car_results.race_incidents is not None and car_results.race_incidents > 9:
         race_incidents = car_results.race_incidents
         messages.append(f"{race_incidents}x on race laps? Were you trying for a new high score?")
+        messages.append(f"This joker's got more x than a dude waving glowsticks while sucking on a pacifier.")
+        messages.append(
+            f"I just got a message from Patrick Stewart. He gives you his blessing to take over "
+            f"his rols as Professor X."
+        )
     elif car_results.laps_down:
         laps_down = abs(int(car_results.laps_down))
         a_lap_x_laps = 'laps' if laps_down > 1 else 'a lap'
