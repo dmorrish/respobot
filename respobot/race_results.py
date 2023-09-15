@@ -679,7 +679,10 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         )
     elif car_results.race_incidents is not None and car_results.race_incidents > 9:
         race_incidents = car_results.race_incidents
-        messages.append(f"{race_incidents}x on race laps? Were you trying for a new high score?")
+        messages.append(
+            f"{race_incidents}x on race laps? Did you discover some new <:11brain:1028374146419273881> "
+            f"move that counts for 8x?"
+        )
         messages.append(f"This joker's got more x than a dude waving glowsticks while sucking on a pacifier.")
         messages.append(
             f"I just got a message from Patrick Stewart. He gives you his blessing to take over "
@@ -689,6 +692,11 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         laps_down = abs(int(car_results.laps_down))
         a_lap_x_laps = 'laps' if laps_down > 1 else 'a lap'
         messages.append(f"{He_She_They} finished {a_lap_x_laps} down. Git gud.")
+        messages.append(
+            f"{He_She_They} finished {a_lap_x_laps} down, which is really about all "
+            f"we could ask of {him_her_them}."
+        )
+        messages.append(f"I just thought you should all know that {he_she_they} finished {a_lap_x_laps} down.")
     elif car_results.close_finishers is not None and len(car_results.close_finishers) == 1:
         other_car_nums = car_results.close_finishers[0][0]
         interval = car_results.close_finishers[0][1] / 1000
@@ -698,10 +706,24 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
                 f"but unfortunately {he_she_they} didn't have it in {him_her_them} and "
                 f"{he_she_they} lost by {abs(interval)}s."
             )
+            messages.append(f"So close. {He_She_They} lost to car {other_car_nums} by just {abs(interval)}s.")
+            messages.append(
+                f"Damn, that was a close one but {he_she_they} lost to car {other_car_nums} "
+                f"by just {abs(interval)}s."
+            )
         else:
             messages.append(
                 f"It was a photo finish between {him_her_them} and car {other_car_nums} "
                 f"and miraculously {he_she_they} came out ahead by {abs(interval)}s."
+            )
+            messages.append(
+                f"Hot damn, that was close! {He_She_They} edged out car {other_car_nums} "
+                f"by a mere {abs(interval)}s."
+            )
+            messages.append(
+                f"An exciting finish? At this time of year, at this time od day? In this part of the world, localized "
+                f"entirely within your Discord server?! That's right, {racers} edged out car {other_car_nums} "
+                f"by only {abs(interval)}s."
             )
     elif car_results.close_finishers is not None and len(car_results.close_finishers) > 1:
         cars_ahead = [tup[0] for tup in car_results.close_finishers if tup[1] > 0]
@@ -718,13 +740,21 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
 
         if len(cars_ahead) == 0:
             messages.append(
-                f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
-                f"Somehow {he_she_they} came out on top of the rest."
+                f"It was a photo finish between {him_her_them} and cars {other_car_nums} and "
+                f"somehow {he_she_they} came out on top of the rest."
+            )
+            messages.append(
+                f"It was a photo finish between {him_her_them} and cars {other_car_nums}, "
+                f"but they had no chance against the might of {racers}."
             )
         elif len(cars_behind) == 0:
             messages.append(
                 f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
                 f"It should come as a surprise to no-one that {he_she_they} came out the loser in the bunch."
+            )
+            messages.append(
+                f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
+                f"Sadly, our beloved Respo teammate lost out to them."
             )
         else:
             messages.append(
@@ -736,12 +766,20 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         car_results.car_contact_laps is not None and car_results.green_flag_lap_num is not None
         and len([lap for lap in car_results.car_contact_laps if lap < car_results.green_flag_lap_num]) > 0
     ):
-        messages.append(f"What a shame. You couldn't even make it to the green flag before you had car contact.")
+        messages.append(f"What a shame. You couldn't even make it to the start line before you had car contact.")
+        messages.append(f"{He_She_They} had car contact before {he_she_they} even crossed the start line.")
+        messages.append(
+            f"{He_She_They} couldn't even wait until {he_she_they} crossed the start line before hitting people."
+        )
     elif (
         car_results.contact_laps is not None and car_results.green_flag_lap_num is not None
         and len([lap for lap in car_results.contact_laps if lap < car_results.green_flag_lap_num]) > 0
     ):
-        messages.append(f"You couldn't even make it to the green flag before hitting shit.")
+        messages.append(f"You couldn't even make it to the start line before hitting shit.")
+        messages.append(
+            f"{Racers} {was_were} so excited to vandalize the track that {he_she_they} couldn't even "
+            f"wait until {he_she_they} crossed the start line before running into shit."
+        )
 
     if len(messages) < 1:
         return None
