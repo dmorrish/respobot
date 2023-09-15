@@ -8,13 +8,16 @@ log_path = path.join(os.getcwd(), 'logs')
 try:
     if not os.path.isdir(log_path):
         os.mkdir(path.join(os.getcwd(), 'logs'))
-        print("Created 'logs' direcetory. Download the RespoBot log files from the server into this directory and run this program again.")
+        print(
+            "Created 'logs' directory. Download the RespoBot log files from the server "
+            "into this directory and run this program again."
+        )
     else:
         try:
             count = 0
             for filename in os.listdir(log_path):
                 if filename[-4:] == '.log':
-                    with open(path.join(log_path, filename), "r+") as f_logfile:
+                    with open(path.join(log_path, filename), "r+", encoding="utf8") as f_logfile:
                         content = f_logfile.read()
                         if content is not None and len(content) > 2:
                             content = content.replace('\\', "\\\\")
