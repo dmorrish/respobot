@@ -30,10 +30,11 @@ try:
                                 f_logfile.truncate(0)
                                 f_logfile.write(new_content)
                     count += 1
+                    f_logfile.close()
             if count < 1:
                 print("No log files found in the logs' directory. Download them from the server first.")
-        # except Exception as e:
-            # print(e)
+        except Exception as e:
+            print(e)
         finally:
             pass
 
