@@ -155,7 +155,7 @@ async def on_guild_channel_create(channel):
         await channel.send("#TwoManyChannels")
 
 
-@tasks.loop(seconds=constants.SLOW_LOOP_INTERVAL)
+@tasks.loop(seconds=constants.SLOW_LOOP_INTERVAL, reconnect=True)
 async def slow_task_loop():
     try:
         (old_current_year, old_current_quarter, _, _, _) = await db.get_current_iracing_week()
@@ -208,7 +208,7 @@ async def slow_task_loop():
         )
 
 
-@tasks.loop(seconds=constants.FAST_LOOP_INTERVAL)
+@tasks.loop(seconds=constants.FAST_LOOP_INTERVAL, reconnect=True)
 async def fast_task_loop():
 
     # Update colours
