@@ -19,21 +19,22 @@ from datetime import datetime, timezone, timedelta
 
 
 async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient):
+    logging.getLogger('respobot.bot').info(f"Scraping iRacing servers for new subsessions.")
 
     try:
         member_dicts = await db.fetch_member_dicts()
     except BotDatabaseError as exc:
         logging.getLogger('respobot.bot').warning(
-            f"During get_race_results the following exception was encountered: {exc}"
+            f"During get_race_results() the following exception was encountered: {exc}"
         )
         await helpers.send_bot_failure_dm(
             bot,
-            f"During get_race_results the following exception was encountered: {exc}"
+            f"During get_race_results() the following exception was encountered: {exc}"
         )
         return
 
     if member_dicts is None or len(member_dicts) < 1:
-        logging.getLogger('respobot.bot').info("No members in the database, skipping race checks.")
+        logging.getLogger('respobot.bot').info("No members in the database, skipping subsession checks.")
         return
 
     for member_dict in member_dicts:
@@ -45,11 +46,13 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
 
         iracing_custid = member_dict['iracing_custid']
 
-        logging.getLogger('respobot.bot').info(f"Searching for new races for cust_id: {iracing_custid}")
+        logging.getLogger('respobot.bot').debug(f"Searching for new subsessions for cust_id: {iracing_custid}")
 
         if 'latest_session_found' in member_dict and member_dict['latest_session_found'] is None:
             # This person needs to have their sessions cached.
-            logging.getLogger('respobot.bot').info(f"Found a new member. Caching races for cust_id: {iracing_custid}")
+            logging.getLogger('respobot.bot').info(
+                f"Found a new member. Caching subsessions for cust_id: {iracing_custid}"
+            )
             await cache_races.cache_races(bot, db, ir, [iracing_custid])
             continue
 
