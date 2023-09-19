@@ -207,6 +207,7 @@ async def slow_task_loop():
             bot,
             f"The following exception occured when updating season data in slow_task_loop(): {exc}"
         )
+    logging.getLogger('respobot.bot').debug(f"Done running slow_task_loop().")
 
 
 @tasks.loop(seconds=constants.FAST_LOOP_INTERVAL, reconnect=True)
@@ -395,6 +396,7 @@ async def fast_task_loop():
             f"The following exception occured when preparing the "
             f"iRacing birthdays post in in slow_task_loop(): {exc}"
         )
+    logging.getLogger('respobot.bot').debug(f"Done running fast_task_loop().")
 
 
 def exit_handler(signum, frame):
