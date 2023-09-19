@@ -22,7 +22,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
     logging.getLogger('respobot.bot').info(f"Scraping iRacing servers for new subsessions.")
 
     try:
-        logging.getLogger('respobot.bot').debug(f"get_race_results(): Fetching memebr dicts.")
+        logging.getLogger('respobot.bot').debug(f"get_race_results(): Fetching member dicts.")
         member_dicts = await db.fetch_member_dicts()
     except BotDatabaseError as exc:
         logging.getLogger('respobot.bot').warning(
