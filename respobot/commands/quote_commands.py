@@ -247,7 +247,7 @@ class QuoteCommandsCog(commands.Cog):
                         return
 
                 if id_to_quote is not None:
-                    quote_dicts = await self.db.get_quotes(id_to_quote)
+                    quote_dicts = await self.db.get_quotes(discord_id=id_to_quote)
 
                     if quote_dicts is None:
                         await ctx.respond(
