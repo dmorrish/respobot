@@ -370,6 +370,13 @@ class QuoteCommandsCog(commands.Cog):
                 )
                 return
 
+            if message_object and message_object.author.id == ctx.author.id:
+                await ctx.respond(
+                    "Really? You're quoting yourself? That's a little embarrassing, don't you think?",
+                    ephemeral=True
+                )
+                return
+
             # Check to see if it's already in there.
             if await self.db.is_quote_in_db(message_object.id):
                 await ctx.respond("This quote is already in the database.", ephemeral=True)
@@ -384,7 +391,7 @@ class QuoteCommandsCog(commands.Cog):
                 return
 
             for pending_quote in self.bot_state.data['pending_quotes']:
-                if self.bot_state.data['pending_quotes'][pending_quote] == message_object.id:
+                if pending_quote['quoted_message_id'] == message_object.id:
                     await ctx.respond("Someone already suggested this, you slow ass.", ephemeral=False)
                     return
 
@@ -404,8 +411,10 @@ class QuoteCommandsCog(commands.Cog):
             new_pending_quote = {
                 "vote_message_id": sentMessage.id,
                 "quoted_message_id": message_object.id,
-                "quote_added_by_id": message_object.author.id,
-                "has_been_voted_by_adder": False
+                "quote_added_by_id": ctx.author.id,
+                "person_quoted_id": message_object.author.id,
+                "has_been_voted_by_adder": False,
+                "has_been_voted_by_person_quoted": False
             }
             self.bot_state.data['pending_quotes'].append(new_pending_quote)
             self.bot_state.dump_state()
