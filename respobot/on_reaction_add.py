@@ -50,12 +50,29 @@ class OnReactionAddCog(commands.Cog):
 
         if pending_quote is not None and reaction.emoji == '👍':
 
-            self_voted = False
+            quoter_voted = False
+            quoted_voted = False
+            extra_votes_required = 0
             for user in users:
                 if user.id == pending_quote['quote_added_by_id']:
-                    self_voted = True
+                    quoter_voted = True
+                    extra_votes_required += 1
+                if user.id == pending_quote['person_quoted_id']:
+                    quoted_voted = True
+                    # This check is redundant because the bot prevents people from quoting themselves.
+                    if pending_quote['person_quoted_id'] != pending_quote['quote_added_by_id']:
+                        extra_votes_required += 1
 
-            if pending_quote["has_been_voted_by_adder"] is False and self_voted is True:
+            if pending_quote["has_been_voted_by_person_quoted"] is False and quoted_voted is True:
+                pending_quote["has_been_voted_by_person_quoted"] = True
+                self.bot_state.dump_state()
+                channel = helpers.fetch_channel(self.bot)
+                await channel.send(
+                    f"<@{user.id}>, maybe we'll let the others decide if the bullshit you spew is quote worthy."
+                )
+                return
+
+            if pending_quote["has_been_voted_by_adder"] is False and quoter_voted is True:
                 pending_quote["has_been_voted_by_adder"] = True
                 self.bot_state.dump_state()
                 channel = helpers.fetch_channel(self.bot)
@@ -64,7 +81,7 @@ class OnReactionAddCog(commands.Cog):
                 )
                 return
 
-            if (self_voted is False and reaction.count > 1) or reaction.count > 2:
+            if reaction.count > (1 + extra_votes_required):
                 quote_dict = {}
 
                 quoted_message = await reaction.message.channel.fetch_message(pending_quote["quoted_message_id"])
