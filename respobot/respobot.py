@@ -218,6 +218,7 @@ async def fast_task_loop():
     guild = helpers.fetch_guild(bot)
     member_objects = await helpers.fetch_guild_member_objects(bot, guild, db)
 
+    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Updating colours.")
     if member_objects is not None:
         for member_obj in member_objects:
             brightness = math.sqrt(member_obj.colour.r ** 2 + member_obj.colour.g ** 2 + member_obj.colour.b ** 2)
@@ -247,7 +248,8 @@ async def fast_task_loop():
                     f"({member_obj.id}). Skipping."
                 )
 
-    # Potentiall update bot presence
+    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Updating bot presence.")
+    # Potentially update bot presence
     if random.randint(0, 19) == 0:
         await helpers.change_bot_presence(bot)
 
@@ -255,6 +257,7 @@ async def fast_task_loop():
         bot_state.data['last_weekly_report_week'] = -1
         bot_state.dump_state()
 
+    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Weekly report.")
     try:
         (
             current_year,
@@ -364,6 +367,7 @@ async def fast_task_loop():
             f"end-of-week/season update post in in slow_task_loop(): {exc}"
         )
 
+    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): iRacing birthdays.")
     try:
         # iRacing Birthdays!
         if now.hour == 16 and bot_state.data['birthday_flip_flop'] is False:
@@ -385,6 +389,7 @@ async def fast_task_loop():
             bot_state.dump_state()
 
         # Check if anyone raced.
+        logging.getLogger('respobot.bot').debug(f"fast_task_loop(): get_race_results()")
         await results.get_race_results(bot, db, ir)
     except BotDatabaseError as exc:
         logging.getLogger('respobot.database').warning(

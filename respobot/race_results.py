@@ -22,6 +22,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
     logging.getLogger('respobot.bot').info(f"Scraping iRacing servers for new subsessions.")
 
     try:
+        logging.getLogger('respobot.bot').debug(f"get_race_results(): Fetching memebr dicts.")
         member_dicts = await db.fetch_member_dicts()
     except BotDatabaseError as exc:
         logging.getLogger('respobot.bot').warning(
@@ -37,6 +38,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
         logging.getLogger('respobot.bot').info("No members in the database, skipping subsession checks.")
         return
 
+    logging.getLogger('respobot.bot').debug(f"get_race_results(): Iterating through members.")
     for member_dict in member_dicts:
         if 'iracing_custid' not in member_dict:
             logging.getLogger('respobot.bot').warning(
@@ -244,6 +246,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                 "During get_race_results() an exception was caught when updating "
                 f"latest_session_found for {member_dict['name']}: {exc}"
             )
+    logging.getLogger('respobot.bot').debug(f"get_race_results(): Done.")
 
 
 async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id: int, embed_type: str = 'auto'):
