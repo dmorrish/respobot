@@ -82,6 +82,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
         # 5. The longer race ends but is never found because latest_session_found is later than this race.
         # Scanning based on finish time eliminates this issue.
         try:
+            logging.getLogger('respobot.bot').debug(f"Running search_results() for cust_id {iracing_custid}")
             series_subsessions_list = await ir.search_results(
                 cust_id=iracing_custid,
                 finish_range_begin=start_low_str,
@@ -97,6 +98,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
             logging.getLogger('respobot.bot').warning(e)
 
         try:
+            logging.getLogger('respobot.bot').debug(f"Running search_hosted() for cust_id {iracing_custid}")
             hosted_subsessions_list = await ir.search_hosted(
                 cust_id=iracing_custid,
                 finish_range_begin=start_low_str,
@@ -112,12 +114,20 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
             logging.getLogger('respobot.bot').warning(e)
 
         if subsessions_list is None:
+            logging.getLogger('respobot.bot').debug(f"No subsessions found for cust_id {iracing_custid}. Continuing.")
             continue
 
         latest_new_session = None
         for subsession in subsessions_list:
+            logging.getLogger('respobot.bot').debug(f"Processing new subsession {subsession['subsession_id']}.")
             try:
+                logging.getLogger('respobot.bot').debug(
+                    f"Checking if {subsession['subsession_id']} is already in the database."
+                )
                 race_found = await db.is_subsession_in_db(subsession['subsession_id'])
+                logging.getLogger('respobot.bot').debug(
+                    f"Checking if the laps for {subsession['subsession_id']} are already in the database."
+                )
                 laps_found = await db.is_subsession_in_laps_table(subsession['subsession_id'])
             except BotDatabaseError as exc:
                 logging.getLogger('respobot.bot').warning(
