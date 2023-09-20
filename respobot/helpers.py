@@ -5,7 +5,7 @@ import logging
 import roles
 import discord
 from discord.errors import NotFound, HTTPException
-from bot_database import BotDatabase
+from bot_database import BotDatabase, BotDatabaseError
 from irslashdata import constants as irConstants
 
 
@@ -86,19 +86,37 @@ async def fetch_guild_member_objects(bot: discord.Bot, guild: discord.Guild, db:
                 member_objects.append(new_member_object)
             except NotFound:
                 logging.getLogger('respobot.bot').warning(
-                    f"fetch_guild_member_objects() failed due to: Member {member_id} not found in the guild."
+                    f"During fetch_guild_member_objects(): Member {member_id} not found in the guild."
                 )
             except HTTPException:
                 logging.getLogger('respobot.bot').warning(
-                    f"fetch_guild_member_objects() failed due to: HTTPException while fetching member {member_id}."
+                    f"During fetch_guild_member_objects(): HTTPException while fetching member {member_id}."
                 )
             except Exception as e:
-                logging.getLogger('respobot.bot').warning(f"fetch_guild_member_objects() failed due to: {e}")
+                logging.getLogger('respobot.bot').warning(
+                    f"During fetch_guild_member_objects(): Error {e} occured while fetching member {member_id}."
+                )
 
         return member_objects
+    except BotDatabaseError as exc:
+        await send_bot_failure_dm(
+            bot,
+            (
+                f"During fetch_guild_member_objects() the following BotDatabaseError exception "
+                f"was encountered: [Errno {exc.error_code}] {exc}"
+            )
+        )
+        logging.getLogger('respobot.bot').warning(
+            f"During fetch_guild_member_objects() the following BotDatabaseError exception "
+            f"was encountered: [Errno {exc.error_code}] {exc}"
+        )
+        return None
     except Exception as exc:
         await send_bot_failure_dm(
             bot,
+            f"During fetch_guild_member_objects() the following exception was encountered: {exc}"
+        )
+        logging.getLogger('respobot.bot').warning(
             f"During fetch_guild_member_objects() the following exception was encountered: {exc}"
         )
         return None
