@@ -214,12 +214,13 @@ async def slow_task_loop():
 async def fast_task_loop():
     logging.getLogger('respobot.bot').debug(f"Running fast_task_loop().")
 
+    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Fetching Discord Member objects.")
     # Update colours
     guild = helpers.fetch_guild(bot)
     member_objects = await helpers.fetch_guild_member_objects(bot, guild, db)
 
-    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Updating colours.")
     if member_objects is not None:
+        logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Updating colours.")
         for member_obj in member_objects:
             brightness = math.sqrt(member_obj.colour.r ** 2 + member_obj.colour.g ** 2 + member_obj.colour.b ** 2)
             if brightness == 0:
@@ -248,41 +249,46 @@ async def fast_task_loop():
                     f"({member_obj.id}). Skipping."
                 )
 
-    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Updating bot presence.")
     # Potentially update bot presence
     if random.randint(0, 19) == 0:
+        logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Updating bot presence.")
         await helpers.change_bot_presence(bot)
 
     if 'last_weekly_report_week' not in bot_state.data:
         bot_state.data['last_weekly_report_week'] = -1
         bot_state.dump_state()
 
-    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Weekly report.")
-    try:
-        (
-            current_year,
-            current_quarter,
-            current_race_week,
-            current_season_max_weeks,
-            current_season_active
-        ) = await db.get_current_iracing_week()
+    # From 1am to 2am UTC every Tuesday, check if we need to post an end-of-week update.
+    now = datetime.now(timezone.utc)
+    if now.hour == 1 and now.weekday() == 1:
+        logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Weekly report check.")
+        try:
+            (
+                current_year,
+                current_quarter,
+                current_race_week,
+                current_season_max_weeks,
+                current_season_active
+            ) = await db.get_current_iracing_week()
 
-        if current_race_week is None:
-            current_race_week = -1
+            logging.getLogger('respobot.bot').debug(
+                f"get_current_iracing_week() returned ({current_year}, {current_quarter}, "
+                f"{current_race_week}, {current_season_max_weeks}, {current_season_active})"
+            )
 
-        post_update = False
-        update_message = ""
+            if current_race_week is None:
+                current_race_week = -1
 
-        now = datetime.now(timezone.utc)
+            post_update = False
+            update_message = ""
 
-        # From 1am to 2am UTC every Tuesday, check if we need to post an end-of-week update.
-        if now.hour == 1 and now.weekday() == 1:
             if (
                 current_race_week > 0
                 and current_race_week < current_season_max_weeks
                 and current_race_week > bot_state.data['last_weekly_report_week']
             ):
                 # Post the end of week Respo update when week 2 or later begins and the season is still active
+                logging.getLogger('respobot.bot').debug(f"Posting end-of-week championship points update.")
                 post_update = True
                 report_up_to = current_race_week
                 update_message = (
@@ -297,6 +303,7 @@ async def fast_task_loop():
             ):
                 # Post an end-of season Respo update if the season is not active
                 # and the previously reported week was an active week.
+                logging.getLogger('respobot.bot').debug(f"Posting end-of-season championship points update.")
                 post_update = True
                 report_up_to = current_season_max_weeks
                 update_message = (
@@ -356,16 +363,16 @@ async def fast_task_loop():
 
                     if os.path.exists(filepath):
                         os.remove(filepath)
-    except BotDatabaseError as exc:
-        logging.getLogger('respobot.database').warning(
-            f"The following exception occured when preparing the "
-            f"end-of-week/season update post in in slow_task_loop(): {exc}"
-        )
-        await helpers.send_bot_failure_dm(
-            bot,
-            f"The following exception occured when preparing the "
-            f"end-of-week/season update post in in slow_task_loop(): {exc}"
-        )
+        except BotDatabaseError as exc:
+            logging.getLogger('respobot.database').warning(
+                f"The following exception occured when preparing the "
+                f"end-of-week/season update post in fast_task_loop(): {exc}"
+            )
+            await helpers.send_bot_failure_dm(
+                bot,
+                f"The following exception occured when preparing the "
+                f"end-of-week/season update post in fast_task_loop(): {exc}"
+            )
 
     logging.getLogger('respobot.bot').debug(f"fast_task_loop(): iRacing birthdays.")
     try:
