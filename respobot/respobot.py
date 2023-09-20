@@ -71,7 +71,8 @@ bot.add_cog(QuoteCommandsCog(bot, db, ir, bot_state))
 bot.add_cog(ScheduleCog(bot, db, ir))
 bot.add_cog(SendNudesCog(bot))
 bot.add_cog(SpecialEventsCog(bot, db, ir))
-bot.add_cog(TestRaceResultsCog(bot, db, ir))
+if env.IS_DEV_INSTANCE:
+    bot.add_cog(TestRaceResultsCog(bot, db, ir))
 
 # Attach all bot event handlers
 bot.add_cog(OnMessageCog(bot, db, ir))
