@@ -65,6 +65,8 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
 
         if start_low is None:
             continue
+        else:
+            start_low += timedelta(seconds=1)
 
         if start_high - start_low > timedelta(days=90):
             start_high = start_low + timedelta(days=90)
