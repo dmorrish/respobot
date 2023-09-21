@@ -40,9 +40,9 @@ class BotState:
             self.data['pending_quotes'] = []
             self.dump_state()
 
-        if 'birthday_flip_flop' not in self.data:
-            logging.getLogger('respobot.bot').info("'birthday_flip_flop' missing from bot_state, setting to True.")
-            self.data['birthday_flip_flop'] = True
+        if 'anniversary_flip_flop' not in self.data:
+            logging.getLogger('respobot.bot').info("'anniversary_flip_flop' missing from bot_state, setting to True.")
+            self.data['anniversary_flip_flop'] = True
             self.dump_state()
 
     def dump_state(self):

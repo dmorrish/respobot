@@ -375,11 +375,11 @@ async def fast_task_loop():
                 f"end-of-week/season update post in fast_task_loop(): {exc}"
             )
 
-    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): iRacing birthdays.")
+    logging.getLogger('respobot.bot').debug(f"fast_task_loop(): iRacing anniversaries.")
     try:
-        # iRacing Birthdays!
-        if now.hour == 16 and bot_state.data['birthday_flip_flop'] is False:
-            bot_state.data['birthday_flip_flop'] = True
+        # iRacing anniversaries!
+        if now.hour == 16 and bot_state.data['anniversary_flip_flop'] is False:
+            bot_state.data['anniversary_flip_flop'] = True
             bot_state.dump_state()
             member_dicts = await db.fetch_member_dicts()
 
@@ -391,9 +391,26 @@ async def fast_task_loop():
                         and now.month == member_dict['ir_member_since'].month
                     ):
                         channel = helpers.fetch_channel(bot)
-                        await channel.send(f"Happy iRacing birthday, {member_dict['name']}! 🥳🎉🎊")
+                        anniversary_messages = []
+                        anniversary_messages.append(
+                            f"iRacing used to be a respectable simracing service with a talented user base, "
+                            f" but that all changed {now.year - member_dict['ir_member_since'].year} years ago "
+                            f"when {member_dict['name']} joined. Happy iRacing anniversary!"
+                        )
+                        anniversary_messages.append(
+                            f"{member_dict['name']} has been on iRacing for "
+                            f"{now.year - member_dict['ir_member_since'].year} years "
+                            f"and has spent ${random.randint(3400,8000)}.{random.randint(4,99):02d} on content. "
+                            f"Happy iRacing anniversary!"
+                        )
+                        anniversary_messages.append(
+                            f"{now.year - member_dict['ir_member_since'].year} years ago to this day "
+                            f"the average skill level on iRacing dropped drastically when "
+                            f"{member_dict['name']} signed up for the service. Happy iRacing anniversary!"
+                        )
+                        await channel.send(random.choice(anniversary_messages))
         elif now.hour != 16:
-            bot_state.data['birthday_flip_flop'] = False
+            bot_state.data['anniversary_flip_flop'] = False
             bot_state.dump_state()
 
         # Check if anyone raced.
@@ -402,12 +419,12 @@ async def fast_task_loop():
     except BotDatabaseError as exc:
         logging.getLogger('respobot.database').warning(
             f"The following exception occured when preparing the "
-            f"iRacing birthdays post in in slow_task_loop(): {exc}"
+            f"iRacing anniversaries post in in slow_task_loop(): {exc}"
         )
         await helpers.send_bot_failure_dm(
             bot,
             f"The following exception occured when preparing the "
-            f"iRacing birthdays post in in slow_task_loop(): {exc}"
+            f"iRacing anniversaries post in in slow_task_loop(): {exc}"
         )
     logging.getLogger('respobot.bot').debug(f"Done running fast_task_loop().")
 
