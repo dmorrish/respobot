@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import logging
 
 # RespoBot modules
+import respobot_logging
 import constants
 import environment_variables as env
 import race_results as results
@@ -384,13 +385,14 @@ async def fast_task_loop():
             member_dicts = await db.fetch_member_dicts()
 
             if member_dicts is not None and len(member_dicts) > 0:
+                channel = helpers.fetch_channel(bot)
                 for member_dict in member_dicts:
+                    # Join date anniversary check
                     if (
                         member_dict['ir_member_since'] is not None
                         and now.day == member_dict['ir_member_since'].day
                         and now.month == member_dict['ir_member_since'].month
                     ):
-                        channel = helpers.fetch_channel(bot)
                         anniversary_messages = []
                         anniversary_messages.append(
                             f"iRacing used to be a respectable simracing service with a talented user base, "
@@ -409,6 +411,23 @@ async def fast_task_loop():
                             f"{member_dict['name']} signed up for the service. Happy iRacing anniversary!"
                         )
                         await channel.send(random.choice(anniversary_messages))
+                    # Last official race anniversary check
+                    last_race = await db.get_last_official_race_time(member_dict['iracing_custid'])
+                    if last_race is not None:
+                        if last_race.year != now.year and last_race.month == now.month and last_race.day == now.day:
+                            years_since = now.year - last_race.year
+                            one_year_x_years = f"{years_since} years" if years_since > 1 else "one year"
+                            him_her_them = "them"
+                            if member_dict['pronoun_type'] == 'male':
+                                him_her_them = "him"
+                            elif member_dict['pronoun_type'] == 'female':
+                                him_her_them = "her"
+                            await channel.send("<:Hmm:1039933625644355678>")
+                            await channel.send(
+                                f"It's been exactly {one_year_x_years} since {member_dict['name']} signed up for "
+                                f"an official race. Please join me in shaming {him_her_them}."
+                            )
+
         elif now.hour != 16:
             bot_state.data['anniversary_flip_flop'] = False
             bot_state.dump_state()
