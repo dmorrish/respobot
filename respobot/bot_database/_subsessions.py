@@ -6,6 +6,7 @@ Methods that mainly interact with the subsessions table.
 
 import logging
 from aiosqlite import Error
+from datetime import datetime
 from ._queries import *
 from ._members import _update_member_dict_objects
 from bot_database import BotDatabaseError
@@ -864,3 +865,47 @@ async def get_cars_in_class(self, subsession_id, car_class_id, simsession_number
         )
 
     return len(result)
+
+
+async def get_last_official_race_time(self, iracing_custid):
+    query = """
+        SELECT MAX(start_time)
+        FROM subsessions
+        INNER JOIN results
+        ON results.subsession_id = subsessions.subsession_id
+        WHERE
+            cust_id = ? AND
+            official_session = 1 AND
+            simsession_number = 0 AND
+            simsession_type = 6
+    """
+    parameters = (iracing_custid,)
+
+    try:
+        result = await self._execute_read_query(query, params=parameters)
+    except Error as e:
+        logging.getLogger('respobot.database').error(
+            f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_cars_in_class() for "
+            f"subsession_id {subsession_id}, car_class_id {car_class_id}, simsession_number {simsession_number}, "
+            f"simsession_type {simsession_type}."
+        )
+        raise BotDatabaseError(
+            (
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during get_cars_in_class() for "
+                f"subsession_id {subsession_id}, car_class_id {car_class_id}, simsession_number {simsession_number}, "
+                f"simsession_type {simsession_type}."
+            ),
+            ErrorCodes.general_failure.value
+        )
+
+    if result is not None and len(result) > 0:
+        try:
+            race_start_time = datetime.fromisoformat(result[0][0])
+        except ValueError:
+            logging.getLogger('respobot.database').warning(
+                f"Failed to fetch last official race time for member with cust_id {iracing_custid}. "
+                f"Date returned not in iso format."
+            )
+            race_start_time = None
+
+    return race_start_time

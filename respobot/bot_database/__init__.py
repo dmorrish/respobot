@@ -320,7 +320,8 @@ class BotDatabase:
         fetch_member_car_numbers_in_subsession,
         fetch_members_in_subsession,
         is_subsession_in_db,
-        get_cars_in_class
+        get_cars_in_class,
+        get_last_official_race_time
     )
 
     from ._laps import (
