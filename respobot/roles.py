@@ -1,8 +1,8 @@
 from discord.errors import NotFound
 import discord
+import logging
 
 import helpers
-import respobot_logging as log
 import environment_variables as env
 
 
@@ -19,11 +19,13 @@ async def promote_driver(guild: discord.Guild, discord_id: int):
                 await discord_member.add_roles(role_god, reason=role_change_reason)
                 await discord_member.remove_roles(role_pleb, reason=role_change_reason)
             else:
-                log.logger_respobot.warning(f"Role(s) not found. Can not promote role for user {discord_id}")
+                logging.getLogger('respobot.discord').warning(
+                    f"Role(s) not found. Can not promote role for user {discord_id}"
+                )
         else:
-            log.logger_respobot.warning(f"User: {discord_id} not found. Can not promote role.")
+            logging.getLogger('respobot.discord').warning(f"User: {discord_id} not found. Can not promote role.")
     except NotFound:
-        log.logger_respobot.warning(f"User: {discord_id} not found. Can not promote role.")
+        logging.getLogger('respobot.discord').warning(f"User: {discord_id} not found. Can not promote role.")
 
 
 async def demote_driver(guild: discord.Guild, discord_id: int):
@@ -40,8 +42,10 @@ async def demote_driver(guild: discord.Guild, discord_id: int):
                 await discord_member.add_roles(role_pleb, reason=role_change_reason)
                 await discord_member.remove_roles(role_god, reason=role_change_reason)
             else:
-                log.logger_respobot.warning(f"Role(s) not found. Can not promote role for user {discord_id}")
+                logging.getLogger('respobot.discord').warning(
+                    f"Role(s) not found. Can not promote role for user {discord_id}"
+                )
         else:
-            log.logger_respobot.warning(f"User: {discord_id} not found. Can not promote role.")
+            logging.getLogger('respobot.discord').warning(f"User: {discord_id} not found. Can not promote role.")
     except NotFound:
-        log.logger_respobot.warning(f"User: {discord_id} not found. Can not promote role.")
+        logging.getLogger('respobot.discord').warning(f"User: {discord_id} not found. Can not promote role.")

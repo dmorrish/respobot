@@ -85,15 +85,15 @@ async def fetch_guild_member_objects(bot: discord.Bot, guild: discord.Guild, db:
                 new_member_object = await guild.fetch_member(member_id)
                 member_objects.append(new_member_object)
             except NotFound:
-                logging.getLogger('respobot.bot').warning(
+                logging.getLogger('respobot.discord').warning(
                     f"During fetch_guild_member_objects(): Member {member_id} not found in the guild."
                 )
             except HTTPException:
-                logging.getLogger('respobot.bot').warning(
+                logging.getLogger('respobot.discord').warning(
                     f"During fetch_guild_member_objects(): HTTPException while fetching member {member_id}."
                 )
             except Exception as e:
-                logging.getLogger('respobot.bot').warning(
+                logging.getLogger('respobot.discord').warning(
                     f"During fetch_guild_member_objects(): Error {e} occured while fetching member {member_id}."
                 )
 
@@ -106,7 +106,7 @@ async def fetch_guild_member_objects(bot: discord.Bot, guild: discord.Guild, db:
                 f"was encountered: [Errno {exc.error_code}] {exc}"
             )
         )
-        logging.getLogger('respobot.bot').warning(
+        logging.getLogger('respobot.database').warning(
             f"During fetch_guild_member_objects() the following BotDatabaseError exception "
             f"was encountered: [Errno {exc.error_code}] {exc}"
         )
