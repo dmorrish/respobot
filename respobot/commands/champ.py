@@ -4,7 +4,6 @@ from discord.ext import commands
 from discord.commands import Option
 
 # import all RespoBot modules
-import respobot_logging as log
 from slash_command_helpers import SlashCommandHelpers, SeasonStringError
 from bot_database import BotDatabaseError
 import stats_helpers as stats
@@ -16,7 +15,7 @@ import constants
 import os
 import random
 from datetime import datetime, timezone
-import asyncio
+import logging
 
 
 class ChampCog(commands.Cog):
@@ -61,7 +60,7 @@ class ChampCog(commands.Cog):
                         f"the current iRacing season. I'm not even a little bit sorry."
                     )
                 )
-                log.logger_respobot.error(
+                logging.getLogger('respobot.bot').error(
                     f"Champ command failed during db.get_current_iracing_week() with input "
                     f"fields season: {season}, series: {series}, and car: {car}"
                 )
