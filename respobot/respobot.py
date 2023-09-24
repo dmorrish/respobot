@@ -441,7 +441,11 @@ async def fast_task_loop():
                 img_byte_arr = io.BytesIO()
                 new_icon.save(img_byte_arr, format='PNG')
                 img_byte_arr = img_byte_arr.getvalue()
-                await guild.edit(icon=img_byte_arr)
+                try:
+                    await guild.edit(icon=img_byte_arr)
+                    logging.getLogger('respobot.discord').info("Rotated server icon one degree.")
+                except (discord.HTTPException, discord.Forbidden, discord.InvalidArgument) as exc:
+                    logging.getLogger('respobot.discord').info(f"Error rotating the server angle. {exc}")
 
         elif now.hour != 16:
             bot_state.data['anniversary_flip_flop'] = False
