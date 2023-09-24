@@ -12,9 +12,11 @@ from irslashdata.client import Client as IracingClient
 from irslashdata.exceptions import AuthenticationError, ServerDownError
 from datetime import datetime, timezone
 import logging
+import io
 
 # RespoBot modules
 import respobot_logging
+import image_generators
 import constants
 import environment_variables as env
 import race_results as results
@@ -427,6 +429,19 @@ async def fast_task_loop():
                                 f"It's been exactly {one_year_x_years} since {member_dict['name']} signed up for "
                                 f"an official race. Please join me in shaming {him_her_them}."
                             )
+
+            # Server icon rotation (take advantage of the once-per-day setup for anniversaries).
+            # Rotate 1 degree every Thursday at 16:00 UTC.
+            if now.weekday() == 3:
+                bot_state.data['server_icon_angle'] += 1
+                bot_state.dump_state()
+                guild = helpers.fetch_guild(bot)
+                new_icon = await image_generators.generate_guild_icon(bot_state.data['server_icon_angle'])
+
+                img_byte_arr = io.BytesIO()
+                new_icon.save(img_byte_arr, format='PNG')
+                img_byte_arr = img_byte_arr.getvalue()
+                await guild.edit(icon=img_byte_arr)
 
         elif now.hour != 16:
             bot_state.data['anniversary_flip_flop'] = False

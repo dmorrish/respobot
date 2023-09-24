@@ -45,6 +45,11 @@ class BotState:
             self.data['anniversary_flip_flop'] = True
             self.dump_state()
 
+        if 'server_icon_angle' not in self.data:
+            logging.getLogger('respobot.bot').info("'server_icon_angle' missing from bot_state, setting to 0.")
+            self.data['server_icon_angle'] = 0
+            self.dump_state()
+
     def dump_state(self):
         self.write_lock = True
         with open(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.BOT_STATE_FILENAME, "w") as f_bot_state:

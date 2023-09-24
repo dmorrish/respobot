@@ -9,6 +9,12 @@ from datetime import datetime, date, timezone
 from discord.errors import NotFound
 
 
+async def generate_guild_icon(angle):
+    icon = Image.open(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.GUILD_ICON_FILENAME)
+    icon = icon.rotate(angle, resample=Image.BICUBIC)
+    return icon
+
+
 async def generate_compass_image(guild, compass_data, time_span_text):
     image_width = 600
     image_height = 600

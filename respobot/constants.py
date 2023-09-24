@@ -16,5 +16,6 @@ SLOW_LOOP_INTERVAL = 600
 IRACING_CATEGORIES = ['road', 'oval', 'dirt_road', 'dirt_oval']
 PRONOUN_TYPES = ['male', 'female', 'neutral']
 RESPO_LOGO_FILENAME = 'respo_logo.png'
+GUILD_ICON_FILENAME = 'guild_icon.png'
 BASE_AVATAR_FILENAME = 'base_avatar.png'
 IMAGE_FONT_FILENAME = 'lucon.ttf'
