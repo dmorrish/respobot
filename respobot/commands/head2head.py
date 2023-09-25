@@ -1,4 +1,4 @@
-import os
+import io
 import discord
 from datetime import datetime
 from discord.ext import commands
@@ -133,19 +133,16 @@ class Head2HeadCog(commands.Cog):
                 racer2_stats
             )
 
-            filename = f"tmp_h2h_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
-            filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
+            image_memory_file = io.BytesIO()
+            image.save(image_memory_file, format='png')
+            image_memory_file.seek(0)
 
-            image.save(filepath, format=None)
-
-            with open(filepath, "rb") as f_h2h:
-                picture = discord.File(f_h2h)
-                await ctx.edit(content='', file=picture)
-                picture.close()
-
-            if os.path.exists(filepath):
-                os.remove(filepath)
-
+            picture = discord.File(
+                image_memory_file,
+                filename=f"RespoHead2Head_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
+            )
+            await ctx.edit(content='', file=picture)
+            image_memory_file.close()
             return
         except BotDatabaseError as exc:
             await SlashCommandHelpers.process_command_failure(

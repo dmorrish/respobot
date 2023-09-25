@@ -1,11 +1,10 @@
-import os
+import io
 import random
 import discord
 from datetime import datetime
 from discord.ext import commands
 from discord.commands import Option
 import constants
-import environment_variables as env
 import helpers
 from slash_command_helpers import SlashCommandHelpers
 import image_generators as image_gen
@@ -177,19 +176,16 @@ class IrCommandsCog(commands.Cog):
                 title_text = "iRating Graph for " + sorted_member_dicts[0]['name'] + " (" + str(irating) + ")"
                 graph = image_gen.generate_ir_graph(sorted_member_dicts, title_text, False)
 
-            filename = f"tmp_ir_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
-            filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
+            graph_memory_file = io.BytesIO()
+            graph.save(graph_memory_file, format='png')
+            graph_memory_file.seek(0)
 
-            graph.save(filepath, format=None)
-
-            with open(filepath, "rb") as f_graph:
-                picture = discord.File(f_graph)
-                await ctx.edit(content='', file=picture)
-                picture.close()
-
-            if os.path.exists(filepath):
-                os.remove(filepath)
-
+            picture = discord.File(
+                graph_memory_file,
+                filename=f"RespoIRGraph_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
+            )
+            await ctx.edit(content='', file=picture)
+            graph_memory_file.close()
             return
         except BotDatabaseError as exc:
             await SlashCommandHelpers.process_command_failure(

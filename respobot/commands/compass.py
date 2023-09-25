@@ -1,4 +1,4 @@
-import os
+import io
 import discord
 import math
 from datetime import datetime
@@ -103,19 +103,16 @@ class CompassCog(commands.Cog):
 
             image = await image_gen.generate_compass_image(ctx.guild, compass_data, time_span_text)
 
-            filename = f"tmp_compass_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
-            filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
+            image_memory_file = io.BytesIO()
+            image.save(image_memory_file, format='png')
+            image_memory_file.seek(0)
 
-            image.save(filepath, format=None)
-
-            with open(filepath, "r+b") as f_compass:
-                picture = discord.File(f_compass)
-                await ctx.edit(content='', file=picture)
-                picture.close()
-
-            if os.path.exists(filepath):
-                os.remove(filepath)
-
+            picture = discord.File(
+                image_memory_file,
+                filename=f"RespoCompass_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
+            )
+            await ctx.edit(content='', file=picture)
+            image_memory_file.close()
             return
         except BotDatabaseError as exc:
             await SlashCommandHelpers.process_command_failure(

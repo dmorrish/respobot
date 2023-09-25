@@ -12,7 +12,7 @@ import image_generators as image_gen
 import constants
 
 # other imports
-import os
+import io
 import random
 from datetime import datetime, timezone
 import logging
@@ -197,18 +197,16 @@ class ChampCog(commands.Cog):
 
                 graph = image_gen.generate_champ_graph(week_data, title_text, weeks_to_count, ongoing)
 
-                filename = f"tmp_champ_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
-                filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
+                graph_memory_file = io.BytesIO()
+                graph.save(graph_memory_file, format='png')
+                graph_memory_file.seek(0)
 
-                graph.save(filepath, format=None)
-
-                with open(filepath, "rb") as f_graph:
-                    picture = discord.File(f_graph)
-                    await ctx.edit(content='', file=picture)
-                    picture.close()
-
-                if os.path.exists(filepath):
-                    os.remove(filepath)
+                picture = discord.File(
+                    graph_memory_file,
+                    filename=f"RespoChampGraph_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
+                )
+                await ctx.edit(content='', file=picture)
+                graph_memory_file.close()
 
                 return
             else:

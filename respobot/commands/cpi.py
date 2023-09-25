@@ -12,7 +12,7 @@ import stats_helpers as stats
 from bot_database import BotDatabaseError
 
 # other imports
-import os
+import io
 from datetime import datetime
 
 
@@ -88,18 +88,16 @@ class CornersPerIncidentCog(commands.Cog):
                 title_text += f"\nAll Series"
             graph = image_gen.generate_cpi_graph(member_dict, title_text, False)
 
-            filename = f"tmp_cpi_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
-            filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
+            graph_memory_file = io.BytesIO()
+            graph.save(graph_memory_file, format='png')
+            graph_memory_file.seek(0)
 
-            graph.save(filepath, format=None)
-
-            with open(filepath, "rb") as f_graph:
-                picture = discord.File(f_graph)
-                await ctx.edit(content='', file=picture)
-                picture.close()
-
-            if os.path.exists(filepath):
-                os.remove(filepath)
+            picture = discord.File(
+                graph_memory_file,
+                filename=f"RespoCPIGraph_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
+            )
+            await ctx.edit(content='', file=picture)
+            graph_memory_file.close()
 
             return
         except BotDatabaseError as exc:
