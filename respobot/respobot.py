@@ -167,10 +167,12 @@ async def slow_task_loop():
 
         # Update 'current_seasons' and 'current_car_classes' tables.
         ir_results = await ir.current_car_classes()
-        await db.update_current_car_classes(ir_results)
+        if ir_results is not None:
+            await db.update_current_car_classes(ir_results)
 
         ir_results = await ir.current_seasons()
-        await db.update_current_seasons(ir_results)
+        if ir_results is not None:
+            await db.update_current_seasons(ir_results)
 
         (current_year, current_quarter, _, _, _) = await db.get_current_iracing_week()
 
@@ -183,7 +185,8 @@ async def slow_task_loop():
             )
         ):
             ir_results = await ir.stats_series()
-            await db.update_seasons(ir_results)
+            if ir_results is not None:
+                await db.update_seasons(ir_results)
 
             await update_series.update_season_dates(db, ir, season_year=current_year, season_quarter=current_quarter)
             # Since there's a new season, we need to refresh the autocomplete cache
@@ -356,17 +359,16 @@ async def fast_task_loop():
                             False
                         )
 
-                    filename = f"tmp_champ_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
-                    filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
-                    graph.save(filepath, format=None)
+                    graph_memory_file = io.BytesIO()
+                    graph.save(graph_memory_file, format='png')
+                    graph_memory_file.seek(0)
 
-                    with open(filepath, "rb") as f_graph:
-                        picture = discord.File(f_graph)
-                        await channel.send(content=update_message, file=picture)
-                        picture.close()
-
-                    if os.path.exists(filepath):
-                        os.remove(filepath)
+                    picture = discord.File(
+                        graph_memory_file,
+                        filename=f"RespoChampGraph_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
+                    )
+                    await channel.send(content=update_message, file=picture)
+                    graph_memory_file.close()
         except BotDatabaseError as exc:
             logging.getLogger('respobot.database').warning(
                 f"The following exception occured when preparing the "
