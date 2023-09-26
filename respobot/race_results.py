@@ -1,4 +1,5 @@
 import os
+import io
 import discord
 import constants
 import cache_races
@@ -825,146 +826,145 @@ async def send_results_embed(
             track += " (" + config + ")"
 
         if multi_report is False:
-            avatar_filepath = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128)
+            avatar = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128)
         else:
-            avatar_filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.RESPO_LOGO_FILENAME
+            avatar = await image_gen.generate_avatar_image(channel.guild, -1, 128)
 
-        with open(avatar_filepath, "rb") as f_avatar:
-            picture = discord.File(f_avatar, filename="user_avatar.png")
+        avatar_memory_file = io.BytesIO()
+        avatar.save(avatar_memory_file, format='png')
+        avatar_memory_file.seek(0)
+        picture = discord.File(avatar_memory_file, filename="user_avatar.png")
 
-            title = ""
-            url = car_results.results_url
+        title = ""
+        url = car_results.results_url
 
-            if car_results.league_name is None:
-                title = "Race result for "
+        if car_results.league_name is None:
+            title = "Race result for "
+        else:
+            title = "Hosted result for "
+
+        if multi_report is False:
+            url += "&custid=" + str(car_results.driver_race_results[0].cust_id)
+            title += member_dict['name']
+        else:
+            title += "Respo Racing"
+
+        embedVar = discord.Embed(title=title, description="", color=0xff0000, url=url)
+
+        embedVar.set_thumbnail(url="attachment://user_avatar.png")
+
+        if car_results.league_name is None:
+            embedVar.add_field(name="Series", value=car_results.series_name, inline=False)
+        else:
+            embedVar.add_field(name="Session", value=car_results.session_name, inline=False)
+
+        if car_results.league_name is None and car_results.is_multiclass:
+            embedVar.add_field(name="Class", value=car_results.car_class_name, inline=True)
+
+        embedVar.add_field(name="Track", value=track, inline=False)
+
+        if car_results.class_strength_of_field is not None and car_results.is_multiclass:
+            embedVar.add_field(name="Class SOF", value=str(car_results.class_strength_of_field), inline=False)
+        else:
+            embedVar.add_field(name="SOF", value=str(car_results.event_strength_of_field), inline=False)
+
+        if car_results.max_team_drivers > 1:
+            if car_results.is_multiclass:
+                embedVar.add_field(name="Teams in Class", value=str(car_results.cars_in_class))
             else:
-                title = "Hosted result for "
-
-            if multi_report is False:
-                url += "&custid=" + str(car_results.driver_race_results[0].cust_id)
-                title += member_dict['name']
+                embedVar.add_field(name="Teams", value=str(car_results.cars_in_class))
+        else:
+            if car_results.league_name is None and car_results.max_team_drivers == 1:
+                embedVar.add_field(name="Car #", value=str(car_results.car_number_in_class + 1), inline=True)
+            if car_results.is_multiclass:
+                embedVar.add_field(name="Drivers in Class", value=str(car_results.cars_in_class), inline=True)
             else:
-                title += "Respo Racing"
+                embedVar.add_field(name="Drivers", value=str(car_results.cars_in_class), inline=True)
 
-            embedVar = discord.Embed(title=title, description="", color=0xff0000, url=url)
+        embedVar.add_field(name="Started", value=str(car_results.race_starting_position_in_class + 1), inline=True)
+        embedVar.add_field(name="Finished", value=str(car_results.race_finish_position_in_class + 1), inline=True)
 
-            embedVar.set_thumbnail(url="attachment://user_avatar.png")
+        if car_results.league_name is None:
+            embedVar.add_field(
+                name="Champ. Pts",
+                value=str(car_results.driver_race_results[0].champ_points),
+                inline=True
+            )
 
-            if car_results.league_name is None:
-                embedVar.add_field(name="Series", value=car_results.series_name, inline=False)
-            else:
-                embedVar.add_field(name="Session", value=car_results.session_name, inline=False)
+            for driver_race_result in car_results.driver_race_results:
+                irating_change = driver_race_result.irating_new - driver_race_result.irating_old
 
-            if car_results.league_name is None and car_results.is_multiclass:
-                embedVar.add_field(name="Class", value=car_results.car_class_name, inline=True)
-
-            embedVar.add_field(name="Track", value=track, inline=False)
-
-            if car_results.class_strength_of_field is not None and car_results.is_multiclass:
-                embedVar.add_field(name="Class SOF", value=str(car_results.class_strength_of_field), inline=False)
-            else:
-                embedVar.add_field(name="SOF", value=str(car_results.event_strength_of_field), inline=False)
-
-            if car_results.max_team_drivers > 1:
-                if car_results.is_multiclass:
-                    embedVar.add_field(name="Teams in Class", value=str(car_results.cars_in_class))
+                if driver_race_result.license_level_new > irConstants.LicenseLevel.A4.value:
+                    safety_rating = "P"
+                elif driver_race_result.license_level_new > irConstants.LicenseLevel.B4.value:
+                    safety_rating = "A"
+                elif driver_race_result.license_level_new > irConstants.LicenseLevel.C4.value:
+                    safety_rating = "B"
+                elif driver_race_result.license_level_new > irConstants.LicenseLevel.D4.value:
+                    safety_rating = "C"
+                elif driver_race_result.license_level_new > irConstants.LicenseLevel.R4.value:
+                    safety_rating = "D"
                 else:
-                    embedVar.add_field(name="Teams", value=str(car_results.cars_in_class))
-            else:
-                if car_results.league_name is None and car_results.max_team_drivers == 1:
-                    embedVar.add_field(name="Car #", value=str(car_results.car_number_in_class + 1), inline=True)
-                if car_results.is_multiclass:
-                    embedVar.add_field(name="Drivers in Class", value=str(car_results.cars_in_class), inline=True)
-                else:
-                    embedVar.add_field(name="Drivers", value=str(car_results.cars_in_class), inline=True)
+                    safety_rating = "R"
+                safety_rating += f"{(driver_race_result.license_sub_level_new / 100):.2f}"
 
-            embedVar.add_field(name="Started", value=str(car_results.race_starting_position_in_class + 1), inline=True)
-            embedVar.add_field(name="Finished", value=str(car_results.race_finish_position_in_class + 1), inline=True)
-
-            if car_results.league_name is None:
-                embedVar.add_field(
-                    name="Champ. Pts",
-                    value=str(car_results.driver_race_results[0].champ_points),
-                    inline=True
+                safety_rating_change_val = (
+                    driver_race_result.license_sub_level_new
+                    - driver_race_result.license_sub_level_old
                 )
-
-                for driver_race_result in car_results.driver_race_results:
-                    irating_change = driver_race_result.irating_new - driver_race_result.irating_old
-
-                    if driver_race_result.license_level_new > irConstants.LicenseLevel.A4.value:
-                        safety_rating = "P"
-                    elif driver_race_result.license_level_new > irConstants.LicenseLevel.B4.value:
-                        safety_rating = "A"
-                    elif driver_race_result.license_level_new > irConstants.LicenseLevel.C4.value:
-                        safety_rating = "B"
-                    elif driver_race_result.license_level_new > irConstants.LicenseLevel.D4.value:
-                        safety_rating = "C"
-                    elif driver_race_result.license_level_new > irConstants.LicenseLevel.R4.value:
-                        safety_rating = "D"
-                    else:
-                        safety_rating = "R"
-                    safety_rating += f"{(driver_race_result.license_sub_level_new / 100):.2f}"
-
-                    safety_rating_change_val = (
-                        driver_race_result.license_sub_level_new
-                        - driver_race_result.license_sub_level_old
+                if multi_report is False:
+                    safety_rating_change = (
+                        f"({((safety_rating_change_val) / 100):+.2f}, "
+                        f"{driver_race_result.incidents}x)"
                     )
-                    if multi_report is False:
-                        safety_rating_change = (
-                            f"({((safety_rating_change_val) / 100):+.2f}, "
-                            f"{driver_race_result.incidents}x)"
-                        )
-                    else:
-                        safety_rating_change = (
-                            f"{((safety_rating_change_val) / 100):+.2f}"
-                        )
+                else:
+                    safety_rating_change = (
+                        f"{((safety_rating_change_val) / 100):+.2f}"
+                    )
 
-                    if multi_report is False:
-                        embedVar.add_field(
-                            name=f"iRating",
-                            value=f"{driver_race_result.irating_new} ({irating_change:+d})",
-                            inline=False
-                        )
-                        embedVar.add_field(
-                            name=f"Safety Rating",
-                            value=f"{safety_rating} {safety_rating_change}",
-                            inline=False
-                        )
+                if multi_report is False:
+                    embedVar.add_field(
+                        name=f"iRating",
+                        value=f"{driver_race_result.irating_new} ({irating_change:+d})",
+                        inline=False
+                    )
+                    embedVar.add_field(
+                        name=f"Safety Rating",
+                        value=f"{safety_rating} {safety_rating_change}",
+                        inline=False
+                    )
+                else:
+                    if (driver_race_result.irating_new < 0) or (driver_race_result.laps_complete < 1):
+                        embedVar.add_field(name=driver_race_result.display_name, value=f"0 Laps", inline=False)
                     else:
-                        if (driver_race_result.irating_new < 0) or (driver_race_result.laps_complete < 1):
-                            embedVar.add_field(name=driver_race_result.display_name, value=f"0 Laps", inline=False)
-                        else:
-                            info = (
-                                f"{irating_change:+d} iR ({driver_race_result.irating_old}), "
-                                f"{safety_rating_change} SR ({driver_race_result.incidents}x), "
-                                f"{driver_race_result.laps_complete} Laps"
-                            )
-                            embedVar.add_field(
-                                name=driver_race_result.display_name,
-                                value=info,
-                                inline=False
-                            )
-            else:
-                for driver_race_result in car_results.driver_race_results:
-                    if multi_report is False:
-                        embedVar.add_field(
-                            name=f"Incidents",
-                            value=f"{driver_race_result.incidents}x",
-                            inline=False
+                        info = (
+                            f"{irating_change:+d} iR ({driver_race_result.irating_old}), "
+                            f"{safety_rating_change} SR ({driver_race_result.incidents}x), "
+                            f"{driver_race_result.laps_complete} Laps"
                         )
-                    else:
                         embedVar.add_field(
                             name=driver_race_result.display_name,
-                            value=f"{driver_race_result.incidents}x",
+                            value=info,
                             inline=False
                         )
+        else:
+            for driver_race_result in car_results.driver_race_results:
+                if multi_report is False:
+                    embedVar.add_field(
+                        name=f"Incidents",
+                        value=f"{driver_race_result.incidents}x",
+                        inline=False
+                    )
+                else:
+                    embedVar.add_field(
+                        name=driver_race_result.display_name,
+                        value=f"{driver_race_result.incidents}x",
+                        inline=False
+                    )
 
-            await channel.send(content="", file=picture, embed=embedVar)
+        await channel.send(content="", file=picture, embed=embedVar)
 
-            picture.close()
-
-        if multi_report is False and os.path.exists(avatar_filepath):
-            os.remove(avatar_filepath)
+        picture.close()
 
     except Exception as exc:
         logging.getLogger('respobot.bot').warning(
@@ -995,106 +995,105 @@ async def send_results_embed_compact(
             track += " (" + config + ")"
 
         if multi_report is False:
-            avatar_filepath = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128)
+            avatar = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128)
         else:
-            avatar_filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.RESPO_LOGO_FILENAME
+            avatar = await image_gen.generate_avatar_image(channel.guild, -1, 128)
 
-        with open(avatar_filepath, "rb") as f_avatar:
-            picture = discord.File(f_avatar, filename="user_avatar.png")
+        avatar_memory_file = io.BytesIO()
+        avatar.save(avatar_memory_file, format='png')
+        avatar_memory_file.seek(0)
+        picture = discord.File(avatar_memory_file, filename="user_avatar.png")
 
-            title = ""
-            url = car_results.results_url
+        title = ""
+        url = car_results.results_url
 
+        # if 'hosted_name' not in race_summary_dict:
+        if car_results.league_name is None:
+            title = "Race result for "
+        else:
+            title = "Hosted result for "
+
+        if multi_report is False:
+            url += "&custid=" + str(car_results.driver_race_results[0].cust_id)
+            title += member_dict['name']
+        else:
+            title += "Respo Racing"
+
+        embedVar = discord.Embed(title=title, description="", color=0xff0000, url=url)
+
+        embedVar.set_thumbnail(url="attachment://user_avatar.png")
+
+        event_description = ""
+        field_name = ""
+
+        # if 'hosted_name' not in race_summary_dict:
+        if car_results.league_name is None:
+            field_name = car_results.series_name
+        else:
+            field_name = car_results.session_name
+
+        event_description = "at " + track
+
+        embedVar.add_field(name=field_name, value=event_description, inline=False)
+
+        pos_change = int(car_results.race_starting_position_in_class - car_results.race_finish_position_in_class)
+        pos_change_str = " (↕0)"
+
+        if pos_change < 0:
+            pos_change_str = " (↓" + str(abs(pos_change)) + ")"
+        elif pos_change > 0:
+            pos_change_str = " (↑" + str(pos_change) + ")"
+
+        result_field_name = (
+            "Result: P" + str(car_results.race_finish_position_in_class + 1)
+            + " of " + str(car_results.cars_in_class)
+            + pos_change_str
+        )
+
+        if multi_report is True:
+            result_string = ""
             # if 'hosted_name' not in race_summary_dict:
             if car_results.league_name is None:
-                title = "Race result for "
+                result_string += str(car_results.driver_race_results[0].champ_points) + " pts, "
+            if car_results.class_strength_of_field is not None and car_results.is_multiclass:
+                result_string += str(car_results.class_strength_of_field) + " Class SoF"
             else:
-                title = "Hosted result for "
+                result_string += str(car_results.event_strength_of_field) + " SoF"
 
-            if multi_report is False:
-                url += "&custid=" + str(car_results.driver_race_results[0].cust_id)
-                title += member_dict['name']
-            else:
-                title += "Respo Racing"
+            embedVar.add_field(name=result_field_name, value=result_string, inline=False)
 
-            embedVar = discord.Embed(title=title, description="", color=0xff0000, url=url)
-
-            embedVar.set_thumbnail(url="attachment://user_avatar.png")
-
-            event_description = ""
-            field_name = ""
-
-            # if 'hosted_name' not in race_summary_dict:
-            if car_results.league_name is None:
-                field_name = car_results.series_name
-            else:
-                field_name = car_results.session_name
-
-            event_description = "at " + track
-
-            embedVar.add_field(name=field_name, value=event_description, inline=False)
-
-            pos_change = int(car_results.race_starting_position_in_class - car_results.race_finish_position_in_class)
-            pos_change_str = " (↕0)"
-
-            if pos_change < 0:
-                pos_change_str = " (↓" + str(abs(pos_change)) + ")"
-            elif pos_change > 0:
-                pos_change_str = " (↑" + str(pos_change) + ")"
-
-            result_field_name = (
-                "Result: P" + str(car_results.race_finish_position_in_class + 1)
-                + " of " + str(car_results.cars_in_class)
-                + pos_change_str
-            )
-
-            if multi_report is True:
+            for driver_race_result in car_results.driver_race_results:
                 result_string = ""
                 # if 'hosted_name' not in race_summary_dict:
                 if car_results.league_name is None:
-                    result_string += str(car_results.driver_race_results[0].champ_points) + " pts, "
-                if car_results.class_strength_of_field is not None and car_results.is_multiclass:
-                    result_string += str(car_results.class_strength_of_field) + " Class SoF"
-                else:
-                    result_string += str(car_results.event_strength_of_field) + " SoF"
-
-                embedVar.add_field(name=result_field_name, value=result_string, inline=False)
-
-                for driver_race_result in car_results.driver_race_results:
-                    result_string = ""
-                    # if 'hosted_name' not in race_summary_dict:
-                    if car_results.league_name is None:
-                        irating_change = driver_race_result.irating_new - driver_race_result.irating_old
-                        result_string += f"{irating_change:+d}" + " iR (" + str(driver_race_result.irating_new) + "), "
-                    result_string += (
-                        str(driver_race_result.incidents) + "x, "
-                        + str(driver_race_result.laps_complete) + " laps"
-                    )
-                    embedVar.add_field(name=driver_race_result.display_name, value=result_string, inline=False)
+                    irating_change = driver_race_result.irating_new - driver_race_result.irating_old
+                    result_string += f"{irating_change:+d}" + " iR (" + str(driver_race_result.irating_new) + "), "
+                result_string += (
+                    str(driver_race_result.incidents) + "x, "
+                    + str(driver_race_result.laps_complete) + " laps"
+                )
+                embedVar.add_field(name=driver_race_result.display_name, value=result_string, inline=False)
+        else:
+            result_string = ""
+            if car_results.league_name is None:
+                result_string += str(car_results.driver_race_results[0].champ_points) + " pts"
+                irating_change = (
+                    car_results.driver_race_results[0].irating_new
+                    - car_results.driver_race_results[0].irating_old
+                )
+                result_string += (
+                    ", " + f"{irating_change:+d}"
+                    + " iR (" + str(car_results.driver_race_results[0].irating_new) + "), "
+                )
+            result_string += str(car_results.driver_race_results[0].incidents) + "x, "
+            if car_results.class_strength_of_field is not None and car_results.is_multiclass:
+                result_string += str(car_results.class_strength_of_field) + " Class SoF"
             else:
-                result_string = ""
-                if car_results.league_name is None:
-                    result_string += str(car_results.driver_race_results[0].champ_points) + " pts"
-                    irating_change = (
-                        car_results.driver_race_results[0].irating_new
-                        - car_results.driver_race_results[0].irating_old
-                    )
-                    result_string += (
-                        ", " + f"{irating_change:+d}"
-                        + " iR (" + str(car_results.driver_race_results[0].irating_new) + "), "
-                    )
-                result_string += str(car_results.driver_race_results[0].incidents) + "x, "
-                if car_results.class_strength_of_field is not None and car_results.is_multiclass:
-                    result_string += str(car_results.class_strength_of_field) + " Class SoF"
-                else:
-                    result_string += str(car_results.event_strength_of_field) + " SoF"
-                embedVar.add_field(name=result_field_name, value=result_string, inline=False)
-            await channel.send(content="", file=picture, embed=embedVar)
+                result_string += str(car_results.event_strength_of_field) + " SoF"
+            embedVar.add_field(name=result_field_name, value=result_string, inline=False)
+        await channel.send(content="", file=picture, embed=embedVar)
 
-            picture.close()
-
-        if multi_report is False and os.path.exists(avatar_filepath):
-            os.remove(avatar_filepath)
+        picture.close()
 
     except Exception as exc:
         logging.getLogger('respobot.bot').warning(
