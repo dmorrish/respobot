@@ -1,4 +1,4 @@
-import os
+import io
 import math
 import random
 import environment_variables as env
@@ -108,15 +108,11 @@ async def generate_compass_image(guild, compass_data, time_span_text):
                 - (compass_data[member]['point'][1] - pts_scale_min) * avg_champ_points_scale
             )
         )
-        filepath = await generate_avatar_image(guild, compass_data[member]['discordID'], avatar_size)
-        avatar = Image.open(filepath)
+        avatar = await generate_avatar_image(guild, compass_data[member]['discordID'], avatar_size)
         im = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 0))
         im.paste(avatar, compass_data[member]['point'])
         bg = Image.alpha_composite(bg, im)
         avatar.close()
-
-        if os.path.exists(filepath):
-            os.remove(filepath)
 
     im = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 0))
     draw = ImageDraw.Draw(im)
@@ -189,39 +185,41 @@ async def generate_compass_image(guild, compass_data, time_span_text):
 
 async def generate_avatar_image(guild, discord_id, size):
 
-    filename = f"tmp_avatar_{str(datetime.now().strftime('%Y%m%d%H%M%S%f'))}.png"
-    filepath = env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + filename
-    try:
-        member_obj = await guild.fetch_member(discord_id)
-        if member_obj and member_obj.display_avatar is not None:
-            await member_obj.display_avatar.save(filepath)
-            avatar = Image.open(filepath)
-            base = Image.new("RGBA", avatar.size, (0, 0, 0, 0))
-            mask = Image.new("L", avatar.size, 0)
-            draw_mask = ImageDraw.Draw(mask)
-            min_dim = avatar.width
-            if avatar.height < min_dim:
-                min_dim = avatar.height
-            min_dim -= 1
-            draw_mask.ellipse(
-                [
-                    (avatar.width / 2 - min_dim / 2, avatar.height / 2 - min_dim / 2),
-                    (avatar.width / 2 + min_dim / 2, avatar.height / 2 + min_dim / 2)
-                ],
-                fill=255
+    avatar_memory_file = io.BytesIO()
+    if guild is not None and discord_id is not None and discord_id > 0:
+        try:
+            member_obj = await guild.fetch_member(discord_id)
+            if member_obj and member_obj.display_avatar is not None:
+                await member_obj.display_avatar.save(avatar_memory_file)
+                avatar_memory_file.seek(0)
+                avatar = Image.open(avatar_memory_file)
+                base = Image.new("RGBA", avatar.size, (0, 0, 0, 0))
+                mask = Image.new("L", avatar.size, 0)
+                draw_mask = ImageDraw.Draw(mask)
+                min_dim = avatar.width
+                if avatar.height < min_dim:
+                    min_dim = avatar.height
+                min_dim -= 1
+                draw_mask.ellipse(
+                    [
+                        (avatar.width / 2 - min_dim / 2, avatar.height / 2 - min_dim / 2),
+                        (avatar.width / 2 + min_dim / 2, avatar.height / 2 + min_dim / 2)
+                    ],
+                    fill=255
+                )
+                avatar = Image.composite(avatar, base, mask)
+                avatar = avatar.resize((int(avatar.width / min_dim * size), int(avatar.height / min_dim * size)))
+                return avatar
+        except NotFound:
+            logging.getLogger('respobot.discord').warning(
+                f"generate_avatar_image() failed due to: Could not find member: {discord_id} in "
+                f"guild {guild.id}. Using base avatar instead."
             )
-            avatar = Image.composite(avatar, base, mask)
-            avatar = avatar.resize((int(avatar.width / min_dim * size), int(avatar.height / min_dim * size)))
-            avatar.save(filepath, format=None)
-            avatar.close()
-            return filepath
-    except NotFound:
-        logging.getLogger('respobot.discord').warning(
-            f"generate_avatar_image() failed due to: Could not find member: {discord_id} in "
-            f"guild {guild.id}. Using base avatar instead."
-        )
 
-    avatar = Image.open(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.BASE_AVATAR_FILENAME)
+    if discord_id > 0:
+        avatar = Image.open(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.BASE_AVATAR_FILENAME)
+    else:
+        avatar = Image.open(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.RESPO_LOGO_FILENAME)
     base = Image.new("RGBA", avatar.size, (0, 0, 0, 0))
     mask = Image.new("L", avatar.size, 0)
     draw_mask = ImageDraw.Draw(mask)
@@ -238,9 +236,8 @@ async def generate_avatar_image(guild, discord_id, size):
     )
     avatar = Image.composite(avatar, base, mask)
     avatar = avatar.resize((int(avatar.width / min_dim * size), int(avatar.height / min_dim * size)))
-    avatar.save(filepath, format=None)
-    avatar.close()
-    return filepath
+    avatar_memory_file.close()
+    return avatar
 
 
 async def generate_head2head_image(
@@ -273,8 +270,7 @@ async def generate_head2head_image(
     margin_h_right = 0.15 * image_width
     margin_h_left = 0.15 * image_width
 
-    filepath = await generate_avatar_image(guild, racer1_info_dict['discord_id'], avatar_size)
-    racer1_avatar = Image.open(filepath)
+    racer1_avatar = await generate_avatar_image(guild, racer1_info_dict['discord_id'], avatar_size)
     if racer1_avatar is not None:
         x = int(image_width / 4 - racer1_avatar.width / 2)
         y = int(margin_v_top)
@@ -283,11 +279,8 @@ async def generate_head2head_image(
     y += avatar_size + font_size
     draw.text((x, y), racer1_info_dict['name'], font=font, fill=(255, 255, 255, 255), anchor="mm")
     racer1_avatar.close()
-    if os.path.exists(filepath):
-        os.remove(filepath)
 
-    filepath = await generate_avatar_image(guild, racer2_info_dict['discord_id'], avatar_size)
-    racer2_avatar = Image.open(filepath)
+    racer2_avatar = await generate_avatar_image(guild, racer2_info_dict['discord_id'], avatar_size)
     if racer2_avatar is not None:
         x = int(image_width * 3 / 4 - racer1_avatar.width / 2)
         y = int(margin_v_top)
@@ -295,8 +288,6 @@ async def generate_head2head_image(
     x = int(image_width * 3 / 4)
     y += avatar_size + font_size
     draw.text((x, y), racer2_info_dict['name'], font=font, fill=(255, 255, 255, 255), anchor="mm")
-    if os.path.exists(filepath):
-        os.remove(filepath)
 
     x = int(image_width / 2)
     y = int(margin_v_top + avatar_size / 2)
