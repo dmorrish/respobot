@@ -165,7 +165,9 @@ async def slow_task_loop():
     try:
         (old_current_year, old_current_quarter, _, _, _) = await db.get_current_iracing_week()
 
-        logging.getLogger('respobot.bot').debug(f"slow_task_loop(): Updating 'current_seasons' and 'current_car_classes' tables.")
+        logging.getLogger('respobot.bot').debug(
+            f"slow_task_loop(): Updating 'current_seasons' and 'current_car_classes' tables."
+        )
         # Update 'current_seasons' and 'current_car_classes' tables.
         ir_results = await ir.current_car_classes()
         if ir_results is not None:
@@ -182,8 +184,9 @@ async def slow_task_loop():
             current_max_weeks,
             current_active) = await db.get_current_iracing_week()
         logging.getLogger('respobot.bot').debug(
-            f"get_current_iracing_week() now returns: year = {current_year}, quarter = {current_quarter}, "
-            f"race_week = {current_race_week}, max weeks = {current_max_weeks}, active = {current_active}"
+            f"slow_task_loop(): get_current_iracing_week() now returns year = {current_year}, "
+            f"quarter = {current_quarter}, race_week = {current_race_week}, max weeks = {current_max_weeks}, "
+            f"active = {current_active}"
         )
 
         # Check if there is a new season. If yes, update 'seasons' and 'season_dates' tables.
