@@ -1019,7 +1019,7 @@ async def get_current_iracing_week(self):
     Returns:
         A tuple containing (season_year, season_quarter, race_week, max_weeks, active).
         All values are ints where active == 1 if the season is currently active at this
-        moment. 'current_seasons' is updated every constants.FAST_LOOP_INTERVAL seconds.
+        moment. 'current_seasons' is updated every constants.SLOW_LOOP_INTERVAL seconds.
 
     Raises:
         BotDatabaseError: Raised for any error.
