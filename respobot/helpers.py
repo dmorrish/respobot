@@ -4,6 +4,9 @@ import environment_variables as env
 import logging
 import roles
 import discord
+import asyncio
+import openai
+import functools
 from discord.errors import NotFound, HTTPException
 from bot_database import BotDatabase, BotDatabaseError
 from irslashdata import constants as irConstants
@@ -222,3 +225,65 @@ def format_grammar_for_item_list(items: list):
             count += 1
         item_list += f"and {items[count]}"
         return item_list
+
+
+async def gpt_rewrite(message: str, tone: str = "belligerent"):
+    logging.getLogger('respobot.bot').debug(
+        f"Sending the following message to GPT to be rewritten: {message}"
+    )
+    loop = asyncio.get_event_loop()
+    openai.api_key = env.OPEN_AI_TOKEN
+    model = "gpt-4"
+    tone_prompt = "Be extra belligerent."
+    if tone == "impressed":
+        tone_prompt = "You are impressed with this accomplishment."
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a bitter and long-divorced 55 year old man who is an avid motor racing fan. "
+                "You never use exclamation points. The only emojis you use are the following two: "
+                "<:KEKW:821408061960486992> which is to indicate standard laughter and "
+                "<:KEKLEO:875757285329240114> which is to indicate cheeky laughter. "
+                "You have a good sense of humor and like to give people a good natured hard time. "
+                "However, you are quick to acknowledge other peoples' accomplishments. When you know "
+                "someone's preferred pronouns you use them instead of neutral ones."
+            )
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Can you rewrite the message delimited by XML tags in your persona? "
+                f"Keep your response to a maximum of two sentences. {tone_prompt}"
+                f"<message>{message}</message>"
+            )
+        },
+    ]
+
+    try:
+        response = await loop.run_in_executor(
+            None,
+            functools.partial(
+                openai.ChatCompletion.create,
+                model=model,
+                messages=messages,
+                temperature=constants.OPEN_AI_TEMPERATURE
+            )
+        )
+    except openai.error.AuthenticationError:
+        logging.getLogger('respobot.bot').warning(
+            f"Authentication error with OpenAI server."
+        )
+        return None
+    except Exception as exc:
+        logging.getLogger('respobot.bot').warning(
+            f"Exception while communicating with OpenAI: {exc}"
+        )
+
+    rewritten_message = response['choices'][0]['message']['content']
+    logging.getLogger('respobot.bot').debug(
+        f"Response from GPT: {rewritten_message} Prompt tokens used: {response['usage']['prompt_tokens']} "
+        f" Completion tokens used: {response['usage']['completion_tokens']}."
+    )
+    return rewritten_message

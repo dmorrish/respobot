@@ -19,3 +19,4 @@ RESPO_LOGO_FILENAME = 'respo_logo.png'
 GUILD_ICON_FILENAME = 'guild_icon.png'
 BASE_AVATAR_FILENAME = 'base_avatar.png'
 IMAGE_FONT_FILENAME = 'lucon.ttf'
+OPEN_AI_TEMPERATURE = 0.8

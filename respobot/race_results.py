@@ -547,68 +547,115 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         post_checkered_tow_laps = [lap for lap in car_results.tow_laps if lap > car_results.checkered_flag_lap_num]
 
     if car_results.disqualified:
-        # script_line_dict = await db.get_script_line(1)
-        messages.append(
-            f"No surprise here. {He_She_They} {was_were} disqualified from the race. <:KEKW:821408061960486992>"
-        )
-        messages.append(
-            f"Hey, everyone! {He_She_They} {was_were} disqualified from the race. <:KEKW:821408061960486992>"
-        )
-        messages.append(f"There were no hot eats or cool treats at this DQ.")
-        messages.append(f"Please tell us how the DQ was _totally_ not your fault. We're dying to hear it.")
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} {was_were} disqualified from the race."
+                )
+            )
+        else:
+            messages.append(
+                f"No surprise here. {He_She_They} {was_were} disqualified from the race. <:KEKW:821408061960486992>"
+            )
+            messages.append(
+                f"Hey, everyone! {He_She_They} {was_were} disqualified from the race. <:KEKW:821408061960486992>"
+            )
+            messages.append(f"There were no hot eats or cool treats at this DQ.")
+            messages.append(f"Please tell us how the DQ was _totally_ not your fault. We're dying to hear it.")
     elif car_results.did_not_finish:
-        messages.append(f"Positively delightful! {He_She_They} DNFed.")
-        messages.append(
-            f"Did not finish. I'm not sure if that's {his_her_their} race result or a description of "
-            f"{his_her_their} last sexual partner."
-        )
-        messages.append(f"Positively delightful! {He_She_They} DNFed.")
-        messages.append(f"{He_She_They} disconnected and the other drivers let out a collective sigh of relief.")
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} did not finish the race."
+                )
+            )
+        else:
+            messages.append(f"Positively delightful! {He_She_They} DNFed.")
+            messages.append(
+                f"Did not finish. I'm not sure if that's {his_her_their} race result or a description of "
+                f"{his_her_their} last sexual partner."
+            )
+            messages.append(f"Positively delightful! {He_She_They} DNFed.")
+            messages.append(f"{He_She_They} disconnected and the other drivers let out a collective sigh of relief.")
 
     elif car_results.black_flag_laps is not None and len(car_results.black_flag_laps) > 0:
         lap_laps = "laps" if len(car_results.black_flag_laps) > 1 else "lap"
         black_flag_laps = helpers.format_grammar_for_item_list(car_results.black_flag_laps)
-        messages.append(
-            f"{He_She_They} {was_were} black flagged on {lap_laps} {black_flag_laps}. <:KEKW:821408061960486992>"
-        )
-        messages.append(
-            f"{He_She_They} got black flagged on {lap_laps} {black_flag_laps}. "
-            f"It was all the netcode's fault, I'm sure."
-        )
-        messages.append(
-            f"I'm going go out on a limb and assume that {his_her_their} favourite punk band is Black Flag."
-        )
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} {was_were} black flagged on {lap_laps} {black_flag_laps}."
+                )
+            )
+        else:
+            messages.append(
+                f"{He_She_They} {was_were} black flagged on {lap_laps} {black_flag_laps}. <:KEKW:821408061960486992>"
+            )
+            messages.append(
+                f"{He_She_They} got black flagged on {lap_laps} {black_flag_laps}. "
+                f"It was all the netcode's fault, I'm sure."
+            )
+            messages.append(
+                f"I'm going go out on a limb and assume that {his_her_their} favourite punk band is Black Flag."
+            )
     elif car_results.tow_laps is not None and car_results.green_flag_lap_num in car_results.tow_laps:
-        messages.append(
-            f"I'm no pro or anything, but I'm pretty sure having to tow on the green flag lap isn't a good strategy."
-        )
-        messages.append(
-            f"Race recap: Green flag, green flag! ... loud crunching sounds ... the tow truck is on the way."
-        )
-        messages.append(
-            f"If {he_she_they} {seem_seems} a little cranky, it's because {he_she_they} had to tow "
-            f"on the green flag lap."
-        )
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} had to tow back to the pits on the green flag lap."
+                )
+            )
+        else:
+            messages.append(
+                f"I'm no pro or anything, but I'm pretty sure having to tow on the green flag lap isn't a good "
+                f"strategy."
+            )
+            messages.append(
+                f"Race recap: Green flag, green flag! ... loud crunching sounds ... the tow truck is on the way."
+            )
+            messages.append(
+                f"If {he_she_they} {seem_seems} a little cranky, it's because {he_she_they} had to tow "
+                f"on the green flag lap."
+            )
     elif car_results.tow_laps is not None and car_results.checkered_flag_lap_num in car_results.tow_laps:
-        messages.append(f"You tried so hard and got so far, but in the end you had to tow on the checkered flag lap.")
-        messages.append(f"The rules go out the window on white flag. Unfortunately, so did your body.")
-        messages.append(f"Well, calling a tow truck is _one_ way to finish your last lap.")
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} had to tow back to the pits on the final lap of the race."
+                )
+            )
+        else:
+            messages.append(
+                f"You tried so hard and got so far, but in the end you had to tow on the checkered flag lap."
+            )
+            messages.append(f"The rules go out the window on white flag. Unfortunately, so did your body.")
+            messages.append(f"Well, calling a tow truck is _one_ way to finish your last lap.")
     elif (
         car_results.tow_laps is not None
         and len(car_results.tow_laps) - len(pre_green_tow_laps) - len(post_checkered_tow_laps) > 0
     ):
-
-        messages.append(f"You should look into getting a AAA membership with all the towing you do.")
-        messages.append(
-            f"{He_She_They} had to tow yet again. {He_She_They} have had to tow out on\nException OverflowError: "
-            f"result of num_races_towed too large."
-        )
-        messages.append(
-            f"It's too bad iRacing doesn't let you drive the tow truck. "
-            f"Then at least you'd get a little more track time."
-        )
-        if len(car_results.tow_laps) == 3:
-            messages.append(f"With your pace and race performance, your new nickname should be the three tow sloth.")
+        lap_laps = "laps" if len(car_results.tow_laps) > 1 else "lap"
+        tow_laps = helpers.format_grammar_for_item_list(car_results.tow_laps)
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} had to tow back to the pits on {lap_laps} {tow_laps}."
+                )
+            )
+        else:
+            messages.append(f"You should look into getting a AAA membership with all the towing you do.")
+            messages.append(
+                f"{He_She_They} had to tow yet again. {He_She_They} have had to tow out on\nException OverflowError: "
+                f"result of num_races_towed() too large."
+            )
+            messages.append(
+                f"It's too bad iRacing doesn't let you drive the tow truck. "
+                f"Then at least you'd get a little more track time."
+            )
+            if len(car_results.tow_laps) == 3:
+                messages.append(
+                    f"With your pace and race performance, your new nickname should be the three tow sloth."
+                )
     elif (
         car_results.track_category_id is not None and car_results.car_contact_laps is not None
         and (
@@ -621,33 +668,55 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         )
     ):
         num_car_contact_laps = len(car_results.car_contact_laps)
-        messages.append(f"4x car contact on {num_car_contact_laps} separate laps? Settle down a little.")
-        messages.append(
-            f"I think everyone should be made aware that {he_she_they} made 4x car contact "
-            f"on {num_car_contact_laps} completely separate laps."
-        )
-        messages.append(f"The saying is trading paint, not body panels.")
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} made contact with other cars on {num_car_contact_laps} separate laps."
+                )
+            )
+        else:
+            messages.append(f"4x car contact on {num_car_contact_laps} separate laps? Settle down a little.")
+            messages.append(
+                f"I think everyone should be made aware that {he_she_they} made 4x car contact "
+                f"on {num_car_contact_laps} completely separate laps."
+            )
+            messages.append(f"The saying is trading paint, not body panels.")
     elif len(self_spin_laps) > 1:
         self_spin_laps = helpers.format_grammar_for_item_list(self_spin_laps)
         lap_laps = 'laps' if len(self_spin_laps) > 1 else 'lap'
-        messages.append(
-            f"How amusing. {He_She_They} lost control all by {himself_herself_themself} on {lap_laps} "
-            f"{self_spin_laps}."
-        )
-        messages.append(
-            f"Well this is a little embarrassing. {He_She_They} lost control all by {himself_herself_themself} "
-            f"on {lap_laps} {self_spin_laps}."
-        )
-        messages.append(
-            f"Who needs practice?. It's perfectly normal to self spin on {len(self_spin_laps)} separate laps."
-        )
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} lost control all by {himself_herself_themself} on {lap_laps} {self_spin_laps}."
+                )
+            )
+        else:
+            messages.append(
+                f"How amusing. {He_She_They} lost control all by {himself_herself_themself} on {lap_laps} "
+                f"{self_spin_laps}."
+            )
+            messages.append(
+                f"Well this is a little embarrassing. {He_She_They} lost control all by {himself_herself_themself} "
+                f"on {lap_laps} {self_spin_laps}."
+            )
+            messages.append(
+                f"Who needs practice?. It's perfectly normal to self spin on {len(self_spin_laps)} separate laps."
+            )
     elif car_results.race_finish_position_in_class is not None and car_results.race_finish_position_in_class == 0:
-        messages.append(f"Holy shit, {he_she_they} actually won the damn race. Congrats!")
-        messages.append(f"{He_She_They} won the race. There must be a new griphacks.exe I haven't heard about.")
-        messages.append(
-            f"{He_She_They} won. Hurry up and downplay {his_her_their} victory so you can feel better about "
-            f"yourself."
-        )
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} won the race!",
+                    tone="impressed"
+                )
+            )
+        else:
+            messages.append(f"Holy shit, {he_she_they} actually won the damn race. Congrats!")
+            messages.append(f"{He_She_They} won the race. There must be a new griphacks.exe I haven't heard about.")
+            messages.append(
+                f"{He_She_They} won. Hurry up and downplay {his_her_their} victory so you can feel better about "
+                f"yourself."
+            )
     elif (
         car_results.laps_led is not None
         and len(car_results.laps_led) > 0 and car_results.race_finish_position_in_class != 0
@@ -655,47 +724,70 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         a_lap_x_laps = f"{len(car_results.laps_led)} laps" if len(car_results.laps_led) > 1 else 'a lap'
         it_wasnt_none_were = "none of them were" if len(car_results.laps_led) > 1 else "it wasn't"
         its_one_is = "one of them is" if len(car_results.laps_led) > 1 else "it's"
-        messages.append(f"How sad, {he_she_they} led {a_lap_x_laps} but couldn't complete the win.")
-        messages.append(f"{He_She_They} led {a_lap_x_laps} but sadly {it_wasnt_none_were} the last one.")
-        messages.append(
-            f"If you're going to lead {a_lap_x_laps}, next time try to make sure {its_one_is} the last one."
-        )
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} led {a_lap_x_laps} but didn't end up winning the race."
+                )
+            )
+        else:
+            messages.append(f"How sad, {he_she_they} led {a_lap_x_laps} but couldn't complete the win.")
+            messages.append(f"{He_She_They} led {a_lap_x_laps} but sadly {it_wasnt_none_were} the last one.")
+            messages.append(
+                f"If you're going to lead {a_lap_x_laps}, next time try to make sure {its_one_is} the last one."
+            )
     elif car_results.race_finish_position_in_class is not None and car_results.race_finish_position_in_class < 3:
-        messages.append(f"A podium finish. Great work!")
-        messages.append(f"Congrats on the podium. At least _someone_ around here is seeing some success.")
-        if car_results.race_finish_position_in_class == 2:
+        if env.OPEN_AI_TOKEN != "":
             messages.append(
-                f"First the Second Step program and now the second step of the podium. "
-                f"What second step will you take next?"
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} finished on the podium.",
+                    tone="impressed"
+                )
             )
-        elif car_results.race_finish_position_in_class == 3:
-            messages.append(
-                f"From the First Step Act to the first step of the podium, things are looking up for you. "
-                f"Maybe next it will be the first step of brushing your teeth."
-            )
+        else:
+            messages.append(f"A podium finish. Great work!")
+            messages.append(f"Congrats on the podium. At least _someone_ around here is seeing some success.")
+            if car_results.race_finish_position_in_class == 2:
+                messages.append(
+                    f"First the Second Step program and now the second step of the podium. "
+                    f"What second step will you take next?"
+                )
+            elif car_results.race_finish_position_in_class == 3:
+                messages.append(
+                    f"From the First Step Act to the first step of the podium, things are looking up for you. "
+                    f"Maybe next it will be the first step of brushing your teeth."
+                )
     elif (
         car_results.race_finish_position_relative_to_car_num is not None
         and car_results.race_finish_position_relative_to_car_num > 9
     ):
         finish_vs_car_num = car_results.race_finish_position_relative_to_car_num
-        messages.append(
-            f"Respect where respect is due. {He_She_They} finished {finish_vs_car_num} positions better "
-            f"than {his_her_their} car number."
-        )
-        # messages.append(
-        #     f"Respect where respect is due. {He_She_They} finished {finish_vs_car_num} positions better "
-        #     f"than {his_her_their} car number."
-        # )
-        # messages.append(
-        #     f"Respect where respect is due. {He_She_They} finished {finish_vs_car_num} positions better "
-        #     f"than {his_her_their} car number."
-        # )
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} finished {finish_vs_car_num} positions better "
+                    f"than expected based on {his_her_their} car number.",
+                    tone="impressed"
+                )
+            )
+        else:
+            messages.append(
+                f"Respect where respect is due. {He_She_They} finished {finish_vs_car_num} positions better "
+                f"than {his_her_their} car number."
+            )
     elif car_results.contact_laps is not None and len(car_results.contact_laps) > 2:
         contact_count = len(car_results.contact_laps)
-        messages.append(
-            f"{He_She_They} made contact with track objects on {contact_count} separate laps. "
-            f"At some point that's just vandalism."
-        )
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} hit various objects around the track on {contact_count} separate laps."
+                )
+            )
+        else:
+            messages.append(
+                f"{He_She_They} made contact with track objects on {contact_count} separate laps. "
+                f"At some point that's just vandalism."
+            )
     elif car_results.race_incidents is not None and car_results.race_incidents > 9:
         race_incidents = car_results.race_incidents
         messages.append(
@@ -710,40 +802,64 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
     elif car_results.laps_down:
         laps_down = abs(int(car_results.laps_down))
         a_lap_x_laps = 'laps' if laps_down > 1 else 'a lap'
-        messages.append(f"{He_She_They} finished {a_lap_x_laps} down. Git gud.")
-        messages.append(
-            f"{He_She_They} finished {a_lap_x_laps} down, which is really about all "
-            f"we could ask of {him_her_them}."
-        )
-        messages.append(f"I just thought you should all know that {he_she_they} finished {a_lap_x_laps} down.")
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} finished {a_lap_x_laps} down from the race winner."
+                )
+            )
+        else:
+            messages.append(f"{He_She_They} finished {a_lap_x_laps} down. Git gud.")
+            messages.append(
+                f"{He_She_They} finished {a_lap_x_laps} down, which is really about all "
+                f"we could ask of {him_her_them}."
+            )
+            messages.append(f"I just thought you should all know that {he_she_they} finished {a_lap_x_laps} down.")
     elif car_results.close_finishers is not None and len(car_results.close_finishers) == 1:
         other_car_nums = car_results.close_finishers[0][0]
         interval = car_results.close_finishers[0][1] / 1000
         if interval > 0:
-            messages.append(
-                f"It was a photo finish between {him_her_them} and car {other_car_nums} "
-                f"but unfortunately {he_she_they} didn't have it in {him_her_them} and "
-                f"{he_she_they} lost by {abs(interval)}s."
-            )
-            messages.append(f"So close. {He_She_They} lost to car {other_car_nums} by just {abs(interval)}s.")
-            messages.append(
-                f"Damn, that was a close one but {he_she_they} lost to car {other_car_nums} "
-                f"by just {abs(interval)}s."
-            )
+            if env.OPEN_AI_TOKEN != "":
+                messages.append(
+                    await helpers.gpt_rewrite(
+                        f"It was a very close finish between {him_her_them} and car {other_car_nums} "
+                        f"but {he_she_they} ended up losing by {abs(interval)}s."
+                    )
+                )
+            else:
+                messages.append(
+                    f"It was a photo finish between {him_her_them} and car {other_car_nums} "
+                    f"but unfortunately {he_she_they} didn't have it in {him_her_them} and "
+                    f"{he_she_they} lost by {abs(interval)}s."
+                )
+                messages.append(f"So close. {He_She_They} lost to car {other_car_nums} by just {abs(interval)}s.")
+                messages.append(
+                    f"Damn, that was a close one but {he_she_they} lost to car {other_car_nums} "
+                    f"by just {abs(interval)}s."
+                )
         else:
-            messages.append(
-                f"It was a photo finish between {him_her_them} and car {other_car_nums} "
-                f"and miraculously {he_she_they} came out ahead by {abs(interval)}s."
-            )
-            messages.append(
-                f"Hot damn, that was close! {He_She_They} edged out car {other_car_nums} "
-                f"by a mere {abs(interval)}s."
-            )
-            messages.append(
-                f"An exciting finish? At this time of year, at this time od day? In this part of the world, localized "
-                f"entirely within your Discord server?! That's right, {racers} edged out car {other_car_nums} "
-                f"by only {abs(interval)}s."
-            )
+            if env.OPEN_AI_TOKEN != "":
+                messages.append(
+                    await helpers.gpt_rewrite(
+                        f"It was a very close finish between {him_her_them} and car {other_car_nums} "
+                        f"and {he_she_they} ended up winning by {abs(interval)}s.",
+                        tone="impressed"
+                    )
+                )
+            else:
+                messages.append(
+                    f"It was a photo finish between {him_her_them} and car {other_car_nums} "
+                    f"and miraculously {he_she_they} came out ahead by {abs(interval)}s."
+                )
+                messages.append(
+                    f"Hot damn, that was close! {He_She_They} edged out car {other_car_nums} "
+                    f"by a mere {abs(interval)}s."
+                )
+                messages.append(
+                    f"An exciting finish? At this time of year, at this time of day? In this part of the world, "
+                    f"localized entirely within your Discord server?! That's right, {racers} edged out car "
+                    f"{other_car_nums} by only {abs(interval)}s."
+                )
     elif car_results.close_finishers is not None and len(car_results.close_finishers) > 1:
         cars_ahead = [tup[0] for tup in car_results.close_finishers if tup[1] > 0]
         cars_behind = [tup[0] for tup in car_results.close_finishers if tup[1] < 0]
@@ -758,47 +874,87 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         Car_Cars_behind = car_cars_behind.capitalize()
 
         if len(cars_ahead) == 0:
-            messages.append(
-                f"It was a photo finish between {him_her_them} and cars {other_car_nums} and "
-                f"somehow {he_she_they} came out on top of the rest."
-            )
-            messages.append(
-                f"It was a photo finish between {him_her_them} and cars {other_car_nums}, "
-                f"but they had no chance against the might of {racers}."
-            )
+            if env.OPEN_AI_TOKEN != "":
+                messages.append(
+                    await helpers.gpt_rewrite(
+                        f"It was a photo finish between {him_her_them} and cars {other_car_nums} and "
+                        f"{he_she_they} beat them all to the finish line.",
+                        tone="impressed"
+                    )
+                )
+            else:
+                messages.append(
+                    f"It was a photo finish between {him_her_them} and cars {other_car_nums} and "
+                    f"somehow {he_she_they} came out on top of the rest."
+                )
+                messages.append(
+                    f"It was a photo finish between {him_her_them} and cars {other_car_nums}, "
+                    f"but they had no chance against the might of {racers}."
+                )
         elif len(cars_behind) == 0:
-            messages.append(
-                f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
-                f"It should come as a surprise to no-one that {he_she_they} came out the loser in the bunch."
-            )
-            messages.append(
-                f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
-                f"Sadly, our beloved Respo teammate lost out to them."
-            )
+            if env.OPEN_AI_TOKEN != "":
+                messages.append(
+                    await helpers.gpt_rewrite(
+                        f"It was a photo finish between {him_her_them} and cars {other_car_nums} and "
+                        f"they all beat {him_her_them} to the finish line."
+                    )
+                )
+            else:
+                messages.append(
+                    f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
+                    f"It should come as a surprise to no-one that {he_she_they} came out the loser in the bunch."
+                )
+                messages.append(
+                    f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
+                    f"Sadly, our beloved Respo teammate lost out to them."
+                )
         else:
-            messages.append(
-                f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
-                f"{Car_Cars_ahead} {cars_ahead} came out ahead of {him_her_them} and "
-                f"{car_cars_behind} {cars_behind} finished behind."
-            )
+            if env.OPEN_AI_TOKEN != "":
+                messages.append(
+                    await helpers.gpt_rewrite(
+                        f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
+                        f"{Car_Cars_ahead} {cars_ahead} came out ahead of {him_her_them} and "
+                        f"{car_cars_behind} {cars_behind} finished behind."
+                    )
+                )
+            else:
+                messages.append(
+                    f"It was a photo finish between {him_her_them} and cars {other_car_nums}. "
+                    f"{Car_Cars_ahead} {cars_ahead} came out ahead of {him_her_them} and "
+                    f"{car_cars_behind} {cars_behind} finished behind."
+                )
     elif (
         car_results.car_contact_laps is not None and car_results.green_flag_lap_num is not None
         and len([lap for lap in car_results.car_contact_laps if lap < car_results.green_flag_lap_num]) > 0
     ):
-        messages.append(f"What a shame. You couldn't even make it to the start line before you had car contact.")
-        messages.append(f"{He_She_They} had car contact before {he_she_they} even crossed the start line.")
-        messages.append(
-            f"{He_She_They} couldn't even wait until {he_she_they} crossed the start line before hitting people."
-        )
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} made contact with another car before making it to the start line."
+                )
+            )
+        else:
+            messages.append(f"What a shame. You couldn't even make it to the start line before you had car contact.")
+            messages.append(f"{He_She_They} had car contact before {he_she_they} even crossed the start line.")
+            messages.append(
+                f"{He_She_They} couldn't even wait until {he_she_they} crossed the start line before hitting people."
+            )
     elif (
         car_results.contact_laps is not None and car_results.green_flag_lap_num is not None
         and len([lap for lap in car_results.contact_laps if lap < car_results.green_flag_lap_num]) > 0
     ):
-        messages.append(f"You couldn't even make it to the start line before hitting shit.")
-        messages.append(
-            f"{Racers} {was_were} so excited to vandalize the track that {he_she_they} couldn't even "
-            f"wait until {he_she_they} crossed the start line before running into shit."
-        )
+        if env.OPEN_AI_TOKEN != "":
+            messages.append(
+                await helpers.gpt_rewrite(
+                    f"{He_She_They} made contact with a track object before making it to the start line."
+                )
+            )
+        else:
+            messages.append(f"You couldn't even make it to the start line before hitting shit.")
+            messages.append(
+                f"{Racers} {was_were} so excited to vandalize the track that {he_she_they} couldn't even "
+                f"wait until {he_she_they} crossed the start line before running into shit."
+            )
 
     if len(messages) < 1:
         return None
