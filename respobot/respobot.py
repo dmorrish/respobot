@@ -313,7 +313,7 @@ async def fast_task_loop():
                 # Post the end of week Respo update when week 2 or later begins and the season is still active
                 logging.getLogger('respobot.bot').debug(f"Posting end-of-week championship points update.")
                 post_update = True
-                report_up_to = current_race_week
+                report_up_to = current_race_week - 1
                 update_message = (
                     f"We've reached the end of week {current_race_week} so let's see who's "
                     f"racing well, who's racing like shit, and who's not even racing at all!"
