@@ -240,7 +240,7 @@ async def fast_task_loop():
     logging.getLogger('respobot.bot').debug(f"Writing timestamp to pulse txt file.")
     try:
         with open(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.PULSE_FILENAME, "w") as f_pulse:
-            f_pulse.write(int(datetime.now(tz=timezone.utc).timestamp()))
+            f_pulse.write(str(int(datetime.now(tz=timezone.utc).timestamp())))
     except (FileNotFoundError, IOError, PermissionError, OSError) as exc:
         logging.getLogger('respobot.bot').warning(
             f"An error occurred when attempting to write to "
