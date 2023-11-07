@@ -458,22 +458,22 @@ async def fast_task_loop():
                                 f"an official race. Please join me in shaming {him_her_them}."
                             )
 
-            # Server icon rotation (take advantage of the once-per-day setup for anniversaries).
-            # Rotate 1 degree every Thursday at 16:00 UTC.
-            if now.weekday() == 3:
-                bot_state.data['server_icon_angle'] += 1
-                bot_state.dump_state()
-                guild = helpers.fetch_guild(bot)
-                new_icon = await image_generators.generate_guild_icon(bot_state.data['server_icon_angle'])
+            # # Server icon rotation (take advantage of the once-per-day setup for anniversaries).
+            # # Rotate 1 degree every Thursday at 16:00 UTC.
+            # if now.weekday() == 3:
+            #     bot_state.data['server_icon_angle'] += 1
+            #     bot_state.dump_state()
+            #     guild = helpers.fetch_guild(bot)
+            #     new_icon = await image_generators.generate_guild_icon(bot_state.data['server_icon_angle'])
 
-                img_byte_arr = io.BytesIO()
-                new_icon.save(img_byte_arr, format='PNG')
-                img_byte_arr = img_byte_arr.getvalue()
-                try:
-                    await guild.edit(icon=img_byte_arr)
-                    logging.getLogger('respobot.discord').info("Rotated server icon one degree.")
-                except (discord.HTTPException, discord.Forbidden, discord.InvalidArgument) as exc:
-                    logging.getLogger('respobot.discord').info(f"Error rotating the server angle. {exc}")
+            #     img_byte_arr = io.BytesIO()
+            #     new_icon.save(img_byte_arr, format='PNG')
+            #     img_byte_arr = img_byte_arr.getvalue()
+            #     try:
+            #         await guild.edit(icon=img_byte_arr)
+            #         logging.getLogger('respobot.discord').info("Rotated server icon one degree.")
+            #     except (discord.HTTPException, discord.Forbidden, discord.InvalidArgument) as exc:
+            #         logging.getLogger('respobot.discord').info(f"Error rotating the server angle. {exc}")
 
         elif now.hour != 16:
             bot_state.data['anniversary_flip_flop'] = False
