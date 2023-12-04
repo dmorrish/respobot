@@ -334,10 +334,10 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
         if subsession_result_dicts is None or len(subsession_result_dicts) < 1:
             # Main event is not a race or no results for some other reason
             logging.getLogger('respobot.bot').warning(
-                f"During mine_race_results_for_juicy_details() no race results were returned by "
+                f"During generate_subsession_summary() no race results were returned by "
                 f"db.get_subsession_results() for subsession {subsession_id}."
             )
-            return
+            return None
 
         car_results.series_name = subsession_data['series_name']
         car_results.season_id = subsession_data['season_id']
@@ -450,7 +450,7 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
 
         if len(race_simsession_numbers) < 1:
             # Not a race
-            return []
+            return None
 
         # Scan results again to get all the car numbers in the same class
         car_numbers_in_class = []
@@ -480,7 +480,7 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
         elif len(driver_race_result_dicts) > 0:
             car_race_result_dict = driver_race_result_dicts[0]
         else:
-            return []
+            return None
 
         # If more than one heat result dict was found for this car number then it's a team race
         # Fetch the heat result dict for the team
@@ -494,9 +494,9 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
 
         if car_race_result_dict is None:
             logging.getLogger('respobot.bot').warning(
-                "During mine_race_results_for_juicy_details() no car_race_result_dict was found."
+                "During generate_subsession_summary() no car_race_result_dict was found."
             )
-            return []
+            return None
 
         if fastest_race_lap_car_number == car_number:
             car_results.got_fastest_race_lap = True
@@ -549,10 +549,10 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
 
         if race_laps is None:
             logging.getLogger('respobot.bot').warning(
-                f"During mine_race_results_for_juicy_details() no race laps were returned by "
+                f"During generate_subsession_summary() no race laps were returned by "
                 f"db.get_laps() for simsession_number=0, in subsession {subsession_id}."
             )
-            return []
+            return None
 
         # We'll keep track of how many people actually drove the car in the race.
         drivers_who_completed_a_lap = []
@@ -707,7 +707,15 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
                 car_results.close_finishers = sorted(car_results.close_finishers, key=lambda tup: tup[1], reverse=True)
         else:
             if car_reached_checkered is True:
-                car_results.laps_down = team_finish_interval
+                # Check all other cars in class and if this class finished on the lead lap, then
+                # condider reporting on laps down interval.
+                for checkered_flag_lap in checkered_flag_laps:
+                    if (
+                        checkered_flag_lap['car_number'] in car_numbers_in_class
+                        and checkered_flag_lap['interval_units'] == 'ms'
+                    ):
+                        car_results.laps_down = team_finish_interval
+                        break
             else:
                 if (
                     car_race_result_dict['reason_out_id'] != irConstants.ReasonOutIds.running.value
@@ -796,7 +804,7 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
 
     except BotDatabaseError as exc:
         exception_string = (
-            f"The error '{exc}' occurred with code {exc.error_code} during mine_results_for_juicy_details() "
+            f"The error '{exc}' occurred with code {exc.error_code} during generate_subsession_summary() "
             f"for subsession {subsession_id} and car_number {car_number}."
         )
         logging.getLogger('respobot.database').error(exception_string)
