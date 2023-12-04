@@ -304,6 +304,8 @@ async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id:
         # 4. For each car number driven by a Respo member, generate a race report:
         for car_number in respo_car_numbers:
             car_results = await subsession_summary.generate_subsession_summary(bot, db, subsession_id, car_number)
+            if car_results is None:
+                continue
 
             num_respo_drivers = len(car_results.driver_race_results)
 
