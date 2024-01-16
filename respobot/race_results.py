@@ -804,7 +804,7 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         )
     elif car_results.laps_down:
         laps_down = abs(int(car_results.laps_down))
-        a_lap_x_laps = 'laps' if laps_down > 1 else 'a lap'
+        a_lap_x_laps = f'{laps_down} laps' if laps_down > 1 else 'a lap'
         if env.OPEN_AI_TOKEN != "":
             messages.append(
                 await helpers.gpt_rewrite(
