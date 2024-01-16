@@ -667,6 +667,7 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
             for i in range(len(car_position)):
                 if (
                     car_position[i][0] < best_competitor_car_position[i]
+                    and car_position[i][0] >= 0
                     and i >= green_flag_lap_num
                     and (
                         car_reached_checkered and i <= checkered_flag_lap_num
