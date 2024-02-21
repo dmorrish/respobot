@@ -531,6 +531,7 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         his_her_their = "their"
         he_she_they = "they"
         seem_seems = "seem"
+        has_have = "have"
 
     Racers = racers.capitalize()
     He_She_They = he_she_they.capitalize()
@@ -648,8 +649,8 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
         else:
             messages.append(f"You should look into getting a AAA membership with all the towing you do.")
             messages.append(
-                f"{He_She_They} had to tow yet again. {He_She_They} have had to tow out on\nException OverflowError: "
-                f"result of num_races_towed() too large."
+                f"{He_She_They} had to tow yet again. {He_She_They} {has_have} had to tow out on\nException "
+                f"OverflowError: result of num_races_towed() too large."
             )
             messages.append(
                 f"It's too bad iRacing doesn't let you drive the tow truck. "
