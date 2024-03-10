@@ -144,6 +144,8 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                 )
                 continue
 
+            new_session_end_time = datetime.fromisoformat(subsession['end_time'])
+
             if race_found is False:
                 logging.getLogger('respobot.bot').info(f"Adding new subsession: {subsession['subsession_id']}")
                 try:
@@ -159,8 +161,6 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                         f"for subsession {subsession['subsession_id']}: {exc}"
                     )
                     continue
-
-                new_session_end_time = datetime.fromisoformat(subsession['end_time'])
 
                 try:
                     await db.add_subsessions([new_subsession])
