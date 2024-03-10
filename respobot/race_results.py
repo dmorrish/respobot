@@ -223,10 +223,6 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                                 f"laps to the database: {exc}"
                             )
 
-                # Update latest_new_session
-                if latest_new_session is None or latest_new_session < new_session_end_time:
-                    latest_new_session = new_session_end_time
-
                 logging.getLogger('respobot.bot').info(f"Successfully added subsession: {subsession['subsession_id']}")
 
                 if (
@@ -241,6 +237,10 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                     continue
 
                 await generate_race_report(bot, db, new_subsession['subsession_id'], embed_type='auto')
+
+            # Update latest_new_session
+            if latest_new_session is None or latest_new_session < new_session_end_time:
+                latest_new_session = new_session_end_time
 
         try:
             db_latest_session_found = await db.get_member_latest_session_found(member_dict['iracing_custid'])
