@@ -252,7 +252,7 @@ class AdminCommandsCog(commands.Cog):
         cars: Option(str, "Cars in race in comma separated list.", required=True),
         category: Option(
             str,
-            "road, oval, dirt_road, or dirt_oval",
+            "sports_car, formula_car, oval, dirt_road, dirt_oval or road_(retired)",
             required=True,
             choices=constants.IRACING_CATEGORIES
         )

@@ -32,6 +32,12 @@ class IrCommandsCog(commands.Cog):
     async def ir_graph(
         self,
         ctx,
+        category: Option(
+            str,
+            "Select a racing category.",
+            required=True,
+            choices=constants.IRACING_CATEGORIES
+        ),
         member: Option(
             str,
             "Plot iRating for a specific person. Can be a Respo member, or by full name or iRacing ID.",
@@ -148,7 +154,7 @@ class IrCommandsCog(commands.Cog):
                 if 'discord_id' not in member_dict:
                     irating_data = await self.ir.chart_data(
                         member_dict['iracing_custid'],
-                        category_id=2,
+                        category_id=helpers.get_category_from_option(category),
                         chart_type=1
                     )
                     for point_dict in irating_data:
@@ -157,7 +163,7 @@ class IrCommandsCog(commands.Cog):
                 else:
                     member_dict['ir_data'] = await self.db.get_ir_data(
                         iracing_custid=member_dict['iracing_custid'],
-                        category_id=irConstants.Category.road.value
+                        category_id=helpers.get_category_from_option(category)
                     )
 
             temp_member_dicts = []
@@ -226,9 +232,17 @@ class IrCommandsCog(commands.Cog):
     )
     async def ir_leaderboard(
         self,
-        ctx
+        ctx,
+        category: Option(
+            str,
+            "Select a racing category.",
+            required=True,
+            choices=constants.IRACING_CATEGORIES
+        )
     ):
         try:
+            await ctx.respond("Generating leaderboard...")
+
             ir_dict = {}
             pleb_line_printed = False
             response = "```\nNAME                        IR\n"
@@ -238,13 +252,13 @@ class IrCommandsCog(commands.Cog):
             member_dicts = await self.db.fetch_member_dicts()
 
             if member_dicts is None or len(member_dicts) < 1:
-                await ctx.respond("There aren't any members entered into the database yet. Go yell at Deryk.")
+                await ctx.edit(content="There aren't any members entered into the database yet. Go yell at Deryk.")
                 return
 
             for member_dict in member_dicts:
                 latest_road_ir_in_db = await self.db.get_member_ir(
                     member_dict['iracing_custid'],
-                    category_id=irConstants.Category.road.value
+                    category_id=helpers.get_category_from_option(category),
                 )
                 if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
                     continue
@@ -265,7 +279,7 @@ class IrCommandsCog(commands.Cog):
                     response += " "
                 response += str(sorted_ir_dict[key]) + "\n"
             response += "\n```"
-            await ctx.respond(response)
+            await ctx.edit(content=response)
             return
         except BotDatabaseError as exc:
             await SlashCommandHelpers.process_command_failure(

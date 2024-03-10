@@ -4,12 +4,13 @@ import math
 from datetime import datetime
 from discord.ext import commands
 from discord.commands import Option
+import constants
+import helpers
 import environment_variables as env
 from slash_command_helpers import SlashCommandHelpers, SeasonStringError
 import stats_helpers as stats
 import image_generators as image_gen
 from bot_database import BotDatabaseError
-from irslashdata import constants as irConstants
 
 
 class CompassCog(commands.Cog):
@@ -27,6 +28,12 @@ class CompassCog(commands.Cog):
     async def iracing_compass_meme(
         self,
         ctx,
+        category: Option(
+            str,
+            "Select a racing category.",
+            required=True,
+            choices=constants.IRACING_CATEGORIES
+        ),
         season: Option(
             str,
             "The season to compare. If left blank, the full driver careers are compared.",
@@ -80,7 +87,7 @@ class CompassCog(commands.Cog):
                         member_dict['iracing_custid'],
                         year=year,
                         quarter=quarter,
-                        category=irConstants.Category.road.value,
+                        category=helpers.get_category_from_option(category),
                         series=None,
                         car_class=None
                     )

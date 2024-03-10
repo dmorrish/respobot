@@ -275,7 +275,7 @@ async def set_member_latest_session_found(
 async def get_member_ir(
     self,
     iracing_custid: int,
-    category_id: int = irConstants.Category.road.value
+    category_id: int = irConstants.Category.sports_car.value
 ):
     """Get the iRating for a member for a specific racing category.
 
@@ -298,7 +298,7 @@ async def get_member_ir(
         ON subsessions.subsession_id = results.subsession_id
         WHERE
             cust_id = ? AND
-            track_category_id = ? AND
+            license_category_id = ? AND
             results.simsession_number = 0
         ORDER BY results.subsession_id DESC
     """

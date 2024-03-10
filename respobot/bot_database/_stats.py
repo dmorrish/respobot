@@ -11,7 +11,7 @@ async def get_latest_ir(
     iracing_custid: int = None,
     discord_id: int = None,
     name: str = None,
-    category_id: int = irConstants.Category.road.value
+    category_id: int = irConstants.Category.sports_car.value
 ):
     """Get the latest iRating for the member specified by iracing_custid, sicord_id, or name (full name).
     If more than one kwarg is provided, they will be considered in the following order:
@@ -124,12 +124,11 @@ async def get_ir_data(
             results.cust_id = ? AND
             subsessions.official_session = 1 AND
             subsessions.license_category_id = ? AND
-            subsessions.track_category_id = ? AND
             results.simsession_type = ? AND
             results.newi_rating > 0
         ORDER BY subsessions.end_time
     """
-    parameters = (member_dict['iracing_custid'], category_id, category_id, irConstants.SimSessionType.race.value)
+    parameters = (member_dict['iracing_custid'], category_id, irConstants.SimSessionType.race.value)
 
     try:
         result_tuples = await self._execute_read_query(query, params=parameters)
@@ -161,7 +160,7 @@ async def get_race_incidents_and_corners(
     iracing_custid: int,
     series_id: int = None,
     car_class_id: int = None,
-    category: int = irConstants.Category.road.value
+    category: int = irConstants.Category.sports_car.value
 ):
     """Fetch the data required to plot a corners-per-incident graph.
     Data is returned as a list of tuples of the form:

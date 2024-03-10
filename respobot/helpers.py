@@ -58,11 +58,31 @@ async def promote_demote_members(bot: discord.Bot, db: BotDatabase):
             return
 
         for member_dict in member_dicts:
+            latest_applicable_ir_in_db = None
+
             latest_road_ir_in_db = await db.get_member_ir(
                 member_dict['iracing_custid'],
                 category_id=irConstants.Category.road.value
             )
-            if latest_road_ir_in_db is None or latest_road_ir_in_db < 0:
+
+            latest_sports_car_ir_in_db = await db.get_member_ir(
+                member_dict['iracing_custid'],
+                category_id=irConstants.Category.sports_car.value
+            )
+
+            latest_formula_car_ir_in_db = await db.get_member_ir(
+                member_dict['iracing_custid'],
+                category_id=irConstants.Category.formula_car.value
+            )
+
+            latest_applicable_ir_in_db = max([i for i in [
+                -1,
+                latest_road_ir_in_db,
+                latest_sports_car_ir_in_db,
+                latest_formula_car_ir_in_db
+            ] if i is not None])
+
+            if latest_applicable_ir_in_db < 0:
                 continue
 
             if latest_road_ir_in_db < constants.PLEB_LINE:
@@ -287,3 +307,11 @@ async def gpt_rewrite(message: str, tone: str = "belligerent"):
         f" Completion tokens used: {response['usage']['completion_tokens']}."
     )
     return rewritten_message
+
+
+def get_category_from_option(category):
+    if(category not in constants.IRACING_CATEGORIES):
+        return None
+
+    index = constants.IRACING_CATEGORIES.index(category)
+    return constants.IRACING_CATEGORY_NUMBERS[index]

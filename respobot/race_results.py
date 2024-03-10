@@ -342,7 +342,11 @@ async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id:
                 # Populate role_change_reason if they have crossed the pleb line.
                 if (
                     driver_race_result.cust_id in all_member_iracing_custids
-                    and car_results.track_category_id == irConstants.Category.road.value
+                    and car_results.license_category_id in [
+                        irConstants.Category.road.value,
+                        irConstants.Category.sports_car.value,
+                        irConstants.Category.formula_car.value
+                    ]
                     and driver_race_result.irating_new > 0 and driver_race_result.irating_old > 0
                 ):
                     if driver_race_result.irating_new >= constants.PLEB_LINE:
@@ -663,10 +667,12 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
     elif (
         car_results.track_category_id is not None and car_results.car_contact_laps is not None
         and (
-            (
-                car_results.track_category_id == irConstants.Category.road.value
-                or car_results.track_category_id == irConstants.Category.oval.value
-            )
+            car_results.track_category_id in [
+                irConstants.Category.road.value,
+                irConstants.Category.sports_car.value,
+                irConstants.Category.formula_car.value,
+                irConstants.Category.oval.value
+            ]
             and len(car_results.car_contact_laps) > 2
             or len(car_results.car_contact_laps) > 4
         )

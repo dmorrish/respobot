@@ -441,11 +441,6 @@ async def get_respo_champ_points(
             season_quarter=season_quarter
         )
 
-        # print(member_dict['name'])
-        # for result_dict in result_dicts:
-        #     print(result_dict)
-        # print("\n\n")
-
         series_list = get_list_of_series(result_dicts)
 
         for series_id in series_list:

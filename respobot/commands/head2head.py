@@ -3,6 +3,8 @@ import discord
 from datetime import datetime
 from discord.ext import commands
 from discord.commands import Option
+import constants
+import helpers
 import environment_variables as env
 from slash_command_helpers import SlashCommandHelpers, SeasonStringError
 import stats_helpers as stats
@@ -37,6 +39,12 @@ class Head2HeadCog(commands.Cog):
             "The second person in the comparison.",
             required=True,
             autocomplete=SlashCommandHelpers.get_member_list
+        ),
+        category: Option(
+            str,
+            "Select a racing category.",
+            required=True,
+            choices=constants.IRACING_CATEGORIES
         ),
         season: Option(
             str,
@@ -96,7 +104,7 @@ class Head2HeadCog(commands.Cog):
                 racer1_dict['iracing_custid'],
                 year=year,
                 quarter=quarter,
-                category=irConstants.Category.road.value,
+                category=helpers.get_category_from_option(category),
                 series=None,
                 car_class=None
             )
@@ -106,7 +114,7 @@ class Head2HeadCog(commands.Cog):
                 racer2_dict['iracing_custid'],
                 year=year,
                 quarter=quarter,
-                category=irConstants.Category.road.value,
+                category=helpers.get_category_from_option(category),
                 series=None,
                 car_class=None
             )
