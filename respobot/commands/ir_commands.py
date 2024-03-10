@@ -175,12 +175,15 @@ class IrCommandsCog(commands.Cog):
             sorted_member_dicts = sorted(temp_member_dicts, key=lambda item: item['ir_data'][-1][1], reverse=True)
 
             if len(sorted_member_dicts) > 1:
-                title_text = "Respo Racing iRating Graph"
+                title_text = f"Respo Racing {category} iRating Graph"
                 graph = image_gen.generate_ir_graph(sorted_member_dicts, title_text, True)
-            else:
+            elif len(sorted_member_dicts) > 0:
                 irating = sorted_member_dicts[0]['ir_data'][-1][1]
-                title_text = "iRating Graph for " + sorted_member_dicts[0]['name'] + " (" + str(irating) + ")"
+                title_text = f"{category} iRating Graph for {sorted_member_dicts[0]['name']} ({str(irating)})"
                 graph = image_gen.generate_ir_graph(sorted_member_dicts, title_text, False)
+            else:
+                await ctx.edit(content="No one has at least two races in this category yet.")
+                return
 
             graph_memory_file = io.BytesIO()
             graph.save(graph_memory_file, format='png')
