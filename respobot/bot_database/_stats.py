@@ -3,7 +3,8 @@ from aiosqlite import Error
 from datetime import datetime
 from ._queries import *
 from irslashdata import constants as irConstants
-from bot_database import BotDatabaseError
+from bot_database import BotDatabaseError, ErrorCodes
+import constants
 
 
 async def get_latest_ir(
@@ -108,27 +109,72 @@ async def get_ir_data(
     member_dict = await self.fetch_member_dict(iracing_custid=iracing_custid, discord_id=discord_id, name=name)
 
     if category_id is None:
-        category_id = 2
+        category_id = irConstants.Category.sports_car.value
 
     if member_dict is None:
         return None
 
-    query = """
-        SELECT
-            subsessions.end_time,
-            results.newi_rating
-        FROM results
-        INNER JOIN subsessions
-        ON subsessions.subsession_id = results.subsession_id
-        WHERE
-            results.cust_id = ? AND
-            subsessions.official_session = 1 AND
-            subsessions.license_category_id = ? AND
-            results.simsession_type = ? AND
-            results.newi_rating > 0
-        ORDER BY subsessions.end_time
-    """
-    parameters = (member_dict['iracing_custid'], category_id, irConstants.SimSessionType.race.value)
+    if (
+        category_id == irConstants.Category.sports_car.value
+        or category_id == irConstants.Category.formula_car.value
+        or category_id == irConstants.Category.road.value
+    ):
+        query = f"""
+            SELECT
+                subsessions.end_time,
+                results.newi_rating,
+                subsessions.subsession_id
+            FROM results
+            INNER JOIN subsessions
+            ON subsessions.subsession_id = results.subsession_id
+            WHERE
+                results.cust_id = ? AND
+                subsessions.official_session = 1 AND
+                (
+                    (
+                        subsessions.end_time >= '{constants.IRACING_SPORTS_FORMULA_SPLIT_DATETIME}' AND
+                        (
+                            subsessions.license_category_id = ? OR
+                            subsessions.license_category_id = 2
+                        )
+                    ) OR
+                    (
+                        subsessions.end_time < '{constants.IRACING_SPORTS_FORMULA_SPLIT_DATETIME}' AND
+                        (
+                            (
+                                subsessions.license_category_id = ? AND
+                                subsessions.track_category_id = subsessions.license_category_id
+                            ) OR
+                            (
+                                subsessions.license_category_id = 2 AND
+                                subsessions.track_category_id = 2
+                            )
+                        )
+                    )
+                ) AND
+                results.simsession_type = ? AND
+                results.newi_rating > 0
+            ORDER BY subsessions.end_time
+        """
+        # query = query.format(constants.IRACING_SPORTS_FORMULA_SPLIT_DATETIME)
+        parameters = (member_dict['iracing_custid'], category_id, category_id, irConstants.SimSessionType.race.value)
+    else:
+        query = f"""
+            SELECT
+                subsessions.end_time,
+                results.newi_rating
+            FROM results
+            INNER JOIN subsessions
+            ON subsessions.subsession_id = results.subsession_id
+            WHERE
+                results.cust_id = ? AND
+                subsessions.official_session = 1 AND
+                subsessions.license_category_id = ? AND
+                results.simsession_type = ? AND
+                results.newi_rating > 0
+            ORDER BY subsessions.end_time
+        """
+        parameters = (member_dict['iracing_custid'], category_id, irConstants.SimSessionType.race.value)
 
     try:
         result_tuples = await self._execute_read_query(query, params=parameters)

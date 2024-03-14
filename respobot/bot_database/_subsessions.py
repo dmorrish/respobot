@@ -9,7 +9,7 @@ from aiosqlite import Error
 from datetime import datetime
 from ._queries import *
 from ._members import _update_member_dict_objects
-from bot_database import BotDatabaseError
+from bot_database import BotDatabaseError, ErrorCodes
 
 
 async def add_subsessions(self, subsession_dicts):

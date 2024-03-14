@@ -5,7 +5,7 @@ import environment_variables as env
 import constants
 import logging
 from PIL import Image, ImageDraw, ImageFont
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 from discord.errors import NotFound
 
 
@@ -952,7 +952,12 @@ def draw_head2head_bar_inverted(
     )
 
 
-def generate_ir_graph(member_dicts, title, print_legend):
+def generate_ir_graph(member_dicts, title, print_legend, draw_license_split_line=False):
+    if len(member_dicts) == 1 and 'ir_data2' in member_dicts[0]:
+        draw_ir_split = True
+    else:
+        draw_ir_split = False
+
     image_width = 1000
     image_height = 320
     im = Image.new('RGBA', (image_width, image_height), color=(0, 0, 0, 0))
@@ -968,9 +973,11 @@ def generate_ir_graph(member_dicts, title, print_legend):
     )
 
     margin_v_top = 0.15 * image_height
-    margin_v_bottom = 0.15 * image_height
+    margin_v_bottom = 0.1 * image_height
 
-    if print_legend:
+    if draw_ir_split:
+        margin_h_right = 0.20 * image_width
+    elif print_legend:
         margin_h_right = 0.27 * image_width
     else:
         margin_h_right = 0.15 * image_height
@@ -1000,6 +1007,9 @@ def generate_ir_graph(member_dicts, title, print_legend):
     ir_scale_pixels = (image_height - margin_v_bottom - margin_v_top)
     pleb_line_drawn = False
 
+    sports_formula_split_datetime = datetime.fromisoformat(constants.IRACING_SPORTS_FORMULA_SPLIT_DATETIME)
+    sports_formula_split_timestamp = sports_formula_split_datetime.timestamp() * 1000
+
     max_timestamp = int(datetime.now().timestamp() * 1000)
 
     timestamp_range = max_timestamp - min_timestamp
@@ -1013,18 +1023,44 @@ def generate_ir_graph(member_dicts, title, print_legend):
 
     dates = []
 
-    for i in range(earliest_year + 1, latest_year + 1):
+    for i in range(earliest_year + 1, latest_year + 2):
         dates.append(datetime(i, 1, 1))
 
     for day in dates:
         year_timestamp = int(day.timestamp()) * 1000
+        x_left = margin_h_left + ((day - timedelta(days=365)).timestamp() * 1000 - min_timestamp) / timestamp_range * timestamp_range_pixels
+        if x_left < margin_h_left:
+            x_left = margin_h_left
         x = margin_h_left + (year_timestamp - min_timestamp) / timestamp_range * timestamp_range_pixels
+        skip_tick = False
+        if x > image_width - margin_h_right:
+            x = image_width - margin_h_right
+            skip_tick = True
         y = image_height - margin_v_bottom
-        draw.line([(x, y + tick_length / 2), (x, y)], fill=(255, 255, 255, 255), width=1, joint=None)
-        if len(dates) < 6:
-            draw.text((x, y + tick_length), str(day.year) + "-1-1", font=font, fill=(255, 255, 255, 255), anchor="mt")
-        else:
-            draw.text((x, y + tick_length), str(day.year), font=font, fill=(255, 255, 255, 255), anchor="mt")
+        if not skip_tick:
+            draw.line([(x, y + tick_length / 2), (x, y)], fill=(255, 255, 255, 255), width=1, joint=None)
+        text_width, text_height = draw.textsize(str(day.year), font=font)
+        if (x - x_left) > text_width * 1.5:
+            draw.text(
+                (int((x + x_left) / 2), y + tick_length / 2),
+                str(day.year - 1),
+                font=font,
+                fill=(255, 255, 255, 255),
+                anchor="mt"
+            )
+
+    # Draw the licence split line
+    if(draw_license_split_line):
+        x = margin_h_left + (sports_formula_split_timestamp - min_timestamp) / timestamp_range * timestamp_range_pixels
+        y = image_height - margin_v_bottom
+        draw.line([(x, y), (x, margin_v_top)], fill=(128, 128, 128, 255), width=1, joint=None)
+        draw.text(
+            (x - tick_length / 2, y - int(fontsm.size * 1.5)),
+            'Licence Split',
+            font=fontsm,
+            fill=(128, 128, 128, 255),
+            anchor="ra"
+        )
 
     for i in range(1, ir_scale_maj_divisions + 1):
         x = margin_h_left
@@ -1053,6 +1089,8 @@ def generate_ir_graph(member_dicts, title, print_legend):
         draw.text((x - tick_length / 2, y), str("Pleb Line"), font=fontsm, fill=(255, 0, 0, 128), anchor="rm")
 
     scaled_tuples = []
+    scaled_tuples_sports = []
+    scaled_tuples_formula = []
 
     member_count = 0
 
@@ -1061,6 +1099,8 @@ def generate_ir_graph(member_dicts, title, print_legend):
 
     for member_dict in member_dicts:
         scaled_tuples.append([])
+        scaled_tuples_sports.append([])
+        scaled_tuples_formula.append([])
         if (
             'graph_colour' in member_dict
             and member_dict['graph_colour'] is not None
@@ -1091,7 +1131,10 @@ def generate_ir_graph(member_dicts, title, print_legend):
             legend_name += " "
 
         legend_name += legend_ir_text
+        crossed_split_in_sports_car = False
+        crossed_split_in_formula_car = False
 
+        prev_point = None
         for point in member_dict['ir_data']:
             point_timestamp = point[0].timestamp() * 1000
             scaled_tuple_x = (
@@ -1103,14 +1146,114 @@ def generate_ir_graph(member_dicts, title, print_legend):
                 - margin_v_bottom
                 - point[1] / (ir_scale_maj_divisions * ir_scale_maj_division_size) * ir_scale_pixels
             )
-            scaled_tuples[member_count].append(
-                (scaled_tuple_x, scaled_tuple_y)
-            )
-        draw.line(scaled_tuples[member_count], fill=colour, width=2, joint="curve")
+            if draw_ir_split:
+                if point_timestamp <= sports_formula_split_timestamp:
+                    scaled_tuples[member_count].append(
+                        (scaled_tuple_x, scaled_tuple_y)
+                    )
+                else:
+                    if not crossed_split_in_sports_car and len(scaled_tuples[member_count]) > 0:
+                        # Make a new interpolated point at the license crossover timestamp
+                        scaled_split_x = (
+                            margin_h_left
+                            + (sports_formula_split_timestamp - min_timestamp) / timestamp_range * timestamp_range_pixels
+                        )
+                        scaled_split_y = prev_point[1] + (scaled_split_x - prev_point[0]) / (scaled_tuple_x - prev_point[0]) * (scaled_tuple_y - prev_point[1])
+                        scaled_tuples[member_count].append((scaled_split_x, scaled_split_y))
+                        scaled_tuples_sports[member_count].append((scaled_split_x, scaled_split_y))
+                        crossed_split_in_sports_car = True
+                    scaled_tuples_sports[member_count].append(
+                        (scaled_tuple_x, scaled_tuple_y)
+                    )
+            else:
+                scaled_tuples[member_count].append(
+                    (scaled_tuple_x, scaled_tuple_y)
+                )
+            prev_point = (scaled_tuple_x, scaled_tuple_y)
+
+        if draw_ir_split:
+            prev_point = None
+            for point in member_dict['ir_data2']:
+                point_timestamp = point[0].timestamp() * 1000
+                scaled_tuple_x = (
+                    margin_h_left
+                    + (point_timestamp - min_timestamp) / timestamp_range * timestamp_range_pixels
+                )
+                scaled_tuple_y = (
+                    image_height
+                    - margin_v_bottom
+                    - point[1] / (ir_scale_maj_divisions * ir_scale_maj_division_size) * ir_scale_pixels
+                )
+                if point_timestamp > sports_formula_split_timestamp:
+                    if not crossed_split_in_formula_car and len(scaled_tuples[member_count]) > 0:
+                        # Make a new interpolated point at the license crossover timestamp
+                        scaled_split_x = (
+                            margin_h_left
+                            + (sports_formula_split_timestamp - min_timestamp) / timestamp_range * timestamp_range_pixels
+                        )
+                        scaled_split_y = prev_point[1] + (scaled_split_x - prev_point[0]) / (scaled_tuple_x - prev_point[0]) * (scaled_tuple_y - prev_point[1])
+                        scaled_tuples_formula[member_count].append((scaled_split_x, scaled_split_y))
+                        crossed_split_in_formula_car = True
+                    scaled_tuples_formula[member_count].append(
+                        (scaled_tuple_x, scaled_tuple_y)
+                    )
+                prev_point = (scaled_tuple_x, scaled_tuple_y)
+
+        sports_car_colour = (int(colour[0] + 48), int(colour[1] + 48), int(colour[2] - 48), colour[3])
+        formula_car_colour = (int(colour[0] - 48), int(colour[1] + 48), int(colour[2] + 48), colour[3])
+        draw.line(
+            scaled_tuples[member_count],
+            fill=colour,
+            width=2,
+            joint="curve"
+        )
+        draw.line(
+            scaled_tuples_sports[member_count],
+            fill=sports_car_colour,
+            width=2,
+            joint="curve"
+        )
+        draw.line(
+            scaled_tuples_formula[member_count],
+            fill=formula_car_colour,
+            width=2,
+            joint="curve"
+        )
+
         x = image_width - margin_h_right + tick_length
         y = margin_v_top + legend_v_spacing * 0.5 - box_size / 2 + member_count * legend_v_spacing
 
-        if print_legend:
+        if draw_ir_split:
+            draw.rectangle(
+                [(x, y), (x + box_size, y + box_size)],
+                fill=sports_car_colour,
+                outline=(255, 255, 255, 255),
+                width=1
+            )
+            draw.text(
+                (x + box_size * 1.5, y + box_size / 2),
+                "Sports Car",
+                font=font,
+                fill=(255, 255, 255, 255),
+                anchor="lm"
+            )
+
+            x = image_width - margin_h_right + tick_length
+            y = margin_v_top + legend_v_spacing * 0.5 - box_size / 2 + (member_count + 1) * legend_v_spacing
+            draw.rectangle(
+                [(x, y), (x + box_size, y + box_size)],
+                fill=formula_car_colour,
+                outline=(255, 255, 255, 255),
+                width=1
+            )
+            draw.text(
+                (x + box_size * 1.5, y + box_size / 2),
+                "Formula Car",
+                font=font,
+                fill=(255, 255, 255, 255),
+                anchor="lm"
+            )
+        elif print_legend:
             draw.rectangle([(x, y), (x + box_size, y + box_size)], fill=colour, outline=(255, 255, 255, 255), width=1)
             draw.text(
                 (x + box_size * 1.5, y + box_size / 2),

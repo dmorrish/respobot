@@ -266,8 +266,7 @@ async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id:
     try:
         multi_report = False
         role_change_reason = ""
-        message_text = ""
-        channel = helpers.fetch_channel(bot)
+        channel = helpers.fetch_channel(bot, env.RESULTS_CHANNEL)
 
         (current_year, current_quarter, current_racing_week, _, _) = await db.get_current_iracing_week()
 
@@ -311,7 +310,6 @@ async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id:
 
             if num_respo_drivers > 1:
                 multi_report = True
-                message_text = "Well lookie here. "
 
             # Cycle through the driver race results and if they are a Respo member,
             # overwrite their display_name with their Respo member name.
@@ -326,15 +324,6 @@ async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id:
                         himself_herself_themself = "himself"
                     elif member_dict["pronoun_type"] == "female":
                         himself_herself_themself = "herself"
-
-                # update the message text with the participants' names
-                if drivers_listed < num_respo_drivers - 1:
-                    if drivers_listed == 0 and num_respo_drivers == 2:
-                        message_text += driver_race_result.display_name + " "
-                    else:
-                        message_text += driver_race_result.display_name + ", "
-                else:
-                    message_text += "and " + driver_race_result.display_name + " "
 
                 drivers_listed += 1
 
@@ -388,10 +377,6 @@ async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id:
 
             # 6. Send the report for this car.
             if env.SUPPRESS_RACE_RESULTS is False:
-
-                if multi_report is True:
-                    message_text += "just finished playing with each other for hours on end."
-
                 if embed_type == 'compact' or (embed_type == 'auto' and multi_report is False):
                     await send_results_embed_compact(bot, db, channel, car_results)
                 else:

@@ -9,7 +9,7 @@ from aiosqlite import Error
 from datetime import datetime, date
 from ._queries import *
 from irslashdata import constants as irConstants
-from bot_database import BotDatabaseError
+from bot_database import BotDatabaseError, ErrorCodes
 
 
 def _update_member_dict_objects(member_dict: dict):

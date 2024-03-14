@@ -7,7 +7,7 @@ Methods that mainly interact with the laps table.
 import logging
 from aiosqlite import Error
 from ._queries import *
-from bot_database import BotDatabaseError
+from bot_database import BotDatabaseError, ErrorCodes
 
 
 async def add_laps(self, lap_dicts, subsession_id, simsession_number):

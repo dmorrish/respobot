@@ -13,7 +13,7 @@ import logging
 from aiosqlite import Error
 from ._queries import *
 import constants
-from bot_database import BotDatabaseError
+from bot_database import BotDatabaseError, ErrorCodes
 from datetime import datetime, timedelta, timezone
 
 

@@ -15,6 +15,7 @@ FAST_LOOP_INTERVAL = 75
 SLOW_LOOP_INTERVAL = 600
 IRACING_CATEGORIES = ['Sports Car', 'Formula Car', 'Oval', 'Dirt Road', 'Dirt Oval', 'Road (retired)']
 IRACING_CATEGORY_NUMBERS = [5, 6, 1, 4, 3, 2]
+IRACING_SPORTS_FORMULA_SPLIT_DATETIME = '2024-03-05T08:00:00Z'
 PRONOUN_TYPES = ['male', 'female', 'neutral']
 RESPO_LOGO_FILENAME = 'respo_logo.png'
 GUILD_ICON_FILENAME = 'guild_icon.png'

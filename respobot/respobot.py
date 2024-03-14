@@ -511,4 +511,4 @@ def exit_handler(signum, frame):
 signal.signal(signal.SIGINT, exit_handler)
 signal.signal(signal.SIGTERM, exit_handler)
 
-bot.run(env.TOKEN)
+bot.run(env.DISCORD_TOKEN)

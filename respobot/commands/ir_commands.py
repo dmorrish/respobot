@@ -116,9 +116,9 @@ class IrCommandsCog(commands.Cog):
                             member_dict['name'] = member_info_dict_list[0]['display_name']
                             member_dict['iracing_custid'] = iracing_custid
                             member_dict['graph_colour'] = [
-                                random.randint(0, 255),
-                                random.randint(0, 255),
-                                random.randint(0, 255),
+                                random.randint(48, 207),
+                                random.randint(48, 207),
+                                random.randint(48, 207),
                                 255
                             ]
                             member_dicts.append(member_dict)
@@ -134,9 +134,9 @@ class IrCommandsCog(commands.Cog):
                 for member_dict in member_dicts:
                     if 'graph_colour' not in member_dict:
                         member_dict['colour'] = [
-                            random.randint(0, 255),
-                            random.randint(0, 255),
-                            random.randint(0, 255),
+                            random.randint(48, 207),
+                            random.randint(48, 207),
+                            random.randint(48, 207),
                             255
                         ]
 
@@ -149,22 +149,77 @@ class IrCommandsCog(commands.Cog):
                 )
                 return
 
+            category_id = helpers.get_category_from_option(category)
+            draw_license_split_line = False
+            if (
+                category_id == irConstants.Category.road.value
+                or category_id == irConstants.Category.sports_car.value
+                or category_id == irConstants.Category.formula_car.value
+            ):
+                draw_license_split_line = True
+
             for member_dict in member_dicts:
                 member_dict['ir_data'] = []
                 if 'discord_id' not in member_dict:
-                    irating_data = await self.ir.chart_data(
-                        member_dict['iracing_custid'],
-                        category_id=helpers.get_category_from_option(category),
-                        chart_type=1
-                    )
+                    irating_data = None
+                    irating_data2 = None
+                    if (
+                        category_id == irConstants.Category.road.value
+                        or category_id == irConstants.Category.sports_car.value
+                        or category_id == irConstants.Category.formula_car.value
+                    ):
+                        irating_data = await self.ir.chart_data(
+                            member_dict['iracing_custid'],
+                            category_id=irConstants.Category.road.value,
+                            chart_type=1
+                        )
+                        irating_data_sports = await self.ir.chart_data(
+                            member_dict['iracing_custid'],
+                            category_id=irConstants.Category.sports_car.value,
+                            chart_type=1
+                        )
+                        irating_data_formula = await self.ir.chart_data(
+                            member_dict['iracing_custid'],
+                            category_id=irConstants.Category.formula_car.value,
+                            chart_type=1
+                        )
+
+                        if category_id == irConstants.Category.road.value:
+                            irating_data2 = irating_data + irating_data_formula
+                            irating_data += irating_data_sports
+                            member_dict['ir_data2'] = []
+                        elif category_id == irConstants.Category.sports_car:
+                            irating_data += irating_data_sports
+                        else:
+                            irating_data += irating_data_formula
+                    else:
+                        irating_data = await self.ir.chart_data(
+                            member_dict['iracing_custid'],
+                            category_id=category_id,
+                            chart_type=1
+                        )
                     for point_dict in irating_data:
                         time_point = datetime.fromisoformat(point_dict['when'])
                         member_dict['ir_data'].append((time_point, point_dict['value']))
+                    if irating_data2 is not None:
+                        for point_dict in irating_data2:
+                            time_point = datetime.fromisoformat(point_dict['when'])
+                            member_dict['ir_data2'].append((time_point, point_dict['value']))
                 else:
-                    member_dict['ir_data'] = await self.db.get_ir_data(
-                        iracing_custid=member_dict['iracing_custid'],
-                        category_id=helpers.get_category_from_option(category)
-                    )
+                    if(category_id == irConstants.Category.road.value):
+                        member_dict['ir_data'] = await self.db.get_ir_data(
+                            iracing_custid=member_dict['iracing_custid'],
+                            category_id=irConstants.Category.sports_car.value
+                        )
+                        member_dict['ir_data2'] = await self.db.get_ir_data(
+                            iracing_custid=member_dict['iracing_custid'],
+                            category_id=irConstants.Category.formula_car.value
+                        )
+                    else:
+                        member_dict['ir_data'] = await self.db.get_ir_data(
+                            iracing_custid=member_dict['iracing_custid'],
+                            category_id=category_id
+                        )
 
             temp_member_dicts = []
 
@@ -176,11 +231,24 @@ class IrCommandsCog(commands.Cog):
 
             if len(sorted_member_dicts) > 1:
                 title_text = f"Respo Racing {category} iRating Graph"
-                graph = image_gen.generate_ir_graph(sorted_member_dicts, title_text, True)
+                graph = image_gen.generate_ir_graph(
+                    sorted_member_dicts,
+                    title_text,
+                    True,
+                    draw_license_split_line=draw_license_split_line
+                )
             elif len(sorted_member_dicts) > 0:
                 irating = sorted_member_dicts[0]['ir_data'][-1][1]
-                title_text = f"{category} iRating Graph for {sorted_member_dicts[0]['name']} ({str(irating)})"
-                graph = image_gen.generate_ir_graph(sorted_member_dicts, title_text, False)
+                if(category_id == irConstants.Category.road.value):
+                    title_text = f"{category} iRating Graph for {sorted_member_dicts[0]['name']}"
+                else:
+                    title_text = f"{category} iRating Graph for {sorted_member_dicts[0]['name']} ({str(irating)})"
+                graph = image_gen.generate_ir_graph(
+                    sorted_member_dicts,
+                    title_text,
+                    False,
+                    draw_license_split_line=draw_license_split_line
+                )
             else:
                 await ctx.edit(content="No one has at least two races in this category yet.")
                 return
