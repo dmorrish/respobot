@@ -3,9 +3,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = os.getenv('DISCORD_TOKEN')
+DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = int(os.getenv('DISCORD_GUILD'))
 CHANNEL = int(os.getenv('DISCORD_CHANNEL'))
+RESULTS_CHANNEL = int(os.getenv('DISCORD_RESULTS_CHANNEL'))
 ADMIN_ID = int(os.getenv('ADMIN_ID'))
 IRACING_USERNAME = os.getenv('IRACING_USERNAME')
 IRACING_PASSWORD = os.getenv('IRACING_PASSWORD')

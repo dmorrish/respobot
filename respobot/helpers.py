@@ -37,11 +37,13 @@ def fetch_guild(bot: discord.Bot):
     return None
 
 
-def fetch_channel(bot: discord.Bot):
+def fetch_channel(bot: discord.Bot, channel_id=None):
+    if channel_id is None:
+        channel_id = env.CHANNEL
     for guild in bot.guilds:
         if guild.id == env.GUILD:
             for channel in guild.channels:
-                if channel.id == env.CHANNEL:
+                if channel.id == channel_id:
                     return channel
     logging.getLogger('respobot.discord').warning("Could not fetch default channel from the bot instance.")
     return None
