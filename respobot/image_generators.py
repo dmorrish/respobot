@@ -1039,7 +1039,7 @@ def generate_ir_graph(member_dicts, title, print_legend, draw_license_split_line
         y = image_height - margin_v_bottom
         if not skip_tick:
             draw.line([(x, y + tick_length / 2), (x, y)], fill=(255, 255, 255, 255), width=1, joint=None)
-        text_width, text_height = draw.textsize(str(day.year), font=font)
+        text_width = draw.textlength(str(day.year), font=font)
         if (x - x_left) > text_width * 1.5:
             draw.text(
                 (int((x + x_left) / 2), y + tick_length / 2),
