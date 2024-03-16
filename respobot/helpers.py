@@ -54,12 +54,14 @@ async def promote_demote_members(bot: discord.Bot, db: BotDatabase):
     guild = fetch_guild(bot)
 
     try:
-        member_dicts = await db.fetch_member_dicts()
+        member_dicts = await db.fetch_member_dicts(ignore_smurfs=True)
 
         if member_dicts is None or len(member_dicts) < 1:
             return
 
         for member_dict in member_dicts:
+            if member_dict['is_smurf'] != 0:
+                continue
             latest_applicable_ir_in_db = None
 
             latest_road_ir_in_db = await db.get_member_ir(
