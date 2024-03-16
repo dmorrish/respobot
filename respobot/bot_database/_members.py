@@ -54,6 +54,17 @@ def _update_member_dict_objects(member_dict: dict):
         finally:
             member_dict['latest_session_found'] = latest_session_found
 
+    if 'latest_race_report' in member_dict and member_dict['latest_race_report'] is not None:
+        try:
+            latest_race_report = datetime.fromisoformat(member_dict['latest_race_report'])
+        except ValueError:
+            logging.getLogger('respobot.database').warning(
+                f"Member {member_dict['name']} has an invalid latest_race_report value. Not in iso format."
+            )
+            latest_race_report = None
+        finally:
+            member_dict['latest_race_report'] = latest_race_report
+
     if 'ir_member_since' in member_dict and member_dict['ir_member_since'] is not None:
         try:
             ir_member_since = date.fromisoformat(member_dict['ir_member_since'])
@@ -272,6 +283,51 @@ async def set_member_latest_session_found(
         )
 
 
+async def set_member_latest_race_report(
+    self,
+    iracing_custid: int,
+    latest_race_report: datetime
+):
+    """Set the datetime of the latest race report posted to the main channel.
+
+    Arguments:
+        iracing_custid (int): The id of the member.
+        latest_race_report (datetime): The datetime representing the last time this
+                                        member had a race reported in the main channel.
+
+    Returns:
+        None.
+
+    Raises:
+        BotDatabaseError: Raised for any error.
+    """
+    if latest_race_report is None:
+        latest_race_report_str = None
+    else:
+        latest_race_report_str = latest_race_report.isoformat().replace('+00:00', 'Z')
+    query = f"""
+        UPDATE 'members'
+        SET latest_race_report = ?
+        WHERE iracing_custid = ?
+    """
+    parameters = (latest_race_report_str, iracing_custid)
+
+    try:
+        await self._execute_write_query(query, params=parameters)
+    except Error as e:
+        logging.getLogger('respobot.database').error(
+            f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during "
+            f"set_member_latest_race_report() for iracing_custid = {iracing_custid}."
+        )
+        raise BotDatabaseError(
+            (
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during "
+                f"set_member_latest_race_report() for iracing_custid = {iracing_custid}."
+            ),
+            ErrorCodes.general_failure.value
+        )
+
+
 async def get_member_ir(
     self,
     iracing_custid: int,
@@ -415,7 +471,7 @@ async def fetch_member_dict(
     return member_dicts[0]
 
 
-async def fetch_member_dicts(self):
+async def fetch_member_dicts(self, ignore_smurfs=False):
     """Fetch a list of dicts containing the information in the 'members' table for all members.
 
     Arguments:
@@ -431,6 +487,11 @@ async def fetch_member_dicts(self):
         SELECT *
         FROM members
     """
+
+    if ignore_smurfs:
+        query += """
+        WHERE is_smurf = 0
+        """
 
     try:
         tuples = await self._execute_read_query(query)
@@ -453,7 +514,15 @@ async def fetch_member_dicts(self):
     return member_dicts
 
 
-async def add_member(self, name: str, iracing_custid: int, discord_id: int, ir_member_since: str, pronoun_type: str):
+async def add_member(
+    self,
+    name: str,
+    iracing_custid: int,
+    discord_id: int,
+    ir_member_since: str,
+    pronoun_type: str,
+    is_smurf: bool
+):
     """Add a new entry to the 'members' table.
 
     Arguments:
@@ -469,20 +538,26 @@ async def add_member(self, name: str, iracing_custid: int, discord_id: int, ir_m
     Raises:
         BotDatabaseError: Raised for any error.
     """
+    if is_smurf is True:
+        is_smurf = 1
+    elif is_smurf is False:
+        is_smurf = 0
+
     query = """
         INSERT INTO members (
             name,
             iracing_custid,
+            is_smurf,
             discord_id,
             ir_member_since,
             pronoun_type
         )
         VALUES (
-            ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?
         )
     """
 
-    parameters = (name, iracing_custid, discord_id, ir_member_since, pronoun_type)
+    parameters = (name, iracing_custid, is_smurf, discord_id, ir_member_since, pronoun_type)
 
     try:
         await self._execute_write_query(query, params=parameters)
@@ -526,7 +601,8 @@ async def edit_member(
     iracing_custid: int = None,
     discord_id: int = None,
     ir_member_since: str = None,
-    pronoun_type: str = None
+    pronoun_type: str = None,
+    is_smurf: bool = None
 ):
     """Edit an entry in the 'members' table.
 
@@ -552,9 +628,15 @@ async def edit_member(
         and discord_id is None
         and ir_member_since is None
         and pronoun_type is None
+        and is_smurf is None
     ):
         logging.getLogger('respobot.database').warning(f"edit_member() called with no kwargs. Nothing to edit.")
         raise BotDatabaseError("edit_member() called with no kwargs", ErrorCodes.insufficient_info.value)
+
+    if is_smurf is True:
+        is_smurf = 1
+    elif is_smurf is False:
+        is_smurf = 0
 
     query = "UPDATE 'members' SET "
 
@@ -579,6 +661,10 @@ async def edit_member(
     if pronoun_type is not None:
         query += "pronoun_type = ?,"
         parameters += (pronoun_type,)
+
+    if is_smurf is not None:
+        query += "is_smurf = ?,"
+        parameters += (is_smurf,)
 
     # Remove the trailing comma
     query = query[:-1]

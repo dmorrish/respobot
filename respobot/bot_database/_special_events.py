@@ -1,5 +1,5 @@
 """
-/bot_database/_members.py
+/bot_database/_special_events.py
 
 Methods that mainly interact with the 'special_events' table.
 """

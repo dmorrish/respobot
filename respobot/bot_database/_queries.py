@@ -7,13 +7,15 @@ The queries for specific features are located directly in the code.
 
 CREATE_TABLE_MEMBERS = """
 CREATE TABLE 'members' (
-    'uid'   INTEGER NOT NULL UNIQUE,
-    'name'  TEXT NOT NULL UNIQUE,
-    'iracing_custid'    INTEGER NOT NULL UNIQUE,
-    'discord_id'    INTEGER NOT NULL UNIQUE,
-    'graph_colour'  TEXT,
-    'latest_session_found'   TEXT,
-    'ir_member_since'   TEXT,
+    'uid' INTEGER NOT NULL UNIQUE,
+    'name' TEXT NOT NULL UNIQUE,
+    'iracing_custid' INTEGER NOT NULL UNIQUE,
+    'is_smurf' INTEGER NOT NULL
+    'discord_id' INTEGER,
+    'graph_colour' TEXT,
+    'latest_session_found' TEXT,
+    'latest_race_report' TEXT,
+    'ir_member_since' TEXT,
     'pronoun_type' TEXT,
     PRIMARY KEY('uid' AUTOINCREMENT)
 );
