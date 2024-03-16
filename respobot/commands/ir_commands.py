@@ -125,7 +125,7 @@ class IrCommandsCog(commands.Cog):
             else:
                 await ctx.respond("Generating iR graph for all Respo members.")
 
-                member_dicts = await self.db.fetch_member_dicts()
+                member_dicts = await self.db.fetch_member_dicts(ignore_smurfs=True)
 
                 if member_dicts is None or len(member_dicts) < 1:
                     await ctx.edit(content="There aren't any members entered into the database yet. Go yell at Deryk.")
@@ -250,7 +250,12 @@ class IrCommandsCog(commands.Cog):
                     draw_license_split_line=draw_license_split_line
                 )
             else:
-                await ctx.edit(content="No one has at least two races in this category yet.")
+                if(len(member_dicts) > 1):
+                    await ctx.edit(content="No one has at least two races in this category yet.")
+                else:
+                    await ctx.edit(
+                        content=f"{member_dicts[0]['name']} doesn't have at least two races in this category yet."
+                    )
                 return
 
             graph_memory_file = io.BytesIO()
@@ -320,7 +325,7 @@ class IrCommandsCog(commands.Cog):
             response += "--------------------------------\n"
             response += "rEsPo BoT                  " + str(random.randint(12401, 12990)) + "\n"
 
-            member_dicts = await self.db.fetch_member_dicts()
+            member_dicts = await self.db.fetch_member_dicts(ignore_smurfs=True)
 
             if member_dicts is None or len(member_dicts) < 1:
                 await ctx.edit(content="There aren't any members entered into the database yet. Go yell at Deryk.")
