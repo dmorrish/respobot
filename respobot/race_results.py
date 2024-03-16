@@ -237,7 +237,9 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                     continue
 
                 post_to_main = True
-                if 'latest_race_report' in member_dict and member_dict['latest_race_report'] is not None:
+                if 'is_smurf' in member_dict and member_dict['is_smurf'] == 1:
+                    post_to_main = False
+                elif 'latest_race_report' in member_dict and member_dict['latest_race_report'] is not None:
                     if datetime.now(timezone.utc) - member_dict['latest_race_report'] < timedelta(days=1):
                         post_to_main = False
 
