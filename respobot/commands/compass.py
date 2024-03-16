@@ -73,7 +73,7 @@ class CompassCog(commands.Cog):
                     await ctx.edit(content="iRacing was launched in 2008.")
                     return
 
-            member_dicts = await self.db.fetch_member_dicts()
+            member_dicts = await self.db.fetch_member_dicts(ignore_smurfs=True)
 
             if member_dicts is None or len(member_dicts) < 1:
                 await ctx.edit(content="There aren't any members entered into the database yet. Go yell at Deryk.")
