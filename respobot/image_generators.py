@@ -183,10 +183,10 @@ async def generate_compass_image(guild, compass_data, time_span_text):
     return bg
 
 
-async def generate_avatar_image(guild, discord_id, size):
+async def generate_avatar_image(guild, discord_id, size, is_smurf=False):
 
     avatar_memory_file = io.BytesIO()
-    if guild is not None and discord_id is not None and discord_id > 0:
+    if guild is not None and discord_id is not None and discord_id > 0 and is_smurf is False:
         try:
             member_obj = await guild.fetch_member(discord_id)
             if member_obj and member_obj.display_avatar is not None:
@@ -216,7 +216,9 @@ async def generate_avatar_image(guild, discord_id, size):
                 f"guild {guild.id}. Using base avatar instead."
             )
 
-    if discord_id > 0:
+    if is_smurf is True:
+        avatar = Image.open(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.SMURF_AVATAR_FILENAME)
+    elif discord_id is not None and discord_id > 0:
         avatar = Image.open(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.BASE_AVATAR_FILENAME)
     else:
         avatar = Image.open(env.BOT_DIRECTORY + env.MEDIA_SUBDIRECTORY + constants.RESPO_LOGO_FILENAME)
@@ -270,7 +272,12 @@ async def generate_head2head_image(
     margin_h_right = 0.15 * image_width
     margin_h_left = 0.15 * image_width
 
-    racer1_avatar = await generate_avatar_image(guild, racer1_info_dict['discord_id'], avatar_size)
+    racer1_avatar = await generate_avatar_image(
+        guild,
+        racer1_info_dict['discord_id'],
+        avatar_size,
+        racer1_info_dict['is_smurf'] == 1
+    )
     if racer1_avatar is not None:
         x = int(image_width / 4 - racer1_avatar.width / 2)
         y = int(margin_v_top)
@@ -280,7 +287,12 @@ async def generate_head2head_image(
     draw.text((x, y), racer1_info_dict['name'], font=font, fill=(255, 255, 255, 255), anchor="mm")
     racer1_avatar.close()
 
-    racer2_avatar = await generate_avatar_image(guild, racer2_info_dict['discord_id'], avatar_size)
+    racer2_avatar = await generate_avatar_image(
+        guild,
+        racer2_info_dict['discord_id'],
+        avatar_size,
+        racer2_info_dict['is_smurf'] == 1
+    )
     if racer2_avatar is not None:
         x = int(image_width * 3 / 4 - racer1_avatar.width / 2)
         y = int(margin_v_top)
@@ -1028,7 +1040,9 @@ def generate_ir_graph(member_dicts, title, print_legend, draw_license_split_line
 
     for day in dates:
         year_timestamp = int(day.timestamp()) * 1000
-        x_left = margin_h_left + ((day - timedelta(days=365)).timestamp() * 1000 - min_timestamp) / timestamp_range * timestamp_range_pixels
+        x_left = margin_h_left + (((day - timedelta(days=365)).timestamp() * 1000 - min_timestamp)
+                                  / timestamp_range
+                                  * timestamp_range_pixels)
         if x_left < margin_h_left:
             x_left = margin_h_left
         x = margin_h_left + (year_timestamp - min_timestamp) / timestamp_range * timestamp_range_pixels
@@ -1156,9 +1170,13 @@ def generate_ir_graph(member_dicts, title, print_legend, draw_license_split_line
                         # Make a new interpolated point at the license crossover timestamp
                         scaled_split_x = (
                             margin_h_left
-                            + (sports_formula_split_timestamp - min_timestamp) / timestamp_range * timestamp_range_pixels
+                            + ((sports_formula_split_timestamp - min_timestamp)
+                                / timestamp_range
+                                * timestamp_range_pixels)
                         )
-                        scaled_split_y = prev_point[1] + (scaled_split_x - prev_point[0]) / (scaled_tuple_x - prev_point[0]) * (scaled_tuple_y - prev_point[1])
+                        scaled_split_y = prev_point[1] + ((scaled_split_x - prev_point[0])
+                                                          / (scaled_tuple_x - prev_point[0])
+                                                          * (scaled_tuple_y - prev_point[1]))
                         scaled_tuples[member_count].append((scaled_split_x, scaled_split_y))
                         scaled_tuples_sports[member_count].append((scaled_split_x, scaled_split_y))
                         crossed_split_in_sports_car = True
@@ -1187,11 +1205,12 @@ def generate_ir_graph(member_dicts, title, print_legend, draw_license_split_line
                 if point_timestamp > sports_formula_split_timestamp:
                     if not crossed_split_in_formula_car and len(scaled_tuples[member_count]) > 0:
                         # Make a new interpolated point at the license crossover timestamp
-                        scaled_split_x = (
-                            margin_h_left
-                            + (sports_formula_split_timestamp - min_timestamp) / timestamp_range * timestamp_range_pixels
-                        )
-                        scaled_split_y = prev_point[1] + (scaled_split_x - prev_point[0]) / (scaled_tuple_x - prev_point[0]) * (scaled_tuple_y - prev_point[1])
+                        scaled_split_x = margin_h_left + ((sports_formula_split_timestamp - min_timestamp)
+                                                          / timestamp_range
+                                                          * timestamp_range_pixels)
+                        scaled_split_y = prev_point[1] + ((scaled_split_x - prev_point[0])
+                                                          / (scaled_tuple_x - prev_point[0])
+                                                          * (scaled_tuple_y - prev_point[1]))
                         scaled_tuples_formula[member_count].append((scaled_split_x, scaled_split_y))
                         crossed_split_in_formula_car = True
                     scaled_tuples_formula[member_count].append(
