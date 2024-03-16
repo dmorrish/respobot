@@ -31,25 +31,37 @@ class AdminCommandsCog(commands.Cog):
             "Member's full name as it will appear in command results. Do not surround in quotes.",
             required=True
         ),
-        iracing_custid: Option(int, "iRacing customer id.", required=True),
-        discord_id: Option(str, "Discord id.", required=True),
+        iracing_custid: Option(
+            int,
+            "iRacing customer id.",
+            required=True
+        ),
         pronoun_type: Option(
             str,
             "male, female, or neutral.",
             required=True,
             choices=constants.PRONOUN_TYPES
-        )
+        ),
+        is_smurf: Option(
+            bool,
+            "Whether or not this is an alternate account.",
+            required=True
+        ),
+        discord_id: Option(
+            int,
+            "Discord id.",
+            required=False
+        ),
     ):
         try:
             if not self.is_admin(ctx.user.id):
                 await ctx.respond(
-                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607"
+                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607",
+                    ephemeral=True
                 )
                 return
 
             await ctx.respond("Working on it...", ephemeral=True)
-
-            discord_id = int(discord_id)
 
             ir_member_dicts = await self.ir.get_member_info([iracing_custid])
 
@@ -67,20 +79,23 @@ class AdminCommandsCog(commands.Cog):
             if 'member_since' in ir_member_dicts[0]:
                 ir_member_since = ir_member_dicts[0]['member_since']
 
-            member = None
-            try:
-                member = await ctx.guild.fetch_member(discord_id)
-            except (discord.HTTPException, discord.Forbidden) as exc:
-                await ctx.edit(
-                    content=f"The following exception occured when trying to fetch the discord Member object: {exc}"
-                )
-
-            if member is None:
-                await ctx.edit(content=f"This discord_id was not found in this server. Member not added.")
+            if discord_id is not None:
+                member = None
+                try:
+                    member = await ctx.guild.fetch_member(discord_id)
+                except (discord.HTTPException, discord.Forbidden) as exc:
+                    await ctx.edit(
+                        content=(
+                            f"The following exception occured when trying to "
+                            f"fetch the discord Member object: {exc}"
+                        )
+                    )
+                if member is None:
+                    await ctx.edit(content=f"This discord_id was not found in this server. Member not added.")
 
             # We have finally passed all the checks. Add the member to the db.
             try:
-                await self.db.add_member(name, iracing_custid, discord_id, ir_member_since, pronoun_type)
+                await self.db.add_member(name, iracing_custid, discord_id, ir_member_since, pronoun_type, is_smurf)
             except BotDatabaseError as exc:
                 await ctx.edit(
                     content=f"The following error occured when trying to add the member to the database: {exc}"
@@ -144,7 +159,8 @@ class AdminCommandsCog(commands.Cog):
         try:
             if not self.is_admin(ctx.user.id):
                 await ctx.respond(
-                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607"
+                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607",
+                    ephemeral=True
                 )
                 return
 
@@ -260,7 +276,8 @@ class AdminCommandsCog(commands.Cog):
         try:
             if not self.is_admin(ctx.user.id):
                 await ctx.respond(
-                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607"
+                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607",
+                    ephemeral=True
                 )
                 return
 
@@ -314,7 +331,8 @@ class AdminCommandsCog(commands.Cog):
         try:
             if not self.is_admin(ctx.user.id):
                 await ctx.respond(
-                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607"
+                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607",
+                    ephemeral=True
                 )
                 return
 
@@ -369,7 +387,8 @@ class AdminCommandsCog(commands.Cog):
         try:
             if not self.is_admin(ctx.user.id):
                 await ctx.respond(
-                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607"
+                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607",
+                    ephemeral=True
                 )
                 return
 
