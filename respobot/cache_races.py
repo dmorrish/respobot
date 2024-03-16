@@ -116,7 +116,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
                 end_time = datetime.now(timezone.utc)
             end_time = end_time.replace(second=0, microsecond=0)
 
-            if end_time - start_time < timedelta(seconds=constants.RACE_SCAN_INTERVAL):
+            if end_time - start_time < timedelta(seconds=constants.FAST_LOOP_INTERVAL):
                 caching_done = True
 
         # Get all series sessions
