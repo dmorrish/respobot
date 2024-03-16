@@ -7,6 +7,11 @@ import environment_variables as env
 
 
 async def promote_driver(guild: discord.Guild, discord_id: int):
+    if discord_id is None or discord_id < 0:
+        logging.getLogger('respobot.discord').debug(
+            f"promote_driver() exiting, discord_id={discord_id}"
+        )
+        return
     try:
         discord_member = await guild.fetch_member(discord_id)
         if discord_member is not None:
@@ -29,6 +34,11 @@ async def promote_driver(guild: discord.Guild, discord_id: int):
 
 
 async def demote_driver(guild: discord.Guild, discord_id: int):
+    if discord_id is None or discord_id < 0:
+        logging.getLogger('respobot.discord').debug(
+            f"demote_driver() exiting, discord_id={discord_id}"
+        )
+        return
     try:
         discord_member = await guild.fetch_member(discord_id)
         if discord_member is not None:
