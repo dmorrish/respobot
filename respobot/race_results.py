@@ -236,7 +236,21 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                     # This is a non-hosted practice, qualifying, or time-trial. Don't report it.
                     continue
 
-                await generate_race_report(bot, db, new_subsession['subsession_id'], embed_type='auto')
+                post_to_main = True
+                if 'latest_race_report' in member_dict and member_dict['latest_race_report'] is not None:
+                    if datetime.now(timezone.utc) - member_dict['latest_race_report'] < timedelta(days=1):
+                        post_to_main = False
+
+                await generate_race_report(
+                    bot,
+                    db,
+                    new_subsession['subsession_id'],
+                    embed_type='auto',
+                    post_to_main=post_to_main
+                )
+
+                if post_to_main:
+                    await db.set_member_latest_race_report(member_dict['iracing_custid'], datetime.now(timezone.utc))
 
             # Update latest_new_session
             if latest_new_session is None or latest_new_session < new_session_end_time:
@@ -262,11 +276,20 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
     logging.getLogger('respobot.bot').debug(f"get_race_results(): Done.")
 
 
-async def generate_race_report(bot: discord.Bot, db: BotDatabase, subsession_id: int, embed_type: str = 'auto'):
+async def generate_race_report(
+    bot: discord.Bot,
+    db: BotDatabase,
+    subsession_id: int,
+    embed_type: str = 'auto',
+    post_to_main: bool = True
+):
     try:
         multi_report = False
         role_change_reason = ""
-        channel = helpers.fetch_channel(bot, env.RESULTS_CHANNEL)
+        if post_to_main:
+            channel = helpers.fetch_channel(bot, env.CHANNEL)
+        else:
+            channel = helpers.fetch_channel(bot, env.RESULTS_CHANNEL)
 
         (current_year, current_quarter, current_racing_week, _, _) = await db.get_current_iracing_week()
 
@@ -977,9 +1000,12 @@ async def send_results_embed(
             track += " (" + config + ")"
 
         if multi_report is False:
-            avatar = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128)
+            if 'is_smurf' in member_dict and member_dict['is_smurf'] == 1:
+                avatar = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128, True)
+            else:
+                avatar = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128, False)
         else:
-            avatar = await image_gen.generate_avatar_image(channel.guild, -1, 128)
+            avatar = await image_gen.generate_avatar_image(channel.guild, -1, 128, False)
 
         avatar_memory_file = io.BytesIO()
         avatar.save(avatar_memory_file, format='png')
@@ -1146,9 +1172,12 @@ async def send_results_embed_compact(
             track += " (" + config + ")"
 
         if multi_report is False:
-            avatar = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128)
+            if 'is_smurf' in member_dict and member_dict['is_smurf'] == 1:
+                avatar = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128, True)
+            else:
+                avatar = await image_gen.generate_avatar_image(channel.guild, member_dict['discord_id'], 128, False)
         else:
-            avatar = await image_gen.generate_avatar_image(channel.guild, -1, 128)
+            avatar = await image_gen.generate_avatar_image(channel.guild, -1, 128, False)
 
         avatar_memory_file = io.BytesIO()
         avatar.save(avatar_memory_file, format='png')
