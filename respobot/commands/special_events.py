@@ -48,14 +48,7 @@ class SpecialEventsCog(commands.Cog):
                 title_text = "Next Special Event"
 
             if category:
-                if category == 'road':
-                    title_text += " - Road"
-                elif category == 'oval':
-                    title_text += " - Oval"
-                elif category == 'dirt_road':
-                    title_text += " - Dirt Road"
-                elif category == 'dirt_oval':
-                    title_text += " - Dirt Oval"
+                title_text += f" - {category}"
 
             embedVar = discord.Embed(title=title_text, description="", color=0xff0000)
 
