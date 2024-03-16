@@ -348,7 +348,7 @@ async def fast_task_loop():
 
             if post_update:
                 channel = helpers.fetch_channel(bot)
-                member_dicts = await db.fetch_member_dicts()
+                member_dicts = await db.fetch_member_dicts(ignore_smurfs=True)
                 week_data = await stats.get_respo_champ_points(
                     db,
                     member_dicts,
@@ -412,7 +412,7 @@ async def fast_task_loop():
         if now.hour == 16 and bot_state.data['anniversary_flip_flop'] is False:
             bot_state.data['anniversary_flip_flop'] = True
             bot_state.dump_state()
-            member_dicts = await db.fetch_member_dicts()
+            member_dicts = await db.fetch_member_dicts(ignore_smurfs=True)
 
             if member_dicts is not None and len(member_dicts) > 0:
                 channel = helpers.fetch_channel(bot)
