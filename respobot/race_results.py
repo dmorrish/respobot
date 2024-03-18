@@ -1,4 +1,3 @@
-import os
 import io
 import discord
 import constants
@@ -236,12 +235,17 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                     # This is a non-hosted practice, qualifying, or time-trial. Don't report it.
                     continue
 
+                latest_race_report = await db.get_member_latest_race_report(member_dict['iracing_custid'])
                 post_to_main = True
                 if 'is_smurf' in member_dict and member_dict['is_smurf'] == 1:
                     post_to_main = False
-                elif 'latest_race_report' in member_dict and member_dict['latest_race_report'] is not None:
-                    if datetime.now(timezone.utc) - member_dict['latest_race_report'] < timedelta(days=1):
-                        post_to_main = False
+                elif (
+                    latest_race_report is not None
+                    and (
+                        datetime.now(timezone.utc) - latest_race_report
+                    ) < timedelta(hours=constants.RACE_REPORT_COOLDOWN_HOURS)
+                ):
+                    post_to_main = False
 
                 await generate_race_report(
                     bot,
