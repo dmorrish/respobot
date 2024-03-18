@@ -283,6 +283,55 @@ async def set_member_latest_session_found(
         )
 
 
+async def get_member_latest_race_report(self, iracing_custid: int):
+    """Get the datetime of the latest race report posted to the main channel.
+
+    Arguments:
+        iracing_custid (int): The id of the member.
+
+    Returns:
+        A datetime object representing the last time this member had
+        a race report posted to the main channel.
+
+    Raises:
+        BotDatabaseError: Raised for any error.
+    """
+    query = f"""
+        SELECT latest_race_report
+        FROM members
+        WHERE iracing_custid = ?
+    """
+    parameters = (iracing_custid,)
+
+    try:
+        results = await self._execute_read_query(query, params=parameters)
+    except Error as e:
+        logging.getLogger('respobot.database').error(
+            f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during "
+            f"get_member_latest_race_report() for iracing_custid {iracing_custid}."
+        )
+        raise BotDatabaseError(
+            (
+                f"The sqlite3 error '{e}' occurred with code {e.sqlite_errorcode} during "
+                f"get_member_latest_race_report() for iracing_custid {iracing_custid}."
+            ),
+            ErrorCodes.general_failure.value
+        )
+
+    if results is None or len(results) < 1:
+        return None
+    else:
+        try:
+            latest_race_report = datetime.fromisoformat(results[0][0])
+        except ValueError:
+            logging.getLogger('respobot.database').error(
+                f"'latest_race_report' found in member info with "
+                f"iracing_custid: {iracing_custid} is not in iso format."
+            )
+            return None
+        return latest_race_report
+
+
 async def set_member_latest_race_report(
     self,
     iracing_custid: int,

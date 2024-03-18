@@ -369,6 +369,7 @@ class BotDatabase:
         fetch_name,
         get_member_latest_session_found,
         set_member_latest_session_found,
+        get_member_latest_race_report,
         set_member_latest_race_report,
         get_member_ir,
         fetch_member_dict,
