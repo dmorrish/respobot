@@ -479,18 +479,30 @@ async def fast_task_loop():
             bot_state.data['anniversary_flip_flop'] = False
             bot_state.dump_state()
 
+    except BotDatabaseError as exc:
+        logging.getLogger('respobot.database').warning(
+            f"The following exception occured when preparing the "
+            f"iRacing anniversaries post in in fast_task_loop(): {exc}"
+        )
+        await helpers.send_bot_failure_dm(
+            bot,
+            f"The following exception occured when preparing the "
+            f"iRacing anniversaries post in in fast_task_loop(): {exc}"
+        )
+
+    try:
         # Check if anyone raced.
         logging.getLogger('respobot.bot').debug(f"fast_task_loop(): get_race_results()")
         await results.get_race_results(bot, db, ir)
     except BotDatabaseError as exc:
         logging.getLogger('respobot.database').warning(
-            f"The following exception occured when preparing the "
-            f"iRacing anniversaries post in in slow_task_loop(): {exc}"
+            f"The following exception occured when checking for "
+            f"race results in fast_task_loop(): {exc}"
         )
         await helpers.send_bot_failure_dm(
             bot,
-            f"The following exception occured when preparing the "
-            f"iRacing anniversaries post in in slow_task_loop(): {exc}"
+            f"The following exception occured when checking for "
+            f"race_results in fast_task_loop(): {exc}"
         )
     logging.getLogger('respobot.bot').debug(f"Done running fast_task_loop().")
 
