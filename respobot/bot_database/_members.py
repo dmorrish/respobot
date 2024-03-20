@@ -320,6 +320,8 @@ async def get_member_latest_race_report(self, iracing_custid: int):
 
     if results is None or len(results) < 1:
         return None
+    if results[0] is None or results[0][0] is None:
+        return None
     else:
         try:
             latest_race_report = datetime.fromisoformat(results[0][0])
@@ -327,6 +329,12 @@ async def get_member_latest_race_report(self, iracing_custid: int):
             logging.getLogger('respobot.database').error(
                 f"'latest_race_report' found in member info with "
                 f"iracing_custid: {iracing_custid} is not in iso format."
+            )
+            return None
+        except TypeError:
+            logging.getLogger('respobot.database').error(
+                f"'latest_race_report' found in member info with "
+                f"iracing_custid: {iracing_custid} not a string."
             )
             return None
         return latest_race_report
