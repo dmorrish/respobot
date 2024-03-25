@@ -1,9 +1,11 @@
 import discord
 from discord.ext import commands
 from discord.commands import Option
+import logging
 import constants
 import environment_variables as env
 import cache_races
+import update_series
 from slash_command_helpers import SlashCommandHelpers
 from discord.commands import SlashCommandGroup
 from irslashdata.exceptions import AuthenticationError, ServerDownError
@@ -358,6 +360,77 @@ class AdminCommandsCog(commands.Cog):
                     category=category
                 )
                 await ctx.edit(content=f"{event} successfully edited in the database.")
+        except BotDatabaseError as exc:
+            await SlashCommandHelpers.process_command_failure(
+                self.bot,
+                ctx,
+                "Error interfacing with the database.",
+                exc
+            )
+            return
+        except (discord.HTTPException, discord.Forbidden, discord.InvalidArgument) as exc:
+            await SlashCommandHelpers.process_command_failure(
+                self.bot,
+                ctx,
+                "Discord error.",
+                exc
+            )
+            return
+
+    @admin_command_group.command(
+        name='update_seasons',
+        description="Used by Deryk to manually update the iRacing seasons."
+    )
+    async def admin_update_seasons(
+        self,
+        ctx
+    ):
+        try:
+            if not self.is_admin(ctx.user.id):
+                await ctx.respond(
+                    "https://tenor.com/view/you-didnt-say-the-magic-word-ah-ah-nope-wagging-finger-gif-17646607",
+                    ephemeral=True
+                )
+                return
+
+            await ctx.respond("Working on it...", ephemeral=True)
+            logging.getLogger('respobot.bot').info(f"Updating season dates from admin command.")
+
+            logging.getLogger('respobot.bot').info(f"Fetching series information from iRacing servers.")
+            ir_results = await self.ir.stats_series()
+            if ir_results is not None:
+                logging.getLogger('respobot.bot').info(
+                    f"Series information returned from iRacing. Updating 'seasons' database table."
+                )
+                await self.db.update_seasons(ir_results)
+
+            logging.getLogger('respobot.bot').info(
+                f"Fetching current season info using db.get_current_iracing_week()."
+            )
+            (
+                current_year,
+                current_quarter,
+                current_race_week,
+                current_max_weeks,
+                current_active) = await self.db.get_current_iracing_week()
+
+            logging.getLogger('respobot.bot').info(f"Updating season dates for {current_year}s{current_quarter}")
+            await update_series.update_season_dates(
+                self.db,
+                self.ir,
+                season_year=current_year,
+                season_quarter=current_quarter
+            )
+            # Refresh the autocomplete cache
+            logging.getLogger('respobot.bot').info(f"Refreshing the series autocomplete cache.")
+            await SlashCommandHelpers.refresh_series()
+
+            try:
+                await ctx.edit(content="Done!")
+            except discord.HTTPException:
+                # Sometimes caching takes long enough to run that the webhook expires
+                # and editing the message fails.
+                return
         except BotDatabaseError as exc:
             await SlashCommandHelpers.process_command_failure(
                 self.bot,
