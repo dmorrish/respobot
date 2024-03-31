@@ -557,6 +557,7 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
     messages = []
 
     self_spin_laps = []
+
     if car_results.lost_control_laps is not None and car_results.car_contact_laps is not None:
         self_spin_laps = [lap for lap in car_results.lost_control_laps if lap not in car_results.car_contact_laps]
 
@@ -706,25 +707,25 @@ async def generate_race_event_message(db: BotDatabase, car_results: subsession_s
             )
             messages.append(f"The saying is trading paint, not body panels.")
     elif len(self_spin_laps) > 1:
-        self_spin_laps = helpers.format_grammar_for_item_list(self_spin_laps)
+        self_spin_laps_str = helpers.format_grammar_for_item_list(self_spin_laps)
         lap_laps = 'laps' if len(self_spin_laps) > 1 else 'lap'
         if env.OPEN_AI_TOKEN != "":
             messages.append(
                 await helpers.gpt_rewrite(
-                    f"{He_She_They} lost control all by {himself_herself_themself} on {lap_laps} {self_spin_laps}."
+                    f"{He_She_They} lost control all by {himself_herself_themself} on {lap_laps} {self_spin_laps_str}."
                 )
             )
         else:
             messages.append(
                 f"How amusing. {He_She_They} lost control all by {himself_herself_themself} on {lap_laps} "
-                f"{self_spin_laps}."
+                f"{self_spin_laps_str}."
             )
             messages.append(
                 f"Well this is a little embarrassing. {He_She_They} lost control all by {himself_herself_themself} "
-                f"on {lap_laps} {self_spin_laps}."
+                f"on {lap_laps} {self_spin_laps_str}."
             )
             messages.append(
-                f"Who needs practice?. It's perfectly normal to self spin on {len(self_spin_laps)} separate laps."
+                f"Who needs practice? It's perfectly normal to self spin on {len(self_spin_laps)} separate laps."
             )
     elif car_results.race_finish_position_in_class is not None and car_results.race_finish_position_in_class == 0:
         if env.OPEN_AI_TOKEN != "":
