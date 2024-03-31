@@ -426,7 +426,7 @@ async def fast_task_loop():
                         anniversary_messages = []
                         anniversary_messages.append(
                             f"iRacing used to be a respectable simracing service with a talented user base, "
-                            f" but that all changed {now.year - member_dict['ir_member_since'].year} years ago "
+                            f"but that all changed {now.year - member_dict['ir_member_since'].year} years ago "
                             f"when {member_dict['name']} joined. Happy iRacing anniversary!"
                         )
                         anniversary_messages.append(
