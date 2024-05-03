@@ -95,7 +95,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
 
             if year_rollover is True:
                 end_time += timedelta(seconds=1)
-            start_time = end_time
+            start_time = end_time + timedelta(seconds=1)
 
             try:
                 hosted_results_dicts = await ir.search_hosted(
