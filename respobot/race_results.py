@@ -411,10 +411,11 @@ async def generate_race_report(
                 else:
                     await send_results_embed(bot, db, channel, car_results)
 
-                if current_racing_week < 12:
-                    race_message = await generate_race_event_message(db, car_results)
-                    if race_message is not None and race_message != "":
-                        await channel.send(race_message)
+                # Disabled race event messages because they got too repetitive.
+                # if current_racing_week < 12:
+                #     race_message = await generate_race_event_message(db, car_results)
+                #     if race_message is not None and race_message != "":
+                #         await channel.send(race_message)
 
         # 7. Calculate Respo champ points for race reports.
         # This section calculates points after the new race is accounted for.
