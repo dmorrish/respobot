@@ -50,7 +50,7 @@ class AdminCommandsCog(commands.Cog):
             required=True
         ),
         discord_id: Option(
-            int,
+            str,
             "Discord id.",
             required=False
         ),
