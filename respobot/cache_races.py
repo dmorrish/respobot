@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone, timedelta
+import calendar
 import logging
 import discord
 from irslashdata.client import Client as IracingClient
@@ -73,7 +74,8 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
 
         while caching_done is False:
             year_rollover = False
-            end_time = start_time + timedelta(days=89)
+            num_days = calendar.monthrange(start_time.year, start_time.month)[1]
+            end_time = start_time + timedelta(days=num_days) - timedelta(seconds=1)
             if(end_time.year > start_time.year):
                 end_time = end_time.replace(year=start_time.year, month=12, day=31, hour=23, minute=59, second=59)
                 year_rollover = True
