@@ -504,6 +504,11 @@ async def fast_task_loop():
             f"The following exception occured when checking for "
             f"race_results in fast_task_loop(): {exc}"
         )
+    except ServerDownError:
+        logging.getLogger('respobot.iracing').warning(
+            "The iRacing servers are down for maintenance. "
+            "Could not get race results in fast_task_loop()"
+        )
     logging.getLogger('respobot.bot').debug(f"Done running fast_task_loop().")
 
 
