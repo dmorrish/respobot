@@ -64,39 +64,42 @@ async def update_season_dates(
                 event_types=[irConstants.EventType.race.value])
 
             if result_dicts is not None and len(result_dicts) > 0:
-                min_start_time = datetime.fromisoformat(result_dicts[0]['start_time'])
-                subsession_id = result_dicts[0]['subsession_id']
+                min_start_time = None
+                subsession_id = None
 
                 for result_dict in result_dicts:
                     new_start_time = datetime.fromisoformat(result_dict['start_time'])
-                    if new_start_time < min_start_time:
+                    if min_start_time is None or new_start_time < min_start_time:
                         min_start_time = new_start_time
+                    if(result_dict['event_laps_complete'] > 0):
                         subsession_id = result_dict['subsession_id']
 
-                subsession_data = await ir.subsession_data(subsession_id)
+                if(subsession_id is not None and min_start_time is not None):
+                    subsession_data = await ir.subsession_data(subsession_id)
 
-                if subsession_data is None:
-                    continue
+                    if subsession_data is not None:
 
-                max_weeks = subsession_data['max_weeks']
+                        max_weeks = subsession_data['max_weeks']
 
-                start_time = datetime(
-                    min_start_time.year,
-                    min_start_time.month,
-                    min_start_time.day,
-                    tzinfo=timezone.utc
-                )
+                        start_time = datetime(
+                            min_start_time.year,
+                            min_start_time.month,
+                            min_start_time.day,
+                            tzinfo=timezone.utc
+                        )
 
-                end_time = start_time + timedelta(days=7 * max_weeks)
+                        end_time = start_time + timedelta(days=7 * max_weeks)
 
-                new_season_dict = {
-                    'season_year': year,
-                    'season_quarter': quarter,
-                    'start_time': start_time,
-                    'end_time': end_time
-                }
+                        new_season_dict = {
+                            'season_year': year,
+                            'season_quarter': quarter,
+                            'start_time': start_time,
+                            'end_time': end_time
+                        }
 
-                season_dicts.append(new_season_dict)
+                        season_dicts.append(new_season_dict)
+                else:
+                    logging.getLogger('respobot.bot').error(f"Failed to update season dates for {year}s{quarter}")
             quarter += 1
 
             if quarter > 4:
