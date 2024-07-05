@@ -624,7 +624,7 @@ async def is_subsession_multiclass(self, subsession_id: int):
             f"is_subsession_multiclass() for subsession {subsession_id}."
         )
 
-        return len(result_tuples) > 1
+    return len(result_tuples) > 1
 
 
 async def get_subsession_drivers_old_irs(self, subsession_id: int, car_class_id: int = None):
