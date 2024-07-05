@@ -1043,8 +1043,7 @@ async def send_results_embed(
         else:
             embedVar.add_field(name="Session", value=car_results.session_name, inline=False)
 
-        if car_results.league_name is None and car_results.is_multiclass:
-            embedVar.add_field(name="Class", value=car_results.car_class_name, inline=True)
+        embedVar.add_field(name="Car", value=car_results.car_name, inline=True)
 
         embedVar.add_field(name="Track", value=track, inline=False)
 
