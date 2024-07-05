@@ -1176,6 +1176,8 @@ async def send_results_embed_compact(
 
         track = car_results.track_name
         config = car_results.track_config_name
+        car = car_results.car_name
+        num_car_ids_in_class = await db.get_car_class_num_cars(car_results.car_class_id)
         if(config and config != "N/A" and config != ""):
             track += " (" + config + ")"
 
@@ -1221,6 +1223,9 @@ async def send_results_embed_compact(
             field_name = car_results.session_name
 
         event_description = "at " + track
+
+        if car_results.is_multiclass or (num_car_ids_in_class is not None and num_car_ids_in_class > 1):
+            event_description += "\nin the " + car
 
         embedVar.add_field(name=field_name, value=event_description, inline=False)
 
