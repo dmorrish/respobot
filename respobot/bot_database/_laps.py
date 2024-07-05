@@ -1,5 +1,5 @@
 """
-/bot_database/_subsessions.py
+/bot_database/_laps.py
 
 Methods that mainly interact with the laps table.
 """
