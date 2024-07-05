@@ -16,6 +16,8 @@ class CarResultSummary():
         self.season_id = None  # DONE
         self.league_name = None  # DONE
         self.session_name = None  # DONE
+        self.car_name = None
+        self.car_class_id = None
         self.car_class_name = None  # DONE
         self.track_name = None  # DONE
         self.track_config_name = None  # DONE
@@ -81,8 +83,14 @@ class CarResultSummary():
         self.league_name = data_dict['league_name'] if (
             'league_name' in data_dict
         ) else None
-        self.session_name = data_dict[''] if (
-            '' in data_dict
+        self.session_name = data_dict['session_name'] if (
+            'session_name' in data_dict
+        ) else None
+        self.car_name = data_dict['car_name'] if (
+            'car_name' in data_dict
+        ) else None
+        self.car_class_id = data_dict['car_class_id'] if (
+            'car_class_id' in data_dict
         ) else None
         self.car_class_name = data_dict['car_class_name'] if (
             'car_class_name' in data_dict
@@ -355,7 +363,6 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
         driver_heat_result_dicts = []
         car_race_result_dict = None
         car_heat_result_dict = None
-        car_class_id = None
         is_team_race = False
         is_hosted = False
 
@@ -439,12 +446,13 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
 
             # If it hasn't been done yet, record the car_class_id for the car number being analysed.
             if (
-                car_class_id is None
+                car_results.car_class_id is None
                 and 'car_class_id' in subsession_result_dict
                 and subsession_result_dict['car_class_id'] is not None
             ):
-                car_class_id = subsession_result_dict['car_class_id']
+                car_results.car_class_id = subsession_result_dict['car_class_id']
                 car_results.car_class_name = subsession_result_dict['car_class_name']
+                car_results.car_name = subsession_result_dict['car_name']
 
         car_results.cars_in_event = len(event_car_numbers)
 
@@ -461,7 +469,7 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
                 continue
 
             if (
-                subsession_result_dict['car_class_id'] == car_class_id
+                subsession_result_dict['car_class_id'] == car_results.car_class_id
                 and subsession_result_dict['livery_car_number'] not in car_numbers_in_class
             ):
                 car_numbers_in_class.append(subsession_result_dict['livery_car_number'])
@@ -777,7 +785,7 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
         # Calculate the SoF as the average based on each individual team's average IR.
         class_sof_data = await db.get_subsession_drivers_old_irs(
             subsession_data['subsession_id'],
-            car_class_id=car_class_id
+            car_class_id=car_results.car_class_id
         )
         sof_dict = {}
         for driver_tuple in class_sof_data:
