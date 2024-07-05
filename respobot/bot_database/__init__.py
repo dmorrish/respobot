@@ -404,3 +404,7 @@ class BotDatabase:
         remove_special_event,
         edit_special_event
     )
+
+    from ._current_car_classes import (
+        get_car_class_num_cars
+    )
