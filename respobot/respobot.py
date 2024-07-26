@@ -15,7 +15,7 @@ import logging
 import io
 
 # RespoBot modules
-import respobot_logging
+import respobot_logging  # Do not remove, even though it's "unused"
 import image_generators
 import constants
 import environment_variables as env
@@ -237,15 +237,16 @@ async def slow_task_loop():
 async def fast_task_loop():
     logging.getLogger('respobot.bot').debug(f"Running fast_task_loop().")
 
-    logging.getLogger('respobot.bot').debug(f"Writing timestamp to pulse txt file.")
-    try:
-        with open(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.PULSE_FILENAME, "w") as f_pulse:
-            f_pulse.write(str(int(datetime.now(tz=timezone.utc).timestamp())))
-    except (FileNotFoundError, IOError, PermissionError, OSError) as exc:
-        logging.getLogger('respobot.bot').warning(
-            f"An error occurred when attempting to write to "
-            f"{env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.PULSE_FILENAME}: {exc}"
-        )
+    # logging.getLogger('respobot.bot').debug(f"Writing timestamp to pulse txt file.")
+    # try:
+    #     with open(env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.PULSE_FILENAME, "w") as f_pulse:
+    #         f_pulse.write(str(int(datetime.now(tz=timezone.utc).timestamp())))
+    # except (FileNotFoundError, IOError, PermissionError, OSError) as exc:
+    #     logging.getLogger('respobot.bot').warning(
+    #         f"An error occurred when attempting to write to "
+    #         f"{env.BOT_DIRECTORY + env.DATA_SUBDIRECTORY + env.PULSE_FILENAME}: {exc}"
+    #     )
+    helpers.update_pulse()
 
     logging.getLogger('respobot.bot').debug(f"fast_task_loop(): Fetching Discord Member objects.")
     # Update colours

@@ -73,6 +73,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
         latest_session_end_time = None
 
         while caching_done is False:
+            helpers.update_pulse()
             year_rollover = False
             num_days = calendar.monthrange(start_time.year, start_time.month)[1]
             end_time = start_time + timedelta(days=num_days) - timedelta(seconds=1)
@@ -132,6 +133,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
         caching_done = False
 
         while caching_done is False:
+            helpers.update_pulse()
             logging.getLogger('respobot.bot').info(
                 f"Gathering list of series subsessions for {year}s{quarter}"
             )
@@ -158,6 +160,7 @@ async def cache_races(bot: discord.bot, db: BotDatabase, ir: IracingClient, irac
         latest_session_end_time = None
         subsession_count = 0
         for subsession_summary_dict in subsession_summary_dicts:
+            helpers.update_pulse()
             subsession_count += 1
             logging.getLogger('respobot.bot').info(
                 f"Caching subsession {subsession_count} of {len(subsession_summary_dicts)}"
