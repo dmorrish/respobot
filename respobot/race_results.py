@@ -1029,7 +1029,6 @@ async def send_results_embed(
             title = "Hosted result for "
 
         if multi_report is False:
-            url += "&custid=" + str(car_results.driver_race_results[0].cust_id)
             title += member_dict['name']
         else:
             title += "Respo Racing"
@@ -1203,7 +1202,6 @@ async def send_results_embed_compact(
             title = "Hosted result for "
 
         if multi_report is False:
-            url += "&custid=" + str(car_results.driver_race_results[0].cust_id)
             title += member_dict['name']
         else:
             title += "Respo Racing"
