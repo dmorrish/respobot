@@ -331,8 +331,7 @@ async def generate_subsession_summary(bot: discord.Bot, db: BotDatabase, subsess
     car_results = CarResultSummary()
 
     car_results.results_url = (
-        f"https://members.iracing.com/membersite/member/"
-        f"EventResult.do?&subsessionid={subsession_id}"
+        f"https://members-ng.iracing.com/racing/results-stats/results?subsessionid={subsession_id}"
     )
 
     try:
