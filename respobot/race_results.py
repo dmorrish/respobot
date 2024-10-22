@@ -84,7 +84,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
         # 5. The longer race ends but is never found because latest_session_found is later than this race.
         # Scanning based on finish time eliminates this issue.
         try:
-            logging.getLogger('respobot.bot').debug(f"Running search_results() for cust_id {iracing_custid}")
+            logging.getLogger('respobot.bot').debug(f"Running ir.search_results() for cust_id {iracing_custid}")
             series_subsessions_list = await ir.search_results(
                 cust_id=iracing_custid,
                 finish_range_begin=start_low_str,
@@ -100,7 +100,7 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
             logging.getLogger('respobot.bot').warning(e)
 
         try:
-            logging.getLogger('respobot.bot').debug(f"Running search_hosted() for cust_id {iracing_custid}")
+            logging.getLogger('respobot.bot').debug(f"Running ir.search_hosted() for cust_id {iracing_custid}")
             hosted_subsessions_list = await ir.search_hosted(
                 cust_id=iracing_custid,
                 finish_range_begin=start_low_str,
@@ -148,6 +148,9 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
             if race_found is False:
                 logging.getLogger('respobot.bot').info(f"Adding new subsession: {subsession['subsession_id']}")
                 try:
+                    logging.getLogger('respobot.bot').debug(
+                        f"Running ir.subsession_data() for subsession {subsession['subsession_id']}"
+                    )
                     new_subsession = await ir.subsession_data(subsession['subsession_id'])
                 except Exception as exc:
                     logging.getLogger('respobot.bot').warning(
@@ -162,6 +165,9 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                     continue
 
                 try:
+                    logging.getLogger('respobot.bot').debug(
+                        f"Running db.add_subsessions() for subsession {subsession['subsession_id']}"
+                    )
                     await db.add_subsessions([new_subsession])
                 except BotDatabaseError as exc:
                     logging.getLogger('respobot.bot').warning(
@@ -187,6 +193,10 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                             continue
 
                         try:
+                            logging.getLogger('respobot.bot').debug(
+                                f"Running ir.lap_data() for simsession {session_result_dict['simsession_number']} "
+                                f"of subsession {subsession['subsession_id']}"
+                            )
                             lap_dicts = await ir.lap_data(
                                 new_subsession['subsession_id'],
                                 session_result_dict['simsession_number']
@@ -207,6 +217,10 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                             continue
 
                         try:
+                            logging.getLogger('respobot.bot').debug(
+                                f"Running db.add_laps() for simsession {session_result_dict['simsession_number']} "
+                                f"of subsession {subsession['subsession_id']}"
+                            )
                             await db.add_laps(
                                 lap_dicts, new_subsession['subsession_id'],
                                 session_result_dict['simsession_number']
@@ -230,9 +244,16 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                     and (new_subsession['league_id'] is None or new_subsession['league_id'] < 1)
                 ):
                     # This is just some random hosted session. Don't report it.
+                    logging.getLogger('respobot.bot').info(
+                        f"Subsession {subsession['subsession_id']} some random hosted session. Skipping race report."
+                    )
                     continue
                 elif 'event_type' in new_subsession and new_subsession['event_type'] != 5:
                     # This is a non-hosted practice, qualifying, or time-trial. Don't report it.
+                    logging.getLogger('respobot.bot').info(
+                        f"Subsession {subsession['subsession_id']} is a non-hosted practice, qualifying, or "
+                        f"time-trial. Skipping race report."
+                    )
                     continue
 
                 latest_race_report = await db.get_member_latest_race_report(member_dict['iracing_custid'])
@@ -247,6 +268,9 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                 ):
                     post_to_main = False
 
+                logging.getLogger('respobot.bot').info(
+                    f"Running generate_race_report() for {subsession['subsession_id']}."
+                )
                 await generate_race_report(
                     bot,
                     db,
@@ -256,18 +280,34 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                 )
 
                 if post_to_main:
-                    await db.set_member_latest_race_report(member_dict['iracing_custid'], datetime.now(timezone.utc))
+                    post_time = datetime.now(timezone.utc)
+                    logging.getLogger('respobot.bot').debug(
+                        f"Running db.set_member_last_race_report() with {post_time} for member "
+                        f"{member_dict['iracing_custid']}."
+                    )
+                    await db.set_member_latest_race_report(member_dict['iracing_custid'], post_time)
 
             # Update latest_new_session
             if latest_new_session is None or latest_new_session < new_session_end_time:
                 latest_new_session = new_session_end_time
 
         try:
+            logging.getLogger('respobot.bot').debug(
+                f"Running db.get_member_latest_session_found() for member {member_dict['iracing_custid']}."
+            )
             db_latest_session_found = await db.get_member_latest_session_found(member_dict['iracing_custid'])
             if latest_new_session is not None and latest_new_session > db_latest_session_found:
+                logging.getLogger('respobot.bot').debug(
+                    f"Running db.set_member_latest_session_found() with {latest_new_session} for member "
+                    f"{member_dict['iracing_custid']}."
+                )
                 await db.set_member_latest_session_found(member_dict['iracing_custid'], latest_new_session)
 
             if on_a_hiatus is True:
+                logging.getLogger('respobot.bot').debug(
+                    f"Member on a hiatus. Running db.set_member_latest_session_found() with "
+                    f"{start_high - timedelta(days=2)} for member {member_dict['iracing_custid']}."
+                )
                 await db.set_member_latest_session_found(member_dict['iracing_custid'], start_high - timedelta(days=2))
         except BotDatabaseError as exc:
             logging.getLogger('respobot.bot').warning(
