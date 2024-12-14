@@ -10,6 +10,7 @@ import helpers
 from bot_database import BotDatabase, BotDatabaseError
 from irslashdata.client import Client as IracingClient
 from irslashdata import constants as irConstants
+from irslashdata.exceptions import ForbiddenError
 import subsession_summary
 import logging
 import traceback
@@ -152,6 +153,11 @@ async def get_race_results(bot: discord.Bot, db: BotDatabase, ir: IracingClient)
                         f"Running ir.subsession_data() for subsession {subsession['subsession_id']}"
                     )
                     new_subsession = await ir.subsession_data(subsession['subsession_id'])
+                except ForbiddenError as exc:
+                    logging.getLogger('respobot.bot').warning(
+                        f"Access denied when fetching data for subsession {subsession['subsession_id']}: {exc}"
+                    )
+                    continue
                 except Exception as exc:
                     logging.getLogger('respobot.bot').warning(
                         "During get_race_results() an exception was caught when fetching data "
